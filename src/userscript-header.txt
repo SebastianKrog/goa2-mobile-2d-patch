@@ -1,0 +1,16 @@
+// ==UserScript==
+// @name         GoA II — Mobile 2D
+// @namespace    goa2-mobile-local
+// @version      0.14.5
+// @description  Compact 2D HUD, Board/Hand modes, contained setup and utility panels.
+// @match        https://goa2.frontend.pedroliv.dev/game/*
+// @grant        none
+// @run-at       document-idle
+// ==/UserScript==
+/* Open your existing game URL with &3d=0. Install as a userscript or paste this
+   entire file in the page console. Only activates at <=900 CSS pixels.
+   Remove: GOA2Mobile2D.destroy(). Reload also removes a console-installed patch.
+   Loads card artwork from this site; no automatic moves. Stores display preferences and up to 2,000 received events per game locally.
+   Live markup inspected 2026-10-02. Desktop layout is preserved.
+   Validation: DOM lifecycle/navigation tests; phone visual testing still needed.
+*/

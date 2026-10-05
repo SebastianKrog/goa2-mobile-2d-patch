@@ -1,0 +1,11 @@
+[
+  "init.js",
+  "navigation.js",
+  "painter.js",
+  "cards.js",
+  "deck.js",
+  "board.js",
+  "heroes.js",
+  "history.js",
+  "main.js"
+]

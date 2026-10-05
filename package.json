@@ -1,0 +1,17 @@
+{
+  "name": "goa2-mobile-2d",
+  "version": "0.14.5",
+  "private": true,
+  "description": "Mobile 2D userscript for Guards of Atlantis II",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "build:check": "node scripts/build.mjs --check",
+    "test": "npm run build && node scripts/test.mjs"
+  },
+  "devDependencies": {
+    "jsdom": "30.1.1"
+  }
+}

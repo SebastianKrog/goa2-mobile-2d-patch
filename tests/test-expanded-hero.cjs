@@ -1,0 +1,13 @@
+const {JSDOM}=require('jsdom'),fs=require('fs'),assert=require('assert');
+const d=new JSDOM('<header class="_bar_x"><span class="_phase_x">PLANNING</span></header><div class="_sidebar_x"></div>',{url:'https://goa2.frontend.pedroliv.dev/?3d=0',runScripts:'outside-only',pretendToBeVisual:true});
+const w=d.window,doc=w.document;w.matchMedia=()=>({matches:true,addEventListener(){}});
+const card=(id)=>({id,name:id,color:'GREEN',tier:'I',initiative:2,primary_action:'SKILL',secondary_actions:{MOVEMENT:2},effect_text:'Effect'});
+const side=doc.querySelector('._sidebar_x');side.__reactFiber$test={memoizedProps:{view:{phase:'PLANNING',turn:2}}};
+for(const own of [true,false]){const box=doc.createElement('section');box.id=own?'own':'other';box.innerHTML='<div class="_name_x">'+(own?'Hanu (You)':'Misa')+'</div><div class="_details_x">Lv 1<i class="_handColorDot_x" style="background-color:green"></i></div>';box.__reactFiber$test={memoizedProps:{hero:{id:box.id,name:box.id,hand:[card(own?'Own hand':'SECRET')],current_turn_card:card('Current'),played_cards:[card('Turn one'),null,null,null],discard_pile:[card('Discard one'),card('Discard two')],items:{INITIATIVE:1}}}};side.append(box);}
+w.eval(fs.readFileSync('dist/goa2-mobile-2d.user.js','utf8'));
+const tick=()=>new Promise(r=>setTimeout(r,65));
+(async()=>{try{
+ doc.querySelector('[data-mode="heroes"]').click();doc.querySelector('#own ._name_x').click();await tick();
+ const own=doc.querySelector('#own .m2-expanded-board');assert(own);assert(!doc.querySelector('#goa2-m2-hero-display .m2-expanded-board'));assert.deepEqual([...own.querySelectorAll('h4')].map(x=>x.textContent),['Current:','Hand:','','Discard:']);assert.equal(own.querySelectorAll('.m2-slot-label').length,4);assert.equal(own.querySelectorAll('.m2-expanded-card').length,5);assert(own.textContent.includes('Own hand'));assert.equal(own.querySelector('.m2-upgraded-value').textContent,'3');own.querySelector('.m2-expanded-card').click();await tick();assert(doc.querySelector('#goa2-m2-hero-display>.m2-text-card'));
+ doc.querySelector('#other ._name_x').click();await tick();assert(!doc.querySelector('#own .m2-expanded-board'));const other=doc.querySelector('#other .m2-expanded-board');assert(other);assert(!other.textContent.includes('SECRET'));assert(!other.querySelector('.m2-expanded-hand-dots'));doc.querySelector('#other ._name_x').click();await tick();assert(!doc.querySelector('.m2-expanded-board'));w.GOA2Mobile2D.destroy();assert(!doc.querySelector('.m2-hero-expand'));console.log('PASS: hero switching, four turn slots, own hand rows, opponent hand dots, upgraded values, card inspection, collapse and cleanup');
+ }finally{w.close();}})().catch(e=>{console.error(e);process.exitCode=1});
