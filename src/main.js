@@ -14,7 +14,7 @@ function refresh() {
     media.matches && !!sidebar && new URLSearchParams(location.search).get('3d') === '0';
   if (root.hasAttribute('data-m2-active') !== active)
     root.toggleAttribute('data-m2-active', active);
-  root.dataset.m2Mode = deckOpen ? 'split' : mode;
+  root.dataset.m2Mode = mode;
   root.dataset.m2Panel = panel;
   updateEventHistory();
   if (!active) {
@@ -94,7 +94,11 @@ function refresh() {
     root.style.setProperty('--m2-vh', vh + 'px');
   if (root.style.getPropertyValue('--m2-offset') !== offset + 'px')
     root.style.setProperty('--m2-offset', offset + 'px');
-  tag(q(c('modal') + ':has(' + c('cardGrid') + ')'), 'deck');
+  const nativeDeck = q(c('modal') + ':has(' + c('cardGrid') + ')');
+  tag(nativeDeck, 'deck');
+  // Native X, backdrop, and Escape can unmount Deck independently of our toggle.
+  if (deckOpen && nativeDeck) deckMounted = true;
+  else if (deckOpen && deckMounted) setDeckOpen(false);
   deckUpdate();
   deckPaint();
   tag(q('[aria-label="Starting position"]'), 'setup');
@@ -139,7 +143,7 @@ function refresh() {
       const marker = entry
         ? entry.current
           ? 'NOW'
-          : String(entry.order)
+          : String(entry.order) + '.'
         : resolving && !offboard
           ? done
             ? '✓'
@@ -238,15 +242,11 @@ function refresh() {
       tag(e, 'tip');
   }
   const handList = q('[data-m2="hand-list"]');
-  if (sidebar && detailsPanel.parentElement !== sidebar.parentElement)
-    sidebar.before(detailsPanel);
-  // All overlays the inspected card on the board; Heroes places it above the list.
-  // Move the same display root rather than maintaining duplicate selected-card views.
-  const heroHost = mode === 'split' ? q('[data-m2="board"]') : sidebar?.parentElement;
-  if (heroHost && heroPanel.parentElement !== heroHost) {
-    if (mode === 'split') heroHost.append(heroPanel);
-    else sidebar.before(heroPanel);
-  }
+  // Inspect cards over the board; empty displays never replace the board itself.
+  const boardHost = q('[data-m2="board"]');
+  const detailHost = boardHost || sidebar?.parentElement;
+  for (const display of [detailsPanel, heroPanel])
+    if (detailHost && display.parentElement !== detailHost) detailHost.append(display);
   updateHeroCardDisplay();
   const tip = q('[data-m2="tip"]');
   const selected = q('[data-m2="hand-list"] ' + c('row') + c('selected'));
@@ -320,7 +320,7 @@ on(media, 'change', schedule);
 
 // Public teardown for console installs and upgrades: release observers, timers, and DOM changes.
 window.GOA2Mobile2D = {
-  version: '0.14.7',
+  version: '0.14.8',
   destroy() {
     flushEventHistory();
     dead = true;

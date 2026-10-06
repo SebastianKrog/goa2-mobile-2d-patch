@@ -41,7 +41,7 @@ const tag = (e, n) => {
   }
 };
 // Navigation, detail selection, and lifecycle state.
-let mode = 'split',
+let mode = 'board',
   panel = '',
   deckOpen = false;
 // Dismissal remembers the current card/tooltip, so a refresh does not reopen it.

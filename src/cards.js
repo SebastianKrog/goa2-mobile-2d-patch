@@ -75,7 +75,7 @@ function itemUpgradeSymbols(items = {}, className = '') {
   group.append(rest);
   return group;
 }
-// Four fixed cells keep the miniature recognizable without a title or initiative.
+// Three fixed cells keep the miniature recognizable without a title or initiative.
 // Facedown cards show only a colored back, never stats read from hidden props.
 function miniatureCard(card, items = {}) {
   const mini = document.createElement('span');
@@ -97,7 +97,7 @@ function miniatureCard(card, items = {}) {
       ? upgradedSymbol(items, 'RADIUS', card.radius_value)
       : document.createElement('span');
   mini.append(primary, range);
-  for (const stat of ['MOVEMENT', 'DEFENSE']) {
+  for (const stat of ['MOVEMENT']) {
     const value = card.secondary_actions?.[stat];
     mini.append(stat !== card.primary_action && relevantStat(card, stat, value)
       ? upgradedSymbol(items, stat, value) : document.createElement('span'));

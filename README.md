@@ -27,7 +27,7 @@ Building alone needs no npm packages: `node scripts/build.mjs` also works before
 
 - `npm run build` combines source files into readable, unminified output in `dist/`.
 - `npm run build:check` checks that committed output matches the source.
-- `npm test` builds and runs all 18 regression test files in isolated Node processes.
+- `npm test` builds and runs all 19 regression test files in isolated Node processes.
 - GitHub Actions checks committed output and runs the tests on pushes and pull requests.
 
 Edit `src/`, then rebuild and commit both source and `dist/`. Do not edit generated
@@ -94,3 +94,9 @@ this repository. No new license grant is asserted for third-party code or artwor
 - Item upgrades reserve attack, defense, initiative and a stacked movement/range/radius group; missing upgrades are grey.
 - Board uses one compact overview with phase status, separate hero/player names, level, gold, P/H/D dots, current-card stats and upgrades. Hidden cards never disclose their stats.
 - Includes the previously supplied 0.14.6 fixes: choice launchers at the top left, level-up selection status, and distinct printed/awarded upgrade icons.
+
+## Version 0.14.8
+
+Board is now the default. Heroes, Hand, Deck and Settings are toggles; pressing the active control returns to Board. Heroes/Hand show the board above their list and overlay card details only when selected. Settings uses the same lower pane; Deck fills the view. Setup remains contextual.
+
+The compact overview omits secondary defense from its microcards, hides microcards after resolution, abbreviates the local player's name to `(You)`, limits the identity width with fading player names, and punctuates turn numbers.

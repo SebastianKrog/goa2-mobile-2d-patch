@@ -4,19 +4,17 @@ const nav = document.createElement('nav');
 nav.id = 'goa2-m2-nav';
 nav.setAttribute('aria-label', 'Mobile 2D controls');
 for (const [key, label] of [
-  ['split', 'All'],
-  ['board', 'Board'],
   ['heroes', 'Heroes'],
   ['hand', 'Hand'],
   ['deck', 'Deck'],
   ['setup', 'Setup'],
-  ['tools', '⋮'],
+  ['tools', 'Settings'],
 ]) {
   const b = document.createElement('button');
   b.type = 'button';
   b.dataset.mode = key;
   b.textContent = label;
-  if (key === 'tools') b.setAttribute('aria-label', 'Menu');
+  if (key === 'tools') b.setAttribute('aria-label', 'Settings');
   b.setAttribute('aria-pressed', 'false');
   nav.append(b);
 }
@@ -53,42 +51,39 @@ function dismiss() {
   refresh();
 }
 on(close, 'click', dismiss);
+let deckMounted = false;
 function setDeckOpen(open) {
   deckOpen = open;
+  deckMounted = false;
   root.toggleAttribute('data-m2-deck-open', open);
 }
-// Deck is backed by the native modal, while setup/tools are temporary panels.
-// The underlying All/Board/Hand/Heroes choice remains available when panels close.
+// Board is the resting state. Every footer control toggles a single overlay/pane;
+// switching controls replaces the active pane instead of retaining a hidden tab.
 function navigate(key) {
   if (!key) return;
-  if (key === 'deck') {
-    setDeckOpen(true);
-    panel = '';
-    dismiss();
-    if (!q('[data-m2="deck"]'))
-      q('[data-m2="hero"]:not([data-m2-other]) ' + c('viewDeckBtn'))?.click();
-    schedule();
-    return;
-  }
+  const selected = deckOpen ? 'deck' : panel || mode;
+  const closing = selected === key;
   setDeckOpen(false);
+  panel = '';
+  mode = 'board';
+  clearHeroCard();
   dismiss();
-  if (key === 'setup' || key === 'tools') panel = panel === key ? '' : key;
-  else {
-    mode = key;
-    panel = '';
+  if (!closing) {
+    if (key === 'deck') {
+      setDeckOpen(true);
+      if (!q('[data-m2="deck"]'))
+        q('[data-m2="hero"]:not([data-m2-other]) ' + c('viewDeckBtn'))?.click();
+    } else if (key === 'setup' || key === 'tools') panel = key;
+    else if (key === 'hand' || key === 'heroes') mode = key;
   }
   refresh();
-  if (key === 'hand')
-    q('[data-m2="sidebar"] ' + c('cardName'))
-      ?.closest(c('row'))
-      ?.scrollIntoView({ block: 'nearest' });
 }
 // Reflect the actual open panel and show Setup only while starting-position UI exists.
 function syncNavigation() {
   const setupButton = q('[data-mode="setup"]', nav);
   const setupAvailable = !!q('[aria-label="Starting position"]');
   setupButton.hidden = !setupAvailable;
-  nav.style.gridTemplateColumns = 'repeat(' + (setupAvailable ? 7 : 6) + ',minmax(0,1fr))';
+  nav.style.gridTemplateColumns = 'repeat(' + (setupAvailable ? 5 : 4) + ',minmax(0,1fr))';
   if (!setupAvailable && panel === 'setup') {
     panel = '';
     root.dataset.m2Panel = '';
@@ -116,6 +111,11 @@ on(
   'click',
   (e) => {
     if (!root.hasAttribute('data-m2-active')) return;
+    if (deckOpen && e.target.closest?.('[data-m2="deck"] ' + c('closeBtn'))) {
+      setDeckOpen(false);
+      mode = 'board';
+      schedule();
+    }
     if (e.target.closest?.('[data-m2="hand-list"] ' + c('row'))) clearHeroCard();
     const box = e.target.closest?.('[data-m2="hero"]');
     if (!box) return;

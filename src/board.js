@@ -191,7 +191,7 @@ function renderSummary(heroes) {
     let status;
     if (h.resolution) {
       const order = document.createElement('b');
-      order.textContent = h.resolution.current ? 'NOW' : h.resolution.order;
+      order.textContent = h.resolution.current ? 'NOW' : h.resolution.order + '.';
       turn.append(order, cardSymbol('INITIATIVE', h.resolution.initiative));
       status = 'Turn ' + order.textContent + ', initiative ' + h.resolution.initiative;
     } else if (h.upgrading || h.planning) {
@@ -223,7 +223,8 @@ function renderSummary(heroes) {
     if (playerParts.length) {
       const player = document.createElement('span');
       player.className = 'm2-summary-player';
-      player.textContent = playerParts.join('·').trim();
+      const playerName = playerParts.join('·').trim();
+      player.textContent = playerName.includes('(You)') ? '(You)' : playerName;
       identity.append(separator(), player);
     }
     const level = document.createElement('span');
@@ -250,9 +251,12 @@ function renderSummary(heroes) {
     add('P', h.cardPiles.find(p => p.label === 'P')?.cards || []);
     add('H', h.dots.map(color => ({ color })));
     add('D', h.cardPiles.find(p => p.label === 'D')?.cards || []);
-    row.append(turn, identity, level, separator(), gold, separator(), piles,
-      separator(), miniatureCard(h.currentCard, h.upgrades), separator(),
-      itemUpgradeSymbols(h.upgrades, 'm2-summary-upgrades'));
+    row.append(turn, identity, level, separator(), gold, separator(), piles);
+    // Resolved heroes have no current microcard, even if stale props retain one.
+    // Queue membership wins for heroes with another action still pending.
+    if (h.currentCard && (!h.done || h.resolution))
+      row.append(separator(), miniatureCard(h.currentCard, h.upgrades));
+    row.append(separator(), itemUpgradeSymbols(h.upgrades, 'm2-summary-upgrades'));
     summary.append(row);
   }
 }

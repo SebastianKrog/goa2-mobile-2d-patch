@@ -5,7 +5,7 @@ const row=doc.createElement('div');row.className='_row_x';row.innerHTML='<span c
 w.eval(fs.readFileSync('dist/goa2-mobile-2d.user.js','utf8'));
 const v=doc.querySelector('.m2-list-card');assert(v);assert.equal(v.firstElementChild.textContent,'9');assert.equal(v.children[1].textContent,'3Helping Hand3');assert.equal(v.lastElementChild.textContent,'54');v.querySelector('.m2-list-name').click();assert.equal(clicks,1);
 assert.equal(doc.querySelectorAll('.m2-own-colors i').length,1);
-assert.deepEqual([...doc.querySelectorAll('#goa2-m2-nav button')].filter(b=>!b.hidden).map(b=>b.dataset.mode),['split','board','heroes','hand','deck','tools']);
+assert.deepEqual([...doc.querySelectorAll('#goa2-m2-nav button')].filter(b=>!b.hidden).map(b=>b.dataset.mode),['heroes','hand','deck','tools']);
 assert(!doc.querySelector('.m2-summary-controls'));assert(doc.querySelector('.m2-summary-piles'));assert(doc.querySelector('.m2-summary-upgrades'));assert(doc.querySelector('.m2-summary-level'));
 const setup=doc.createElement('div');setup.setAttribute('aria-label','Starting position');doc.body.append(setup);
 row.className='_row_x _selected_x';
