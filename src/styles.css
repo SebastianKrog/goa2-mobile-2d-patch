@@ -753,8 +753,8 @@
 & [class*="_viewDeckBtn_"] {
   display: none !important;
 }
-&[data-m2-mode="hand"] [data-m2="hero"] {
-  display: none !important;
+&[data-m2-mode="hand"] [data-m2="hero"]:not([data-m2-other]) {
+  display: grid !important;
 }
 & [class*="_modal_"] [class*="_cardGrid_"] {
   display: grid !important;
@@ -2315,4 +2315,114 @@
 }
 & .m2-planning-actions.m2-on-board button {
   pointer-events: auto;
+}
+
+/* Choice launchers mirror zoom/reset on the opposite corner of the board. */
+& [data-m2-choice-source] { display: none !important; }
+& .m2-choice-launchers:not([hidden]) {
+  position: absolute; top: 10px; left: 10px; z-index: 85;
+  display: flex; gap: 6px; max-width: calc(100% - 130px); flex-wrap: wrap;
+}
+& .m2-choice-launchers button {
+  min-height: 36px; padding: 8px 12px; border: 1px solid #48515c;
+  border-radius: 9px; background: #10151ee8; color: #e0e6ed;
+  font: 600 12px system-ui;
+}
+html:not([data-m2-active]) .m2-choice-launchers { display: none !important; }
+
+/* Keep a stable Hand-sized inspection area, even with no card selected. */
+& { --m2-card-display-height: clamp(190px, 30dvh, 260px); }
+&[data-m2-mode="hand"] #goa2-m2-details,
+&[data-m2-mode="hand"] #goa2-m2-hero-display:not(:empty),
+&[data-m2-mode="heroes"] #goa2-m2-hero-display {
+  display: block;
+  height: var(--m2-card-display-height);
+  min-height: var(--m2-card-display-height);
+  flex: 0 0 var(--m2-card-display-height);
+  overflow: auto;
+}
+@media (max-height: 500px) {
+  & { --m2-card-display-height: 160px; }
+}
+
+/* Keep the printed item centered; the alternative's awarded item is separate. */
+& .m2-card-foot.m2-upgrade-footer {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center; column-gap: 10px;
+}
+& .m2-upgrade-footer > .m2-symbol { grid-column: 2; grid-row: 1; }
+& .m2-upgrade-gain {
+  grid-column: 3; grid-row: 1; justify-self: start;
+  display: inline-flex; align-items: center; gap: 4px;
+  color: #9ba4b2; font-size: 11px;
+}
+& .m2-upgrade-gain .m2-symbol { opacity: .65; }
+
+/* Hand can inspect a history card in the same space used for a hand card. */
+&[data-m2-mode="hand"] :has(> #goa2-m2-hero-display:not(:empty)) > #goa2-m2-details {
+  display: none;
+}
+&[data-m2-mode="hand"] #goa2-m2-hero-display:not(:empty) {
+  position: relative; box-sizing: border-box; margin: 6px 8px; border-radius: 9px;
+}
+&[data-m2-mode="hand"] [data-m2="hero"][data-m2-other] { display: none !important; }
+& [data-m2="hero"] [aria-disabled="true"] { cursor: default; }
+
+/* Four reserved item slots prevent headings shifting when an upgrade is gained. */
+& .m2-item-upgrades { display: inline-flex; align-items: center; gap: 3px; flex-shrink: 0; }
+& .m2-item-upgrades > .m2-symbol { width: 23px; height: 26px; padding: 0; }
+& .m2-upgrade-empty { opacity: .22; filter: grayscale(1); }
+& .m2-upgrade-rest { position: relative; display: block; width: 23px; height: 29px; }
+& .m2-upgrade-rest > .m2-symbol { position: absolute; width: 14px; height: 14px; }
+& .m2-upgrade-rest > .m2-symbol:nth-child(1) { top: 0; left: 0; }
+& .m2-upgrade-rest > .m2-symbol:nth-child(2) { top: 8px; right: 0; }
+& .m2-upgrade-rest > .m2-symbol:nth-child(3) { bottom: 0; left: 0; }
+& .m2-upgrade-rest .m2-symbol img { width: 14px; height: 14px; }
+
+/* A single compact overview. Names take the flexible space; icon groups stay fixed.
+   Long piles may scroll horizontally rather than overlap adjacent information. */
+& #goa2-m2-summary article {
+  display: flex; flex: 0 0 30px; gap: 2px; padding: 1px 4px;
+  font: 9px/1.1 system-ui; color: #b1bac7; overflow-x: auto; overflow-y: hidden;
+  scrollbar-width: none;
+}
+& #goa2-m2-summary article::-webkit-scrollbar { display: none; }
+& #goa2-m2-summary .m2-summary-turn {
+  width: 23px; min-width: 23px; height: 26px; display: flex;
+  flex-direction: column; align-items: center; justify-content: center;
+  font-size: 13px; line-height: 1; color: #dbe2eb;
+}
+& #goa2-m2-summary .m2-summary-turn b { font-size: 10px; }
+& #goa2-m2-summary .m2-summary-turn .m2-symbol { height: 13px; font-size: 10px; }
+& #goa2-m2-summary .m2-summary-turn .m2-symbol img { width: 13px; height: 13px; opacity: .5; }
+& #goa2-m2-summary .m2-summary-turn .m2-symbol-value { color: #aeb5be; }
+& #goa2-m2-summary .m2-summary-identity {
+  display: flex; align-items: center; gap: 2px; flex: 1 1 120px; min-width: 72px;
+  white-space: nowrap; overflow: hidden;
+}
+& #goa2-m2-summary .m2-summary-identity strong { font-size: 10px; flex-shrink: 0; }
+& #goa2-m2-summary .m2-summary-player { color: #a0a6b0; overflow: hidden; text-overflow: ellipsis; }
+& #goa2-m2-summary .m2-summary-level { white-space: nowrap; flex-shrink: 0; }
+& #goa2-m2-summary .m2-summary-separator { opacity: .65; flex-shrink: 0; }
+& #goa2-m2-summary .m2-summary-piles { display: flex; align-items: center; gap: 3px; flex-shrink: 0; font-size: 7px; }
+& #goa2-m2-summary .m2-summary-piles > span { display: flex; align-items: center; gap: 1.5px; }
+& #goa2-m2-summary .m2-summary-piles i { width: 4px; height: 4px; border-radius: 50%; flex-shrink: 0; }
+& #goa2-m2-summary .m2-mini-current {
+  display: grid; grid-template-columns: repeat(4, 13px); width: 52px; height: 20px;
+  gap: 0; padding: 0 1px; box-sizing: content-box; justify-content: center;
+}
+& #goa2-m2-summary .m2-mini-current .m2-symbol { width: 13px; height: 16px; font-size: 10px; }
+& #goa2-m2-summary .m2-mini-current .m2-symbol img { width: 13px; height: 16px; }
+& #goa2-m2-summary .m2-summary-upgrades { gap: 1px; flex-wrap: nowrap; }
+& #goa2-m2-summary .m2-summary-upgrades > .m2-symbol { width: 13px; height: 18px; font-size: 9px; }
+& #goa2-m2-summary .m2-summary-upgrades img { width: 13px; height: 16px; }
+& #goa2-m2-summary .m2-upgrade-rest { width: 14px; height: 22px; }
+& #goa2-m2-summary .m2-upgrade-rest > .m2-symbol { width: 10px; height: 10px; }
+& #goa2-m2-summary .m2-upgrade-rest > .m2-symbol:nth-child(2) { top: 6px; }
+& #goa2-m2-summary .m2-upgrade-rest img { width: 10px; height: 10px; }
+& .m2-gold-overlay { position: relative; width: 16px; height: 18px; flex-shrink: 0; }
+& .m2-gold-overlay svg { width: 16px; height: 18px; }
+& .m2-gold-overlay .m2-gold-value {
+  position: absolute; inset: 0; display: grid; place-items: center;
+  color: white; font-size: 10px; font-weight: 800; text-shadow: 0 1px 2px #000, 0 0 2px #000;
 }

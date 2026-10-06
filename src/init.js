@@ -45,11 +45,12 @@ let mode = 'split',
   panel = '',
   deckOpen = false;
 // Dismissal remembers the current card/tooltip, so a refresh does not reopen it.
-// Expanded hero identity and selected card identity are separate: opening a hero
+// Expanded hero identities and selected card identity are separate: opening a hero
 // reveals its rows; selecting one row opens just that card in the detail display.
 let hiddenCardKey = '',
-  dismissedTip = null,
-  expandedHeroId = null;
+  dismissedTip = null;
+// Each hero retains its own expansion state when another hero is opened.
+const expandedHeroIds = new Set();
 let frame = 0,
   dead = false;
 let selectedHeroCard = null;

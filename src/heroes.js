@@ -52,6 +52,17 @@ function hasLocalSelection(box) {
     !box.hasAttribute('data-m2-other') && !!q('[data-m2="hand-list"] ' + c('row') + c('selected'))
   );
 }
+// Only the own hero may fall back to the locally selected hand row. Opponents'
+// facedown commitments never reveal their underlying card details.
+function visibleCurrentCard(box, hero) {
+  if (hero.current_turn_card) return hero.current_turn_card;
+  if (box.hasAttribute('data-m2-other')) return null;
+  const row = q('[data-m2="hand-list"] ' + c('row') + c('selected'));
+  return row ? renderedCard(row) : null;
+}
+function isCardSelection(view) {
+  return /^PLANNING$/i.test(view?.phase || q('[data-m2="header"] ' + c('phase'))?.textContent || '');
+}
 // Build portrait, piles, status, upgrades, effects, and optional expanded rows.
 // The serialized render key prevents replacing buttons and animations on every refresh.
 function updateHeroDashboard(box, view) {
@@ -86,16 +97,22 @@ function updateHeroDashboard(box, view) {
     (dot) => ({ color: dot.style.backgroundColor, label: dot.title }),
   );
   const locallySelected = hasLocalSelection(box);
-  const expanded = expandedHeroId === hero.id;
+  const own = !box.hasAttribute('data-m2-other');
+  const planning = isCardSelection(view);
+  const currentCard = visibleCurrentCard(box, hero);
+  const expanded = !planning && ((mode === 'hand' && own) || expandedHeroIds.has(hero.id));
   box.classList.toggle('m2-hero-expanded', expanded);
   const heading = q(':scope>' + c('name'), box);
   if (heading) {
     managedAttribute(heading, 'role', 'button');
-    managedAttribute(heading, 'tabindex', '0');
+    managedAttribute(heading, 'tabindex', planning || (mode === 'hand' && own) ? '-1' : '0');
+    managedAttribute(heading, 'aria-disabled', String(planning || (mode === 'hand' && own)));
     managedAttribute(heading, 'aria-expanded', String(expanded));
   }
   const key = JSON.stringify([
     expanded,
+    mode,
+    currentCard,
     hero.hand,
     locallySelected,
     hero.level,
@@ -126,10 +143,6 @@ function updateHeroDashboard(box, view) {
   // Store identities instead of a card snapshot: the separate display re-resolves
   // the latest visible card and its upgrades on every refresh.
   function inspect(card) {
-    if (!expanded) {
-      expandedHeroId = hero.id;
-      updateHeroDashboard(box, view);
-    }
     selectedHeroCard = { heroId: hero.id, cardId: card.id };
     updateHeroCardDisplay();
   }
@@ -211,7 +224,7 @@ function updateHeroDashboard(box, view) {
   (hero.discard_pile || []).forEach((card, i) => slot(card, 'D' + (i + 1)));
   dashboard.append(history);
   if (
-    /^PLANNING$/i.test(view?.phase || '') &&
+    planning &&
     !locallySelected &&
     !(hero.current_turn_card && !box.hasAttribute('data-m2-other'))
   ) {
@@ -236,18 +249,7 @@ function updateHeroDashboard(box, view) {
     dashboard.append(status);
   }
 
-  const upgrades = document.createElement('div');
-  upgrades.className = 'm2-hero-upgrades';
-  upgrades.setAttribute('aria-label', 'Upgrades');
-  for (const stat of ['ATTACK', 'DEFENSE', 'INITIATIVE', 'RANGE', 'MOVEMENT', 'RADIUS']) {
-    const value = hero.items?.[stat];
-    if (typeof value === 'number' && value > 0) {
-      const symbol = cardSymbol(stat, '+' + value);
-      symbol.title = 'Upgrade: ' + stat.toLowerCase() + ' +' + value;
-      upgrades.append(symbol);
-    }
-  }
-  if (upgrades.children.length) dashboard.append(upgrades);
+  dashboard.append(itemUpgradeSymbols(hero.items, 'm2-hero-upgrades'));
   const badges = document.createElement('div');
   badges.className = 'm2-hero-effects';
   if (hero.spellbook != null) {
@@ -269,7 +271,7 @@ function updateHeroDashboard(box, view) {
   if (badges.children.length) dashboard.append(badges);
   // Expansion stays inside the hero list. Only clicking an individual card opens
   // the larger display; opponents’ hands remain represented by their public dots.
-  if (expanded) {
+  if (expanded || (currentCard && !currentCard.is_facedown)) {
     const board = document.createElement('div');
     board.className = 'm2-expanded-board';
     function cardRow(card, label) {
@@ -314,8 +316,8 @@ function updateHeroDashboard(box, view) {
       board.append(el);
       return el;
     }
-    section('Current:').append(cardRow(hero.current_turn_card));
-    if (!box.hasAttribute('data-m2-other')) {
+    if (currentCard && !currentCard.is_facedown) section('').append(cardRow(currentCard));
+    if (expanded && own && mode !== 'hand') {
       const hand = section('Hand:');
       const cards = Array.isArray(hero.hand)
         ? hero.hand
@@ -325,10 +327,14 @@ function updateHeroDashboard(box, view) {
       if (cards.length) cards.forEach((card) => hand.append(cardRow(card)));
       else hand.append(cardRow(null));
     }
-    const played = section('');
-    for (let i = 0; i < Math.max(4, hero.played_cards.length); i++)
-      played.append(cardRow(hero.played_cards[i], 'Turn ' + (i + 1) + ':'));
-    if (hero.discard_pile?.length) {
+    if (expanded) {
+      const played = section('');
+      // Future turns add blank noise. Reveal slots only as the round reaches them.
+      const turn = Math.max(1, Math.min(4, Number(view?.turn) || 1));
+      for (let i = 0; i < turn; i++)
+        played.append(cardRow(hero.played_cards[i], 'Turn ' + (i + 1) + ':'));
+    }
+    if (expanded && hero.discard_pile?.length) {
       const discard = section('Discard:');
       hero.discard_pile.forEach((card) => discard.append(cardRow(card)));
     }
@@ -348,7 +354,7 @@ function updateHeroCardDisplay() {
     return;
   }
   const cards = [
-    hero.current_turn_card,
+    visibleCurrentCard(box, hero),
     hero.extra_turn_card,
     hero.ultimate_card,
     ...['hand', 'played_cards', 'discard_pile', 'cast_spells'].flatMap((key) =>
@@ -400,9 +406,14 @@ function updateUpgradeCards() {
     button.dataset.m2UpgradeKey = key;
     q(':scope>.m2-text-card', button)?.remove();
     // The discarded alternative grants the item, not the chosen card itself.
-    const display = textCard({ ...card, item }, 'deck');
+    const display = textCard(card, 'deck');
     if (item) {
       const foot = q('.m2-card-foot', display);
+      foot.classList.add('m2-upgrade-footer');
+      const gain = document.createElement('span');
+      gain.className = 'm2-upgrade-gain';
+      gain.append(document.createTextNode('Gives '), cardSymbol(item === 'AREA' ? 'RADIUS' : item));
+      foot.append(gain);
       foot.title = 'Choosing this gains ' + item.toLowerCase();
       foot.setAttribute('aria-label', foot.title);
     }

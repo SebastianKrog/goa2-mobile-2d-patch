@@ -103,6 +103,7 @@ function syncNavigation() {
 on(nav, 'click', (e) => navigate(e.target.closest('button')?.dataset.mode));
 on(document, 'pointerdown', (e) => {
   if (e.target.closest?.('[data-m2="sidebar"] ' + c('row'))) {
+    clearHeroCard();
     dismissedTip?.removeAttribute('data-m2-dismissed');
     dismissedTip = null;
     hiddenCardKey = '';
@@ -115,6 +116,7 @@ on(
   'click',
   (e) => {
     if (!root.hasAttribute('data-m2-active')) return;
+    if (e.target.closest?.('[data-m2="hand-list"] ' + c('row'))) clearHeroCard();
     const box = e.target.closest?.('[data-m2="hero"]');
     if (!box) return;
     if (e.target.closest('button,a,input,' + c('row') + ',.m2-hero-effects,.m2-hero-history'))
@@ -123,8 +125,12 @@ on(
     if (!hero) return;
     e.preventDefault();
     e.stopImmediatePropagation();
-    expandedHeroId = expandedHeroId === hero.id ? null : hero.id;
-    clearHeroCard();
+    // Planning shows only the commitment/current card. Hand keeps our board open
+    // in other phases; clicking it must not fight that automatic expansion.
+    const view = componentProp(q('[data-m2="sidebar"]'), 'view');
+    if (isCardSelection(view) || (mode === 'hand' && !box.hasAttribute('data-m2-other'))) return;
+    if (expandedHeroIds.has(hero.id)) expandedHeroIds.delete(hero.id);
+    else expandedHeroIds.add(hero.id);
     dismissedTip = q('[data-m2="tip"]');
     dismissedTip?.setAttribute('data-m2-dismissed', '');
     schedule();

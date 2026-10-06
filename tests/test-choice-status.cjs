@@ -1,0 +1,31 @@
+const { JSDOM } = require('jsdom');
+const fs = require('fs'), assert = require('assert');
+const dom = new JSDOM('<div><header class="_bar_x"><span class="_phase_x">LEVEL UP</span></header><div class="_boardArea_x"><div><button>Options</button></div></div><div class="_sidebar_x"><section><div class="_name_x">Hanu (You)</div><div class="_details_x">Lv 2</div></section><section><div class="_name_x">Garrus</div><div class="_details_x">Lv 3</div></section></div></div>', { url: 'https://goa2.frontend.pedroliv.dev/game/test?3d=0', runScripts: 'outside-only', pretendToBeVisual: true });
+const w = dom.window, d = w.document;
+w.matchMedia = () => ({ matches: true, addEventListener() {} });
+const request = { type: 'UPGRADE_PHASE', players: { hanu: { remaining: 1 }, garrus: { remaining: 0 } } };
+d.querySelector('._sidebar_x').__reactFiber$t = { memoizedProps: { view: { phase: 'LEVEL_UP' }, inputRequest: request } };
+[...d.querySelectorAll('section')].forEach((node, i) => { node.__reactFiber$t = { memoizedProps: { hero: { id: i ? 'garrus' : 'hanu', played_cards: [], items: {}, level: 2, gold: 0 } } }; });
+const native = d.querySelector('button'); let clicks = 0;
+native.onclick = () => clicks++;
+w.eval(fs.readFileSync('dist/goa2-mobile-2d.user.js', 'utf8').replace(/window\.GOA2Mobile2D\s*=\s*\{/, 'window.testRefresh=refresh;window.GOA2Mobile2D={'));
+try {
+  assert.deepEqual([...d.querySelectorAll('.m2-summary-turn')].map(x => x.getAttribute('aria-label')), ['Selecting', 'Done']);
+  const proxy = d.querySelector('.m2-choice-launchers button');
+  proxy.click(); assert.equal(clicks, 1);
+  w.testRefresh(); assert.equal(d.querySelector('.m2-choice-launchers button'), proxy);
+  request.players.hanu.remaining = 0; w.testRefresh();
+  assert.equal(d.querySelector('.m2-summary-turn').getAttribute('aria-label'), 'Done');
+  assert(!d.querySelector('.m2-summary-turn .m2-selecting-dots'));
+  delete request.players.hanu; w.testRefresh();
+  assert.equal(d.querySelector('.m2-summary-turn').getAttribute('aria-label'), 'Waiting');
+  native.remove(); w.testRefresh(); assert(d.querySelector('.m2-choice-launchers').hidden);
+  const setup = d.createElement('div'); setup.setAttribute('aria-label', 'Starting position'); d.body.append(setup); w.testRefresh();
+  const setupButton = d.querySelector('.m2-choice-launchers button');
+  assert.equal(setupButton.textContent, 'Setup'); setupButton.click();
+  assert.equal(d.documentElement.dataset.m2Panel, 'setup');
+  w.GOA2Mobile2D.destroy();
+  assert(!native.hasAttribute('data-m2-choice-source'));
+  assert(!d.querySelector('.m2-choice-launchers'));
+  console.log('PASS: upgrade status transitions, stable choice proxies, setup and cleanup');
+} finally { w.GOA2Mobile2D?.destroy(); w.close(); }

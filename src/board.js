@@ -84,12 +84,6 @@ function updateCursorSetting() {
     extras.add(b);
   }
 }
-let summaryView = 'turn';
-try {
-  const saved = localStorage.getItem('goa2-mobile-summary');
-  if (['turn', 'stats', 'cards'].includes(saved))
-    summaryView = saved === 'cards' ? 'turn' : saved;
-} catch {}
 // Shared slim/normal row structure: initiative, colored primary/name/range band,
 // then secondary stats. Adapt the contents while preserving native row click handlers.
 function updateCardRow(row, card, knownItems) {
@@ -174,116 +168,92 @@ function updateOwnColors(sidebar) {
       }),
   );
 }
-// Board’s compact hero list shares full-dashboard card colors and active-effect
-// markers. Its two modes show turn/cards or level/gold/upgrades.
+// One overview row contains status, identity, resources, piles, current card, and
+// upgrades. Full labels remain available to assistive technology and on hover.
 function renderSummary(heroes) {
-  const key = JSON.stringify([summaryView, heroes]);
+  const key = JSON.stringify(heroes);
   if (summary.dataset.key === key) return;
   summary.dataset.key = key;
   summary.replaceChildren();
-  const controls = document.createElement('div');
-  controls.className = 'm2-summary-controls';
-  controls.setAttribute('aria-label', 'Hero overview information');
-  for (const [value, label] of [
-    ['turn', 'Turn / Cards'],
-    ['stats', 'Level / Gold'],
-  ]) {
-    const b = document.createElement('button');
-    b.type = 'button';
-    b.textContent = label;
-    b.setAttribute('aria-pressed', String(summaryView === value));
-    on(b, 'click', () => {
-      summaryView = value;
-      try {
-        localStorage.setItem('goa2-mobile-summary', value);
-      } catch {}
-      refresh();
-    });
-    controls.append(b);
-  }
-  summary.append(controls);
+  const separator = () => {
+    const dot = document.createElement('span');
+    dot.className = 'm2-summary-separator';
+    dot.textContent = '·';
+    dot.setAttribute('aria-hidden', 'true');
+    return dot;
+  };
   for (const h of heroes) {
-    const a = document.createElement('article'),
-      name = document.createElement('strong'),
-      content = document.createElement('small');
-    name.textContent = h.name;
-    name.style.color = h.color;
-    if (h.resolution?.current) a.classList.add('m2-current-hero');
-    if (h.done) a.classList.add('m2-done-hero');
-    content.className = 'm2-summary-content';
-    if (summaryView === 'stats') {
-      const stats = document.createElement('span');
-      if (h.level != null)
-        stats.append(document.createTextNode('Lv ' + h.level + ' • '), goldSymbol(h.gold));
-      else stats.textContent = h.detail;
-      content.append(stats);
-      // Item icons occupy the dashboard’s upper-right slot; they are not extra card rows.
-  const upgrades = document.createElement('span');
-      upgrades.className = 'm2-summary-upgrades';
-      for (const [stat, value] of Object.entries(h.upgrades || {}))
-        if (
-          ['ATTACK', 'DEFENSE', 'INITIATIVE', 'RANGE', 'MOVEMENT', 'RADIUS'].includes(stat) &&
-          typeof value === 'number' &&
-          value > 0
-        )
-          upgrades.append(cardSymbol(stat, '+' + value));
-      content.append(upgrades);
+    const row = document.createElement('article');
+    if (h.resolution?.current) row.classList.add('m2-current-hero');
+    if (h.done) row.classList.add('m2-done-hero');
+    const turn = document.createElement('span');
+    turn.className = 'm2-summary-turn';
+    let status;
+    if (h.resolution) {
+      const order = document.createElement('b');
+      order.textContent = h.resolution.current ? 'NOW' : h.resolution.order;
+      turn.append(order, cardSymbol('INITIATIVE', h.resolution.initiative));
+      status = 'Turn ' + order.textContent + ', initiative ' + h.resolution.initiative;
+    } else if (h.upgrading || h.planning) {
+      const selecting = h.upgrading ? h.upgradeRemaining > 0 : !h.committed;
+      const unknown = h.upgrading && h.upgradeRemaining === null;
+      status = unknown ? 'Waiting' : selecting ? 'Selecting' : h.upgrading ? 'Done' : 'Selected';
+      if (selecting) {
+        const dots = document.createElement('span');
+        dots.className = 'm2-selecting-dots';
+        dots.textContent = '...';
+        dots.setAttribute('aria-hidden', 'true');
+        turn.append(dots);
+      } else turn.textContent = unknown ? '…' : '✓';
     } else {
-      const turn = document.createElement('span');
-      turn.className = 'm2-summary-turn';
-      if (h.resolution) {
-        turn.append(
-          document.createTextNode((h.resolution.current ? 'NOW' : h.resolution.order) + ' '),
-          cardSymbol('INITIATIVE', h.resolution.initiative),
-        );
-        turn.title = h.resolution.card;
-      } else if (h.planning) {
-        turn.textContent = h.committed ? '✓ Selected' : 'Selecting';
-        if (!h.committed) {
-          const dots = document.createElement('span');
-          dots.className = 'm2-selecting-dots';
-          dots.textContent = '...';
-          dots.setAttribute('aria-hidden', 'true');
-          turn.append(dots);
-        }
-      } else turn.textContent = h.done ? '✓ Done' : '—';
-      const piles = document.createElement('span');
-      piles.className = 'm2-summary-piles';
-      const add = (label, cards) => {
-        const group = document.createElement('span');
-        group.append(document.createTextNode(label + ' '));
-        for (const card of cards) {
-          const dot = document.createElement('i');
-          dot.style.backgroundColor = card.color;
-          dot.style.setProperty('--effect-color', card.color);
-          dot.title = card.name || label;
-          if (card.active) dot.classList.add('m2-effect-active');
-          group.append(dot);
-        }
-        if (!cards.length) group.append(document.createTextNode('—'));
-        piles.append(group);
-      };
-      add(
-        'H',
-        h.dots.map((color) => ({ color })),
-      );
-      for (const pile of h.cardPiles) add(pile.label, pile.cards);
-      content.append(piles);
-      if (h.currentCard) {
-        const mini = document.createElement('span');
-        mini.className = 'm2-mini-current';
-        const card = h.currentCard;
-        mini.title = card.is_facedown ? 'Current card (hidden)' : card.name;
-        mini.setAttribute('aria-label', mini.title);
-        mini.style.setProperty('--card-color', cardColors[card.color] || '#858c98');
-        if (card.is_facedown) mini.textContent = '?';
-        else mini.append(cardSymbol(card.primary_action || 'SKILL'));
-        content.append(mini);
-      }
-      content.append(turn);
+      turn.textContent = h.offboard ? '☠' : h.done ? '✓' : '—';
+      status = h.offboard ? 'Off board' : h.done ? 'Turn completed' : 'No card played';
     }
-    a.append(name, content);
-    summary.append(a);
+    turn.title = status;
+    turn.setAttribute('aria-label', status);
+
+    const identity = document.createElement('span');
+    identity.className = 'm2-summary-identity';
+    identity.title = h.name;
+    const [heroName, ...playerParts] = h.name.split(/[·•]/);
+    const name = document.createElement('strong');
+    name.textContent = heroName.trim();
+    name.style.color = h.color;
+    identity.append(name);
+    if (playerParts.length) {
+      const player = document.createElement('span');
+      player.className = 'm2-summary-player';
+      player.textContent = playerParts.join('·').trim();
+      identity.append(separator(), player);
+    }
+    const level = document.createElement('span');
+    level.className = 'm2-summary-level';
+    level.textContent = h.level == null ? 'Lv.—' : 'Lv.' + h.level;
+    const gold = goldSymbol(h.gold ?? '—');
+    gold.classList.add('m2-gold-overlay');
+    const piles = document.createElement('span');
+    piles.className = 'm2-summary-piles';
+    const add = (label, cards) => {
+      const group = document.createElement('span');
+      group.append(document.createTextNode(label));
+      for (const card of cards) {
+        const dot = document.createElement('i');
+        dot.style.backgroundColor = card.color;
+        dot.style.setProperty('--effect-color', card.color);
+        dot.title = card.name || 'Hand card';
+        if (card.active) dot.classList.add('m2-effect-active');
+        group.append(dot);
+      }
+      if (!cards.length) group.append(document.createTextNode('–'));
+      piles.append(group);
+    };
+    add('P', h.cardPiles.find(p => p.label === 'P')?.cards || []);
+    add('H', h.dots.map(color => ({ color })));
+    add('D', h.cardPiles.find(p => p.label === 'D')?.cards || []);
+    row.append(turn, identity, level, separator(), gold, separator(), piles,
+      separator(), miniatureCard(h.currentCard, h.upgrades), separator(),
+      itemUpgradeSymbols(h.upgrades, 'm2-summary-upgrades'));
+    summary.append(row);
   }
 }
 // Keep rotation inside the native screen-space pan/zoom transform.
@@ -454,3 +424,59 @@ function updatePlanningActions() {
   });
 }
 
+
+// Use delivered upgrade counts rather than inferring completion from hero level.
+function currentUpgradeRequest() {
+  for (const node of document.querySelectorAll('button,[class*="_banner_"],[data-m2="sidebar"]')) {
+    const request = componentProp(node, 'inputRequest');
+    if (request?.type === 'UPGRADE_PHASE' && request.players) return request;
+  }
+  return null;
+}
+function remainingUpgrades(request, heroId) {
+  const remaining = request?.players?.[heroId]?.remaining;
+  return typeof remaining === 'number' && Number.isFinite(remaining) ? remaining : null;
+}
+
+// Proxies live in board coordinates, outside native centered wrappers. They only
+// open native choices; the website retains all decision and validation handlers.
+function updateChoiceLaunchers() {
+  const board = q('[data-m2="board"]');
+  if (!board) return;
+  let host = q('.m2-choice-launchers', board);
+  if (!host) {
+    host = document.createElement('div');
+    host.className = 'm2-choice-launchers';
+    board.append(host);
+    extras.add(host);
+  }
+  const sources = Array.from(board.querySelectorAll('button')).filter(button =>
+    !button.closest('.m2-choice-launchers') && /^(Options|Setup|Upgrades?)$/i.test(button.textContent.trim())
+  );
+  for (const button of new Set([...(host._sources || []), ...document.querySelectorAll('[data-m2-choice-source]')])) {
+    if (!sources.includes(button)) button.removeAttribute('data-m2-choice-source');
+  }
+  for (const source of sources) managedAttribute(source, 'data-m2-choice-source', 'true');
+  const setup = !!q('[data-m2="setup"]');
+  const key = JSON.stringify([setup, sources.map(button => [button.textContent, button.disabled])]);
+  if (host._sources?.length === sources.length && host._sources.every((source, i) => source === sources[i]) && host.dataset.key === key) return;
+  host._sources = sources;
+  host.dataset.key = key;
+  host.replaceChildren();
+  for (const source of sources) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.textContent = source.textContent.trim();
+    button.disabled = source.disabled;
+    button.onclick = () => source.click();
+    host.append(button);
+  }
+  if (setup && !sources.some(button => /^Setup$/i.test(button.textContent.trim()))) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.textContent = 'Setup';
+    button.onclick = () => navigate('setup');
+    host.append(button);
+  }
+  host.hidden = !host.children.length;
+}

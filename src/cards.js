@@ -44,8 +44,65 @@ function goldSymbol(value) {
   el.setAttribute('aria-label', 'Gold ' + value);
   el.innerHTML =
     '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="9" r="6"/><path d="M14.5 8.5a6 6 0 1 1-6 6M9 6v6"/></svg>';
-  el.append(document.createTextNode(String(value)));
+  const number = document.createElement('span');
+  number.className = 'm2-gold-value';
+  number.textContent = String(value);
+  el.append(number);
   return el;
+}
+// Reserve attack, defense, initiative, and a three-icon utility stack everywhere.
+// Utility items are boolean +1 upgrades; their icons intentionally have no numbers.
+function itemUpgradeSymbols(items = {}, className = '') {
+  const group = document.createElement('span');
+  group.className = 'm2-item-upgrades ' + className;
+  group.setAttribute('aria-label', 'Item upgrades');
+  for (const stat of ['ATTACK', 'DEFENSE', 'INITIATIVE']) {
+    const value = Number(items?.[stat]) || 0;
+    const icon = cardSymbol(stat, value > 0 ? '+' + value : undefined);
+    icon.classList.toggle('m2-upgrade-empty', value <= 0);
+    icon.title = stat.toLowerCase() + (value > 0 ? ' +' + value : ': no upgrade');
+    group.append(icon);
+  }
+  const rest = document.createElement('span');
+  rest.className = 'm2-upgrade-rest';
+  for (const stat of ['MOVEMENT', 'RANGE', 'RADIUS']) {
+    const value = Number(items?.[stat] ?? (stat === 'RADIUS' ? items?.AREA : 0)) || 0;
+    const icon = cardSymbol(stat);
+    icon.classList.toggle('m2-upgrade-empty', value <= 0);
+    icon.title = stat.toLowerCase() + (value > 0 ? ' +1' : ': no upgrade');
+    rest.append(icon);
+  }
+  group.append(rest);
+  return group;
+}
+// Four fixed cells keep the miniature recognizable without a title or initiative.
+// Facedown cards show only a colored back, never stats read from hidden props.
+function miniatureCard(card, items = {}) {
+  const mini = document.createElement('span');
+  mini.className = 'm2-mini-current';
+  mini.title = !card ? 'No current card' : card.is_facedown ? 'Current card (hidden)' : card.name;
+  mini.setAttribute('aria-label', mini.title);
+  mini.style.setProperty('--card-color', cardColors[card?.color] || '#858c98');
+  if (!card || card.is_facedown) {
+    mini.textContent = card ? '?' : '—';
+    return mini;
+  }
+  const value = card.primary_action_value;
+  const primary = card.primary_action
+    ? upgradedSymbol(items, card.primary_action, value != null && String(value) !== '0' && String(value) !== '!' ? value : undefined)
+    : document.createElement('span');
+  const range = relevantStat(card, 'RANGE', card.range_value)
+    ? upgradedSymbol(items, 'RANGE', card.range_value)
+    : relevantStat(card, 'RADIUS', card.radius_value)
+      ? upgradedSymbol(items, 'RADIUS', card.radius_value)
+      : document.createElement('span');
+  mini.append(primary, range);
+  for (const stat of ['MOVEMENT', 'DEFENSE']) {
+    const value = card.secondary_actions?.[stat];
+    mini.append(stat !== card.primary_action && relevantStat(card, stat, value)
+      ? upgradedSymbol(items, stat, value) : document.createElement('span'));
+  }
+  return mini;
 }
 // Suppress placeholder zeros, but preserve open-ended values and zeros explicitly
 // mentioned in rules text. This is presentation filtering, not rules evaluation.

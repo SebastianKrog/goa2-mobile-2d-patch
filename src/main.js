@@ -102,6 +102,8 @@ function refresh() {
   updateCursorSetting();
   updateBoardRotation();
   updateUpgradeCards();
+  updateChoiceLaunchers();
+  const upgradeRequest = currentUpgradeRequest();
   const queue = resolutionEntries();
   const resolving = /^RESOLUTION$/i.test(
     q(c('phase'), header || document)?.textContent.trim() || '',
@@ -190,7 +192,10 @@ function refresh() {
       return {
         level: hero?.level,
         gold: hero?.gold,
-        currentCard: hero?.current_turn_card || null,
+        currentCard: hero ? visibleCurrentCard(box, hero) : null,
+        offboard,
+        upgrading: /^LEVEL[_ ]UP$/i.test(publicView?.phase || ''),
+        upgradeRemaining: remainingUpgrades(upgradeRequest, hero?.id),
         planning: /^PLANNING$/i.test(publicView?.phase || ''),
         committed: !!hero?.current_turn_card || hasLocalSelection(box),
         upgrades: hero?.items || {},
@@ -210,7 +215,7 @@ function refresh() {
       };
     });
     heroes.sort((a, b) => (a.resolution?.order ?? 99) - (b.resolution?.order ?? 99));
-    const sh = heroes.length * 26 + 38 + 'px';
+    const sh = heroes.length * 32 + 12 + 'px';
     if (root.style.getPropertyValue('--m2-summary-h') !== sh)
       root.style.setProperty('--m2-summary-h', sh);
     renderSummary(heroes);
@@ -242,8 +247,7 @@ function refresh() {
     if (mode === 'split') heroHost.append(heroPanel);
     else sidebar.before(heroPanel);
   }
-  if (!expandedHeroId) clearHeroCard();
-  else updateHeroCardDisplay();
+  updateHeroCardDisplay();
   const tip = q('[data-m2="tip"]');
   const selected = q('[data-m2="hand-list"] ' + c('row') + c('selected'));
   for (const row of sidebar?.querySelectorAll(c('row')) || []) {
@@ -316,7 +320,7 @@ on(media, 'change', schedule);
 
 // Public teardown for console installs and upgrades: release observers, timers, and DOM changes.
 window.GOA2Mobile2D = {
-  version: '0.14.5',
+  version: '0.14.7',
   destroy() {
     flushEventHistory();
     dead = true;
