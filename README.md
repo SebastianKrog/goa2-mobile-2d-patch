@@ -7,10 +7,22 @@ for game rules and actions; the script adapts presentation and proxies native co
 
 ## Install
 
-Install `dist/goa2-mobile-2d.user.js` with your userscript manager, or use the
-versioned `.txt` copy when transferring/pasting the script on Android.
-The generated file includes everything: no hosted JavaScript dependencies are required.
-Calling `GOA2Mobile2D.destroy()` removes an active installation from the page.
+### Android — Firefox
+
+I recommend **Firefox for Android** because it supports browser extensions, unlike Chrome for Android. This allows the script to be installed and managed cleanly through Greasemonkey.
+
+1. Install [Firefox for Android](https://play.google.com/store/apps/details?id=org.mozilla.firefox).
+2. Install [Greasemonkey](https://addons.mozilla.org/firefox/addon/greasemonkey/).
+3. In Greasemonkey, choose **Install from URL**.
+4. Paste:
+
+   `https://raw.githubusercontent.com/SebastianKrog/goa2-mobile-2d-patch/main/dist/goa2-mobile-2d.user.js`
+
+5. Reload the GoA2 page.
+
+### iPhone / iPad
+
+On iOS, use Safari with the free [Userscripts app](https://apps.apple.com/us/app/userscripts/id1463298887). Enable its Safari extension, then install the script from the URL above.
 
 ## Build and test
 
