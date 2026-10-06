@@ -25,9 +25,10 @@ try {
   assert.equal(doc.querySelectorAll('.m2-expanded-card').length, 2, 'collapsed heroes retain their current card');
   clickHero('own');
   let own = doc.querySelector('#own .m2-expanded-board');
-  assert.deepEqual([...own.querySelectorAll('h4')].map(x => x.textContent), ['', 'Hand:', '', 'Discard:']);
+  assert.deepEqual([...own.querySelectorAll('h4')].map(x => x.textContent), ['', '', 'Discard:']);
   assert.equal(own.querySelectorAll('.m2-slot-label').length, 2, 'future turns are omitted');
-  assert.equal(own.querySelectorAll('.m2-expanded-card').length, 5);
+  assert.equal(own.querySelectorAll('.m2-expanded-card').length, 4);
+  assert(!own.textContent.includes('Own hand'));
   assert.equal(own.querySelector('.m2-upgraded-value').textContent, '3');
   own.querySelector('.m2-expanded-card').click();
   assert(doc.querySelector('#goa2-m2-hero-display>.m2-text-card'));

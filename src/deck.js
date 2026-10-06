@@ -3,7 +3,8 @@
 function loadDeckPreferences() {
   try {
     const saved = JSON.parse(localStorage.getItem(deckPreferencesKey) || '{}');
-    if (['grid', 'list', 'large'].includes(saved.view)) deckView = saved.view;
+    if (['grid', 'list', 'compact'].includes(saved.view)) deckView = saved.view;
+    else if (saved.view === 'large') deckView = 'compact';
     if (['tier', 'color'].includes(saved.sort)) deckSort = saved.sort;
   } catch {}
 }
@@ -127,6 +128,7 @@ function deckUpdate() {
   state.zoom.hidden = true;
   state.zoom.replaceChildren();
   state.host.replaceChildren();
+  state.host.dataset.view = deckView;
   const titleBar = document.createElement('div');
   titleBar.className = 'm2-deck-title';
   titleBar.textContent = 'Deck';
@@ -136,7 +138,7 @@ function deckUpdate() {
   for (const [value, label] of [
     ['grid', 'Grid'],
     ['list', 'List'],
-    ['large', 'Large'],
+    ['compact', 'Compact'],
     ['sort', deckSort === 'tier' ? 'By tier' : 'By color'],
   ]) {
     const b = document.createElement('button');
@@ -161,6 +163,40 @@ function deckUpdate() {
     controls.append(b);
   }
   state.host.append(controls);
+  // The compact view shares the slim hero-card rows, while a separate dark area
+  // holds the selected printed card. It never applies the hero's item upgrades.
+  let preview;
+  if (deckView === 'compact') {
+    preview = document.createElement('section');
+    preview.className = 'm2-deck-preview';
+    preview.setAttribute('aria-label', 'Selected deck card');
+    state.host.append(preview);
+  }
+  function selectCompact(card) {
+    state.selectedCard = card;
+    preview.replaceChildren();
+    if (card) {
+      const display = textCard(card, 'deck');
+      const close = document.createElement('button');
+      close.type = 'button';
+      close.className = 'm2-card-dismiss';
+      close.textContent = '×';
+      close.setAttribute('aria-label', 'Close card details');
+      close.onclick = () => selectCompact(null);
+      const foot = q('.m2-card-foot', display);
+      foot.classList.add('m2-has-dismiss');
+      foot.append(close);
+      preview.append(display);
+    }
+    for (const row of state.host.querySelectorAll('.m2-deck-compact .m2-deck-card'))
+      row.setAttribute('aria-pressed', String(row.dataset.cardKey === JSON.stringify(card)));
+  }
+
+  const listHost = deckView === 'compact' ? document.createElement('div') : state.host;
+  if (listHost !== state.host) {
+    listHost.className = 'm2-deck-row-list';
+    state.host.append(listHost);
+  }
   const colors = ['RED', 'BLUE', 'GREEN', 'PURPLE', 'GOLD', 'SILVER'];
   const tierRank = (v) =>
     ({ I: 1, II: 2, III: 3, IV: 4, 1: 1, 2: 2, 3: 3, 4: 4 })[String(v).toUpperCase()] ?? 4;
@@ -191,7 +227,7 @@ function deckUpdate() {
     const canvas = document.createElement('canvas');
     canvas.width = large
       ? entry.canvas.width
-      : Math.min(entry.canvas.width, deckView === 'large' ? 720 : 360);
+      : Math.min(entry.canvas.width, 360);
     canvas.height = Math.round((canvas.width * entry.canvas.height) / entry.canvas.width);
     canvas.setAttribute('role', 'img');
     canvas.setAttribute('aria-label', entry.card.name);
@@ -219,19 +255,30 @@ function deckUpdate() {
     heading.textContent = title;
     const group = document.createElement('div');
     group.className = 'm2-deck-cards m2-deck-' + deckView;
-    state.host.append(heading, group);
+    listHost.append(heading, group);
     for (const entry of cards) {
       const card = entry.card,
         b = document.createElement('button');
       b.type = 'button';
       b.className = 'm2-deck-card';
-      b.setAttribute('aria-label', 'Enlarge ' + card.name);
-      on(b, 'click', () => enlarge(entry));
-      if (deckView === 'list') {
+      b.setAttribute('aria-label', (deckView === 'compact' ? 'View ' : 'Enlarge ') + card.name);
+      if (deckView === 'compact') {
+        b.dataset.cardKey = JSON.stringify(card);
+        b.setAttribute('aria-pressed', 'false');
+        on(b, 'click', () => selectCompact(card));
+        updateCardRow(b, card, {});
+      } else if (deckView === 'list') {
         b.append(textCard(card, 'deck'));
       } else b.append(image(entry));
+      if (deckView !== 'compact') on(b, 'click', () => enlarge(entry));
       group.append(b);
     }
+  }
+  if (preview) {
+    const selected = entries.find(e => state.selectedCard && (
+      e.card.id ? e.card.id === state.selectedCard.id : e.card.name === state.selectedCard.name
+    ));
+    selectCompact(selected?.card || null);
   }
   deckPaint();
 }

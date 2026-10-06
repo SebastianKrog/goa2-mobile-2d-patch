@@ -254,9 +254,11 @@ function renderSummary(heroes) {
     row.append(turn, identity, level, separator(), gold, separator(), piles);
     // Resolved heroes have no current microcard, even if stale props retain one.
     // Queue membership wins for heroes with another action still pending.
+    const currentSlot = document.createElement('span');
+    currentSlot.className = 'm2-summary-current-slot';
     if (h.currentCard && (!h.done || h.resolution))
-      row.append(separator(), miniatureCard(h.currentCard, h.upgrades));
-    row.append(separator(), itemUpgradeSymbols(h.upgrades, 'm2-summary-upgrades'));
+      currentSlot.append(miniatureCard(h.currentCard, h.upgrades));
+    row.append(separator(), currentSlot, separator(), itemUpgradeSymbols(h.upgrades, 'm2-summary-upgrades'));
     summary.append(row);
   }
 }

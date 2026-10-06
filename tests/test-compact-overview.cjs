@@ -37,6 +37,7 @@ try {
   assert(row.querySelector('.m2-summary-piles').compareDocumentPosition(row.querySelector('.m2-mini-current')) & w.Node.DOCUMENT_POSITION_FOLLOWING);
   delete hero.resolution; renderSummary([hero]);
   assert(!d.querySelector('.m2-mini-current'), 'resolved heroes must not retain a microcard');
+  assert(d.querySelector('.m2-summary-current-slot:empty'), 'retain a blank alignment slot');
   assert.equal(d.querySelector('.m2-summary-turn').textContent, '☠');
   hero.offboard = false; renderSummary([hero]);
   assert.equal(d.querySelector('.m2-summary-turn').textContent, '✓');

@@ -317,16 +317,6 @@ function updateHeroDashboard(box, view) {
       return el;
     }
     if (currentCard && !currentCard.is_facedown) section('').append(cardRow(currentCard));
-    if (expanded && own && mode !== 'hand') {
-      const hand = section('Hand:');
-      const cards = Array.isArray(hero.hand)
-        ? hero.hand
-        : Array.from(document.querySelectorAll('[data-m2="hand-list"] ' + c('row')))
-            .map(renderedCard)
-            .filter(Boolean);
-      if (cards.length) cards.forEach((card) => hand.append(cardRow(card)));
-      else hand.append(cardRow(null));
-    }
     if (expanded) {
       const played = section('');
       // Future turns add blank noise. Reveal slots only as the round reaches them.

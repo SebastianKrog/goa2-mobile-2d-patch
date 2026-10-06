@@ -112,3 +112,10 @@ this repository. No new license grant is asserted for third-party code or artwor
 Board is now the default. Heroes, Hand, Deck and Settings are toggles; pressing the active control returns to Board. Heroes/Hand show the board above their list and overlay card details only when selected. Settings uses the same lower pane; Deck fills the view. Setup remains contextual.
 
 The compact overview omits secondary defense from its microcards, hides microcards after resolution, abbreviates the local player's name to `(You)`, limits the identity width with fading player names, and punctuates turn numbers.
+
+
+## Version 0.14.9
+
+Board overview columns now stay aligned after resolution, with item upgrades at the right edge. Heroes no longer duplicates the local hand; Hand keeps the local hero above its card list.
+
+Deck replaces Large with Compact: slim printed-stat rows, an independently scrolling list, and a dark selected-card preview. Existing Large preferences migrate to Compact.

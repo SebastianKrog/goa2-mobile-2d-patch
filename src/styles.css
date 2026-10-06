@@ -2483,3 +2483,54 @@ html:not([data-m2-active]) .m2-choice-launchers { display: none !important; }
 &[data-m2-deck-open] [data-m2="deck"] {
   visibility: visible !important; pointer-events: auto !important;
 }
+
+
+/* Fixed overview columns retain alignment after a card resolves. The empty slot
+   is plain space, not an empty card; item upgrades always occupy the right edge. */
+& #goa2-m2-summary article {
+  display: grid;
+  grid-template-columns: 20px minmax(60px, 1fr) 18px 1px 14px 1px 60px 1px 43px 1px 46px;
+  column-gap: 1px;
+}
+& #goa2-m2-summary .m2-summary-current-slot { width: 43px; min-width: 43px; }
+& #goa2-m2-summary .m2-summary-upgrades { justify-self: end; }
+& #goa2-m2-summary .m2-summary-identity { min-width: 0; }
+& #goa2-m2-summary .m2-summary-piles { overflow: hidden; }
+/* The local hero must precede Hand regardless of their resolution queue order. */
+&[data-m2-mode="hand"] [data-m2="hero"]:not([data-m2-other]) { order: -2 !important; }
+&[data-m2-mode="hand"] [data-m2="hand-list"] { order: -1; }
+
+/* Compact Deck: sticky dark inspection area above independently scrollable rows. */
+& .m2-deck-browser[data-view="compact"] {
+  height: calc(var(--m2-vh, 100dvh) - var(--m2-nav) - 12px);
+  min-height: 0; display: flex; flex-direction: column;
+}
+& .m2-deck-preview {
+  position: relative; top: auto; z-index: 3;
+  height: var(--m2-card-display-height); min-height: var(--m2-card-display-height);
+  flex: 0 0 var(--m2-card-display-height); overflow: auto;
+  background: #090c11; border-radius: 8px; margin: 5px 0 10px;
+}
+& .m2-deck-preview:empty:after {
+  content: "Select a card to view details"; display: grid; place-items: center;
+  height: 100%; color: #97a2b3; font: 13px system-ui;
+}
+& .m2-deck-preview > .m2-text-card { min-height: 100%; margin: 0; }
+& .m2-deck-compact { display: flex; flex-direction: column; gap: 5px; }
+& .m2-deck-compact .m2-deck-card {
+  display: block; padding: 0 3px; height: 26px; min-height: 26px;
+  width: 100%; max-width: none; border: 1px solid #ffffff16; border-radius: 5px;
+  background: #202731; color: #e1e5eb;
+}
+& .m2-deck-compact .m2-list-card { height: 24px; min-height: 24px; }
+& .m2-deck-compact .m2-list-card .m2-symbol img { width: 19px; height: 19px; }
+& .m2-deck-compact .m2-list-name { font-size: 11px; }
+& .m2-deck-compact .m2-list-secondary { flex-basis: 42px; min-width: 42px; }
+& .m2-deck-compact .m2-deck-card[aria-pressed="true"] { border-color: #b8c4d7; }
+
+& .m2-deck-row-list { flex: 1 1 0; min-height: 0; overflow: auto; }
+& .m2-deck-browser[data-view="compact"] > :is(.m2-deck-title, .m2-deck-controls) { flex-shrink: 0; }
+
+& #goa2-m2-summary .m2-summary-turn { width: 20px; min-width: 20px; }
+& #goa2-m2-summary .m2-summary-upgrades > .m2-symbol { width: 10px; font-size: 8px; }
+& #goa2-m2-summary .m2-summary-upgrades > .m2-symbol img { width: 11px; }
