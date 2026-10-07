@@ -39,7 +39,7 @@ Building alone needs no npm packages: `node scripts/build.mjs` also works before
 
 - `npm run build` combines source files into readable, unminified output in `dist/`.
 - `npm run build:check` checks that committed output matches the source.
-- `npm test` builds and runs all 20 regression test files in isolated Node processes.
+- `npm test` builds and runs all 21 regression test files in isolated Node processes.
 - GitHub Actions checks committed output and runs the tests on pushes and pull requests.
 
 Edit `src/`, then rebuild and commit both source and `dist/`. Do not edit generated
@@ -111,6 +111,23 @@ this repository. No new license grant is asserted for third-party code or artwor
 | Nano | One defense icon/value for a discarded card; 20px wide and the same 24px height as Micro. |
 | Dot | Card color only; card-pile summaries. |
 
+Large cards use one CSS-cropped original artwork layer across the title, body and
+footer. The artwork itself fades from fully transparent at the top left to 40%
+visible at the bottom right, revealing the original title color and dark card
+surfaces underneath. Both bars blur that same image in place; text stays sharp.
+Large-card titles stay white with a subtle shadow, and their title/body stat icons
+are enlarged without changing footer controls. Missing artwork retains the plain-card
+appearance.
+
+Small Hand rows use horizontally faded, blurred artwork only in their colored center.
+Small and Mini rows have one/two/three solid tier stripes at both edges with equal
+reserved gutters; fixed primary/range slots keep their titles centered. Mini rows
+have no background artwork.
+
+Micro and Nano cards indicate tier inside their existing widths. Basic/Tier I has
+one colored edge pixel plus two card-fill pixels; Tier II uses color/fill/color;
+Tier III has three solid colored edge pixels. Resolved edges remain muted.
+
 Missing Micro stats keep their cell empty. Known in-play upgrades use purple values;
 Deck uses printed values. Active effects breathe on their Micro/Nano/Dot source.
 Facedown cards do not reveal hidden names or stats.
@@ -118,6 +135,7 @@ Facedown cards do not reveal hidden names or stats.
 ## Release notes and planned work
 
 See [CHANGELOG.md](CHANGELOG.md) for published releases and [ROADMAP.md](ROADMAP.md)
-for unfinished work. Version 0.15.0 includes the refined Board overview, compact Hero
-entries, fixed card history slots and token/figure bugfixes. Unfolded Hero boards are
-disabled; tapping a Board hero still opens its compact entry with a portrait back button.
+for unfinished work. Version 0.16.0 adds faded artwork, blurred bars, larger Large-card
+stats and tier markers across compact card sizes. The refined Board overview and
+compact Hero/history layout from 0.15.0 remain in place. Unfolded Hero boards are
+disabled; tapping a Board hero opens its compact entry with a portrait back button.

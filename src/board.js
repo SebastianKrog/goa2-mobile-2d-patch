@@ -89,7 +89,11 @@ function updateCursorSetting() {
 function updateCardRow(row, card, knownItems) {
   const items = knownItems || cardUpgrades(card, row);
   const symbol = (key, value) => upgradedSymbol(items, key, value);
-  const key = JSON.stringify([card, items]);
+  // Only Hand's Small rows get this artwork treatment. Hero/Deck Mini rows
+  // share the renderer but keep their existing compact presentation.
+  const small = !!row.closest('[data-m2="hand-list"]');
+  const owner = small ? cardHero(card, row)?.id : null;
+  const key = JSON.stringify([card, items, small, owner]);
   let view = q(':scope>.m2-list-card', row);
   // React replaces className when selection changes, even if card props are unchanged.
   if (!row.classList.contains('m2-adapted-row')) row.classList.add('m2-adapted-row');
@@ -101,6 +105,8 @@ function updateCardRow(row, card, knownItems) {
     extras.add(view);
   }
   view.dataset.key = key;
+  view.classList.toggle('m2-small-card', small);
+  view.classList.toggle('m2-mini-card', !small);
   view.replaceChildren();
   row.classList.add('m2-adapted-row');
   const ultimate = card.tier === 'IV' || card.color === 'PURPLE';
@@ -110,22 +116,29 @@ function updateCardRow(row, card, knownItems) {
   const band = document.createElement('span');
   band.className = 'm2-list-band';
   band.style.setProperty('--card-color', cardColors[card.color] || '#bbc3cf');
+  // Small and Mini rows share stripe counts. Each size reserves its own
+  // three-stripe gutter so basic and tiered cards keep their icons aligned.
+  band.style.setProperty('--m2-tier-lines', String(cardTierLines(card)));
   const value = card.primary_action_value;
-  if (!ultimate && card.primary_action)
-    band.append(
-      symbol(
-        card.primary_action,
-        value != null && String(value) !== '0' && String(value) !== '!' ? value : undefined,
-      ),
+  if (!ultimate && card.primary_action) {
+    const primary = symbol(
+      card.primary_action,
+      value != null && String(value) !== '0' && String(value) !== '!' ? value : undefined,
     );
+    primary.classList.add('m2-list-primary');
+    band.append(primary);
+  }
   const name = document.createElement('span');
   name.className = 'm2-list-name';
   name.textContent = card.name;
   band.append(name);
-  if (relevantStat(card, 'RANGE', card.range_value))
-    band.append(symbol('RANGE', card.range_value));
-  else if (relevantStat(card, 'RADIUS', card.radius_value))
-    band.append(symbol('RADIUS', card.radius_value));
+  const utility = relevantStat(card, 'RANGE', card.range_value)
+    ? symbol('RANGE', card.range_value)
+    : relevantStat(card, 'RADIUS', card.radius_value) ? symbol('RADIUS', card.radius_value) : null;
+  if (utility) {
+    utility.classList.add('m2-list-utility');
+    band.append(utility);
+  }
   const secondary = document.createElement('span');
   secondary.className = 'm2-list-secondary';
   for (const stat of ['MOVEMENT', 'DEFENSE', 'ATTACK']) {
@@ -134,6 +147,9 @@ function updateCardRow(row, card, knownItems) {
       secondary.append(symbol(stat, v));
   }
   view.append(initiative, band, secondary);
+  // Art lives inside the central band, leaving initiative and secondary stats
+  // untouched. The owning hero must be known; hidden cards keep the plain fill.
+  if (small) appendCardArtwork(band, card, row, owner);
   band.title = card.name;
 }
 // Synthesize the own-hero hand dots from visible hand cards to match other heroes.

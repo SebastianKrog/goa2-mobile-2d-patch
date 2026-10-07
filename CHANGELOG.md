@@ -1,6 +1,28 @@
 # Changelog
 
-Published releases, newest first. Each entry groups user-visible changes and fixes. Local previews 0.14.10–0.14.18 are included in 0.15.0.
+Published releases, newest first. Each entry groups user-visible changes and fixes. Local previews 0.14.10–0.14.18 are included in 0.15.0; 0.15.1–0.15.11 are included in 0.16.0.
+
+## 0.16.0
+
+### Changed
+
+- Large cards use cropped original artwork with one continuous image across title, body and footer. Artwork fades from fully transparent at top left to 40% visible at bottom right, preserving the colored title and dark card surfaces underneath.
+- Title and footer blur that same artwork in place while keeping text and controls sharp. The footer has a slightly darker base.
+- Enlarge Large-card title/body stat icons and overlaid values by 30%, including inline rule icons. Footer controls retain their size.
+- Small Hand cards show horizontally faded, blurred artwork only within their colored central band. Mini cards retain plain colored backgrounds.
+- Small and Mini cards show matching tier stripes at both edges: one for basic/Tier I, two for Tier II and three for Tier III. Fixed gutters and primary/range slots keep titles and icons aligned even when a stat is absent.
+- Micro and Nano cards show tier within their existing side edges: basic/Tier I reserves one colored border pixel and two card-fill pixels; Tier II uses color/fill/color; Tier III uses three solid color pixels. Outer dimensions remain unchanged.
+
+### Fixed
+
+- Keep Large-card titles white with a subtle shadow throughout artwork loading and fallback, removing the black-to-white flicker.
+- Center Large-card tier labels within their reserved corner.
+- Preserve hidden-card privacy and plain-card fallback when artwork is unavailable. Resolved Micro/Nano tier edges remain muted.
+
+### Validation
+
+- All 21 regression test files pass, including artwork ownership, fade/blur/layering, load/error fallback, tier stripes, fixed card sizes, privacy and native interactions.
+- Generated userscript and versioned TXT match the source.
 
 ## 0.15.0
 

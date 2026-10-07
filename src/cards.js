@@ -75,12 +75,19 @@ function itemUpgradeSymbols(items = {}, className = '') {
   group.append(rest);
   return group;
 }
+// Keep all tier cues consistent. Facedown/unknown cards use the basic edge so
+// these decorative marks cannot reveal a tier from hidden component props.
+function cardTierLines(card) {
+  if (card?.is_facedown) return 1;
+  return ({ II: 2, III: 3, 2: 2, 3: 3 })[String(card?.tier ?? '').toUpperCase()] || 1;
+}
 // Explicit translucent fills avoid context-dependent native button colors.
 function setMicroColor(element, card) {
   const color = cardColors[String(card?.color || '').toUpperCase()] || '#858c98';
   element.style.setProperty('--card-color', color);
   element.style.setProperty('--m2-card-fill', color + '55');
   element.style.setProperty('--m2-card-muted', color + '22');
+  element.dataset.tierLines = String(cardTierLines(card));
 }
 // Three fixed cells keep the miniature recognizable without a title or initiative.
 // Facedown cards show only a colored back, never stats read from hidden props.
@@ -170,9 +177,9 @@ function relevantStat(card, key, value) {
 }
 // Prefer the owning component’s hero. Otherwise match card identity against known
 // hero card collections; do not infer ownership merely from a card’s name or color.
-function cardUpgrades(card, source) {
+function cardHero(card, source) {
   const direct = source && componentProp(source, 'hero');
-  if (direct?.items) return direct.items;
+  if (direct?.id || direct?.items) return direct;
   for (const box of document.querySelectorAll('[data-m2="hero"]')) {
     const hero = componentProp(box, 'hero');
     if (!hero) continue;
@@ -188,9 +195,44 @@ function cardUpgrades(card, source) {
         (candidate) => candidate && (candidate === card || (card.id && candidate.id === card.id)),
       )
     )
-      return hero.items || {};
+      return hero;
   }
-  return {};
+  return null;
+}
+// Ownership is shared with the artwork lookup; printed card props stay unchanged.
+function cardUpgrades(card, source) {
+  return cardHero(card, source)?.items || {};
+}
+// Use the original artwork layer that the site's card painter reads, rather than
+// rasterizing its printed text/icons. CSS crops this image for every Large shape.
+// Explicit ownership also covers upgrade choices not yet present in a hero's deck.
+function appendCardArtwork(box, card, source, heroId) {
+  if (card.is_facedown || !card.image_id) return;
+  const id = heroId || cardHero(card, source)?.id;
+  if (typeof id !== 'string') return;
+  const slug = id.toLowerCase().replace(/^hero_/, '');
+  const imageId = String(card.image_id);
+  // Only asset path segments are accepted: never infer an external image URL.
+  if (!/^[a-z0-9_-]+$/.test(slug) || !/^[a-zA-Z0-9_-]+$/.test(imageId)) return;
+  const art = document.createElement('div');
+  art.className = 'm2-card-art';
+  art.setAttribute('aria-hidden', 'true');
+  const image = document.createElement('img');
+  image.alt = '';
+  image.decoding = 'async';
+  image.loading = 'lazy';
+  // Plain cards remain the fallback while loading or when artwork is unavailable.
+  image.onload = () => { if (!dead) box.classList.add('m2-has-art'); };
+  image.onerror = () => {
+    box.classList.remove('m2-has-art');
+    art.remove();
+  };
+  const url = '/cards/backgrounds/' + slug + '/' + imageId + '.webp';
+  // One crop spans the complete card. Bars blur this layer in place rather
+  // than drawing their own copy, so artwork stays aligned across each seam.
+  image.src = url;
+  art.append(image);
+  box.append(art);
 }
 // Return null when a value cannot safely be adjusted. Only unsigned integer values
 // with an optional trailing + are supported; other printed notation stays intact.
@@ -220,12 +262,13 @@ function upgradedSymbol(items, key, value) {
 
 // Shared readable card renderer. Deck shows printed values; Hand and Heroes apply known upgrades.
 // Hand actions proxy native controls so the website remains responsible for game rules.
-function textCard(card, context, tip) {
+function textCard(card, context, tip, heroId) {
   const items = context === 'deck' ? {} : cardUpgrades(card);
   const symbol = (key, value) => upgradedSymbol(items, key, value);
   const ultimate = card.tier === 'IV' || card.color === 'PURPLE';
   const box = document.createElement('article');
   box.className = 'm2-text-card';
+  appendCardArtwork(box, card, tip, heroId);
   box.style.setProperty('--card-color', cardColors[card.color] || '#bfc7d2');
   const top = document.createElement('header');
   top.className = 'm2-card-top';

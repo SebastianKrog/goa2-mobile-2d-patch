@@ -626,7 +626,9 @@
   gap: 4px;
   padding: 8px;
   background: var(--card-color);
-  color: #131820;
+  /* Set before artwork loads too, avoiding a black-to-white title flash. */
+  color: #f5f6f8;
+  text-shadow: 0 1px 2px #0009;
 }
 & .m2-card-top > b {
   text-align: center;
@@ -2202,7 +2204,7 @@
   flex-basis: 44px;
   min-width: 44px;
 }
-& #goa2-m2-hero-display .m2-symbol img {
+& #goa2-m2-hero-display .m2-list-card .m2-symbol img {
   width: 19px;
   height: 19px;
 }
@@ -2831,8 +2833,8 @@ html:not([data-m2-active]) .m2-choice-launchers { display: none !important; }
 & #goa2-m2-summary .m2-card-resolved > .m2-mini-current {
   background: var(--m2-card-muted, #202731); border-color: var(--m2-card-muted, #384459);
 }
-/* Board Micro is exactly three 20px icon slots, two 3px gaps, and 4px of
-   padding/border. Neither the card nor its button expands with the table column.
+/* Board Micro is exactly three 20px icon slots. Tier-edge rules below fit
+   two 2px gaps and 6px of padding/border into the same 70px outer width. Neither the card nor its button expands with the table column.
    An absent primary/range/movement stat still leaves its fixed cell empty;
    secondary defense is reserved for the four-cell Hero history variant. */
 & #goa2-m2-summary .m2-summary-current-slot {
@@ -2856,3 +2858,194 @@ html:not([data-m2-active]) .m2-choice-launchers { display: none !important; }
   width: 100%; max-width: 100%; min-width: 0; box-sizing: border-box;
   align-self: stretch; overflow: hidden;
 }
+
+/* One crop spans the complete card. Fade the IMAGE's alpha, rather than
+   covering it with a dark rectangle: transparent pixels reveal the shell's
+   normal body/footer background or the title's actual card color underneath. */
+& .m2-text-card { position: relative; isolation: isolate; }
+& .m2-card-art {
+  position: absolute; inset: 0; z-index: 1; overflow: hidden;
+  pointer-events: none; opacity: 0;
+}
+/* At most 40% artwork = 60% of the underlying surface still showing. The mask
+   shares the full-card coordinate space, including title and footer. Its black
+   stops specify alpha only; they are never painted as a visible black layer. */
+& .m2-has-art > .m2-card-art {
+  opacity: .4;
+  mask-mode: alpha;
+  mask-image: linear-gradient(135deg, transparent 0%, rgb(0 0 0 / 15%) 30%, rgb(0 0 0 / 50%) 65%, #000 100%);
+  -webkit-mask-image: linear-gradient(135deg, transparent 0%, rgb(0 0 0 / 15%) 30%, rgb(0 0 0 / 50%) 65%, #000 100%);
+}
+& .m2-card-art > img {
+  display: block; width: 100%; height: 100%; object-fit: cover;
+  object-position: 50% 34%; transform: scale(1.08);
+}
+/* Bar backgrounds paint below the full-card art. Their blur panes sample that
+   same image in place above it, and text/controls remain sharp above the blur.
+   Keep bars in the card's stacking context so their backgrounds cannot hide art. */
+& .m2-text-card > :is(.m2-card-top, .m2-card-body, .m2-card-foot) {
+  position: relative; z-index: auto;
+}
+& .m2-has-art > :is(.m2-card-top, .m2-card-body, .m2-card-foot) > * {
+  z-index: 3;
+}
+& .m2-has-art > .m2-card-top { background: var(--card-color); }
+& .m2-has-art > .m2-card-foot { background: #0e1219; }
+& .m2-has-art > :is(.m2-card-top, .m2-card-foot)::before {
+  content: ""; position: absolute; inset: 0; z-index: 2;
+  pointer-events: none; background: transparent;
+  backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px);
+}
+& .m2-has-art > .m2-card-body { text-shadow: 0 1px 2px #000b; }
+
+/* Large-only stat enlargement: 21px icons -> 27.3px, and overlaid values from
+   1.15em -> 1.495em. Existing grid columns have room; footer actions/items and
+   all Small/Mini/Micro/Nano renderers retain their own dimensions. */
+& .m2-text-card :is(.m2-card-top, .m2-card-body) .m2-symbol img {
+  width: 27.3px; height: 27.3px;
+}
+& .m2-text-card :is(.m2-card-top, .m2-card-body) .m2-symbol-value {
+  font-size: 1.495em;
+}
+& .m2-text-card .m2-card-body .m2-rule-icon {
+  width: 1.69em; height: 1.69em;
+}
+
+/* Center the tier within its reserved right-hand corner, not against its edge. */
+& .m2-card-top > span:last-child {
+  display: grid; place-items: center;
+  align-self: stretch; justify-self: stretch; text-align: center;
+}
+/* Small Hand cards: one blurred crop, confined to the colored center. Fade the
+   artwork alpha horizontally from invisible to 40%; the existing color shows
+   underneath. Name and primary/range icons stay sharp above the decoration. */
+& .m2-small-card > .m2-list-band {
+  position: relative; isolation: isolate; overflow: hidden;
+}
+& .m2-small-card > .m2-list-band > :not(.m2-card-art) {
+  position: relative; z-index: 2;
+}
+& .m2-small-card > .m2-list-band.m2-has-art > .m2-card-art {
+  opacity: .4;
+  mask-image: linear-gradient(90deg, transparent 0%, #000 100%);
+  -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 100%);
+}
+& .m2-small-card > .m2-list-band > .m2-card-art > img {
+  filter: blur(4px); transform: scale(1.12);
+}
+
+/* Reserve 13px for three 3px stripes separated by 2px, plus a 5px gap to the
+   primary/range icons. The gutters never change with tier or artwork loading. */
+& .m2-small-card > .m2-list-band {
+  border-left: 0; padding-left: 18px; padding-right: 18px;
+}
+& .m2-small-card > .m2-list-band::before,
+& .m2-small-card > .m2-list-band::after {
+  content: ""; position: absolute; top: 0; bottom: 0; z-index: 3;
+  width: calc(var(--m2-tier-lines, 1) * 5px - 2px);
+  background: repeating-linear-gradient(90deg, var(--card-color) 0 3px, transparent 3px 5px);
+  pointer-events: none;
+}
+& .m2-small-card > .m2-list-band::before { left: 0; }
+& .m2-small-card > .m2-list-band::after { right: 0; }
+
+/* Equal primary and utility columns keep the title centered even when an icon
+   is absent. Named grid positions reserve empty slots without dummy symbols. */
+& .m2-small-card > .m2-list-band {
+  display: grid; grid-template-columns: 24px minmax(0, 1fr) 24px;
+}
+& .m2-small-card > .m2-list-band > .m2-list-primary {
+  grid-column: 1; grid-row: 1; justify-self: center;
+}
+& .m2-small-card > .m2-list-band > .m2-list-name {
+  grid-column: 2; grid-row: 1;
+}
+& .m2-small-card > .m2-list-band > .m2-list-utility {
+  grid-column: 3; grid-row: 1; justify-self: center;
+}
+
+/* Mini cards share the tier cue and symmetric icon slots, with smaller gutters:
+   three 2px stripes and 1px gaps occupy 8px, plus 4px before each 19px icon.
+   No artwork is attached to these rows, so their colored fill stays plain. */
+& .m2-mini-card > .m2-list-band {
+  position: relative; isolation: isolate; overflow: hidden;
+  border-left: 0; padding-left: 12px; padding-right: 12px;
+  display: grid; grid-template-columns: 19px minmax(0, 1fr) 19px; gap: 3px;
+}
+& .m2-mini-card > .m2-list-band > * { position: relative; z-index: 2; }
+& .m2-mini-card > .m2-list-band::before,
+& .m2-mini-card > .m2-list-band::after {
+  content: ""; position: absolute; top: 0; bottom: 0; z-index: 3;
+  width: calc(var(--m2-tier-lines, 1) * 3px - 1px);
+  background: repeating-linear-gradient(90deg, var(--card-color) 0 2px, transparent 2px 3px);
+  pointer-events: none;
+}
+& .m2-mini-card > .m2-list-band::before { left: 0; }
+& .m2-mini-card > .m2-list-band::after { right: 0; }
+& .m2-mini-card > .m2-list-band > .m2-list-primary {
+  grid-column: 1; grid-row: 1; justify-self: center;
+}
+& .m2-mini-card > .m2-list-band > .m2-list-name {
+  grid-column: 2; grid-row: 1;
+}
+& .m2-mini-card > .m2-list-band > .m2-list-utility {
+  grid-column: 3; grid-row: 1; justify-self: center;
+}
+& .m2-mini-card > .m2-list-band > .m2-symbol img {
+  width: 19px; height: 19px;
+}
+
+/* Micro/Nano tier edges consume existing space: retain the 1px outer border,
+   reserve two internal pixels at each side, and paint only those pixels. Basic
+   leaves both pixels as card fill; Tier II paints the inner one; Tier III paints
+   both, giving a solid 3px edge. Top/bottom borders and outer widths stay put. */
+& :is(.m2-mini-current, .m2-nano-card),
+& .m2-mini-current.m2-micro-board,
+& .m2-mini-current.m2-micro-hero,
+& #goa2-m2-summary :is(.m2-mini-current, .m2-nano-card),
+& #goa2-m2-summary .m2-mini-current.m2-micro-board,
+& #goa2-m2-summary .m2-mini-current.m2-micro-hero {
+  position: relative; isolation: isolate;
+  border-width: 1px; border-style: solid;
+  padding-left: 2px; padding-right: 2px;
+  --m2-tier-edge-color: var(--card-color);
+}
+& :is(.m2-mini-current, .m2-nano-card) > * { position: relative; z-index: 1; }
+& :is(.m2-mini-current, .m2-nano-card)::before,
+& :is(.m2-mini-current, .m2-nano-card)::after {
+  content: ""; position: absolute; top: 0; bottom: 0;
+  width: 2px; z-index: 2; pointer-events: none;
+}
+& :is(.m2-mini-current, .m2-nano-card)::before { left: 0; }
+& :is(.m2-mini-current, .m2-nano-card)::after { right: 0; }
+& :is(.m2-mini-current, .m2-nano-card)[data-tier-lines="2"]::before {
+  background: linear-gradient(90deg, transparent 0 1px, var(--m2-tier-edge-color) 1px 2px);
+}
+& :is(.m2-mini-current, .m2-nano-card)[data-tier-lines="2"]::after {
+  background: linear-gradient(270deg, transparent 0 1px, var(--m2-tier-edge-color) 1px 2px);
+}
+& :is(.m2-mini-current, .m2-nano-card)[data-tier-lines="3"]::before,
+& :is(.m2-mini-current, .m2-nano-card)[data-tier-lines="3"]::after {
+  background: var(--m2-tier-edge-color);
+}
+& .m2-card-resolved > .m2-mini-current,
+& #goa2-m2-summary .m2-card-resolved > .m2-mini-current {
+  --m2-tier-edge-color: var(--m2-card-muted);
+}
+/* The Board's 70px still fits three 20px cells: reduce its two gaps by 1px.
+   Hero's 64px keeps four equal cells; Nano's 20px keeps one centered icon. */
+& .m2-mini-current.m2-micro-board,
+& #goa2-m2-summary .m2-mini-current.m2-micro-board { gap: 2px; }
+& .m2-mini-current.m2-micro-hero,
+& #goa2-m2-summary .m2-mini-current.m2-micro-hero {
+  height: 24px; min-height: 24px;
+  grid-template-columns: repeat(4, 14.5px); justify-items: center;
+}
+& .m2-mini-current.m2-micro-hero .m2-symbol,
+& #goa2-m2-summary .m2-mini-current.m2-micro-hero .m2-symbol {
+  width: 14px; min-width: 14px;
+}
+& .m2-mini-current.m2-micro-hero .m2-symbol img,
+& #goa2-m2-summary .m2-mini-current.m2-micro-hero .m2-symbol img,
+& .m2-nano-card .m2-symbol,
+& .m2-nano-card .m2-symbol img { width: 14px; min-width: 14px; }

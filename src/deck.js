@@ -176,7 +176,7 @@ function deckUpdate() {
     state.selectedCard = card;
     preview.replaceChildren();
     if (card) {
-      const display = textCard(card, 'deck');
+      const display = textCard(card, 'deck', null, componentProp(modal, 'hero')?.id);
       const close = document.createElement('button');
       close.type = 'button';
       close.className = 'm2-card-dismiss';
@@ -268,7 +268,7 @@ function deckUpdate() {
         on(b, 'click', () => selectCompact(card));
         updateCardRow(b, card, {});
       } else if (deckView === 'list') {
-        b.append(textCard(card, 'deck'));
+        b.append(textCard(card, 'deck', null, componentProp(modal, 'hero')?.id));
       } else b.append(image(entry));
       if (deckView !== 'compact') on(b, 'click', () => enlarge(entry));
       group.append(b);

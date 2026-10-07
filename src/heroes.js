@@ -442,7 +442,7 @@ function updateHeroCardDisplay() {
   }
   const key = JSON.stringify([card, hero.items]);
   if (heroPanel.dataset.key === key) return;
-  const display = textCard(card, 'hero'),
+  const display = textCard(card, 'hero', null, hero.id),
     close = document.createElement('button');
   close.type = 'button';
   close.className = 'm2-card-dismiss';
@@ -480,7 +480,7 @@ function updateUpgradeCards() {
     button.dataset.m2UpgradeKey = key;
     q(':scope>.m2-text-card', button)?.remove();
     // The discarded alternative grants the item, not the chosen card itself.
-    const display = textCard(card, 'deck');
+    const display = textCard(card, 'deck', null, heroId);
     if (item) {
       const foot = q('.m2-card-foot', display);
       foot.classList.add('m2-upgrade-footer');
