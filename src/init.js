@@ -86,6 +86,6 @@ style.id = 'goa2-m2-style';
 // and component overrides. Keep that order when changing selectors or specificity.
 /* BUILD:STYLES */
 style.textContent =
-  'html:not([data-m2-active]) :is(#goa2-m2-nav,#goa2-m2-close,#goa2-m2-summary,#goa2-m2-details,#goa2-m2-hero-display,.m2-list-card,.m2-text-card,.m2-hero-dashboard,.m2-resolution-info,.m2-hud,.m2-planning-actions,.m2-deck-browser,.m2-deck-zoom,.m2-own-colors,.m2-cursors,.m2-saved-events){display:none!important}' +
+  'html:not([data-m2-active]) :is(#goa2-m2-nav,#goa2-m2-close,#goa2-m2-summary,#goa2-m2-details,#goa2-m2-hero-display,.m2-list-card,.m2-text-card,.m2-hero-dashboard,.m2-resolution-info,.m2-hud,.m2-hud-bottom,.m2-planning-actions,.m2-deck-browser,.m2-deck-zoom,.m2-own-colors,.m2-cursors,.m2-saved-events){display:none!important}' +
   css.replaceAll('&', 'html[data-m2-active]');
 document.head.append(style);

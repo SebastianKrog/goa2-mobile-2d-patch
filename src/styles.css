@@ -6,6 +6,7 @@
   overscroll-behavior: none;
 }
 & [data-m2="layout"] {
+  position: relative;
   box-sizing: border-box;
   padding-bottom: var(--m2-nav);
   overflow: hidden;
@@ -296,7 +297,7 @@
   display: none !important;
 }
 & [data-m2="tip"] {
-  top: calc(var(--m2-head) + 8px) !important;
+  top: var(--m2-head) !important;
   bottom: auto !important;
   max-height: calc(var(--m2-vh, 100dvh) - var(--m2-head) - var(--m2-nav) - 120px) !important;
   padding: 8px !important;
@@ -1083,14 +1084,15 @@
   height: auto !important;
   min-height: 0 !important;
   flex: 0 0 auto !important;
-  padding: 5px 8px !important;
+  padding: 2px 8px !important;
 }
 /* Keep native header elements mounted for data reads while showing only the compact HUD. */
 & [data-m2="header"] > :not(.m2-hud) {
   display: none !important;
 }
 & {
-  --m2-head: 84px;
+  --m2-head: 40px;
+  --m2-status-h: 22px;
   --m2-radius: 8px;
   --m2-border: #394353;
   --m2-gap: 6px;
@@ -1098,92 +1100,168 @@
 & .m2-hud {
   width: 100%;
 }
-/* Mirrored lives flank round/turn, coin, and waves; narrow columns may shrink without overflow. */
+/* Compact icon/value overlays flank the unchanged round/turn labels. Coin
+   has room for either team name while all overlays share one text style. */
 & .m2-hud-top {
   display: grid;
-  grid-template-columns: minmax(44px, 1fr) 54px 40px 54px minmax(44px, 1fr);
+  grid-template-columns: minmax(34px, 1fr) 32px 44px 56px 44px 32px minmax(34px, 1fr);
+  position: relative;
   align-items: center;
   gap: 4px;
-  height: 40px;
+  height: 36px;
 }
-& .m2-life {
-  display: flex;
-  gap: 3px;
-  align-items: center;
-  font-size: 17px;
+& :is(.m2-life, .m2-minions, .m2-coin, .m2-waves) {
+  display: grid;
+  place-items: center;
+  height: 34px;
+  min-width: 0;
   white-space: nowrap;
 }
+& :is(.m2-life, .m2-minions, .m2-coin, .m2-waves) > * {
+  grid-area: 1 / 1;
+}
+& :is(.m2-life b, .m2-minions b, .m2-coin small, .m2-waves b) {
+  z-index: 1;
+  color: #fff;
+  font: 700 15px/1 system-ui;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 1px 2px #000, 0 0 3px #000, 1px 0 1px #000, -1px 0 1px #000;
+}
+& .m2-life {
+  width: 34px;
+}
 & .m2-life.red {
-  color: #f27070;
-  justify-content: flex-start;
+  grid-column: 1;
+  justify-self: start;
 }
 & .m2-life.blue {
-  color: #69b5fc;
-  justify-content: flex-end;
+  grid-column: 7;
+  justify-self: end;
 }
 & .m2-life img {
-  width: 19px;
-  height: 23px;
+  width: 28px;
+  height: 30px;
+  object-fit: contain;
+}
+& .m2-minions {
+  width: 32px;
+  justify-self: center;
+}
+/* Each minion counter is halfway from its lives icon to the central coin. */
+& .m2-minions.red, & .m2-minions.blue {
+  position: absolute;
+  top: 1px;
+  transform: translateX(-50%);
+}
+& .m2-minions.red { left: calc(25% + 8.5px); }
+& .m2-minions.blue { left: calc(75% - 8.5px); }
+& .m2-minions img {
+  width: 28px;
+  height: 28px;
   object-fit: contain;
 }
 & .m2-round {
+  grid-column: 3;
   display: flex;
   flex-direction: column;
   align-items: center;
   font-size: 8px;
+  font-weight: 700;
   line-height: 15px;
   text-transform: uppercase;
   font-variant-numeric: tabular-nums;
 }
 & .m2-coin {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-& .m2-coin img {
-  width: 24px;
-  height: 24px;
+  grid-column: 4;
+  width: 56px;
 }
 & .m2-coin small {
-  font-size: 7px;
+  font-size: 13px;
+}
+& .m2-coin img {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
 }
 & .m2-waves {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 3px;
-  font-size: 11px;
+  grid-column: 5;
+  width: 40px;
 }
 & .m2-waves img {
-  width: 18px;
-  height: 18px;
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
 }
-/* Phase and action each occupy half the row. Action text may wrap inside its own half. */
+@media (max-width: 360px) {
+  /* Keep the midpoint counters clear of round/turn and push on narrow phones. */
+  & .m2-minions.red { left: calc(25% - 10px); }
+  & .m2-minions.blue { left: calc(75% + 10px); }
+}
+/* One-line strip flush with the header. A fixed phase column leaves the
+   remaining width for the current action, with one indicator between them. */
 & .m2-hud-bottom {
+  position: absolute;
+  top: var(--m2-head);
+  left: 8px;
+  right: 8px;
+  z-index: 81;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 6px;
-  min-height: 30px;
-  height: auto;
-  margin-top: 4px;
+  grid-template-columns: 72px 6px minmax(0, 1fr);
+  align-items: center;
+  column-gap: 9px;
+  box-sizing: border-box;
+  height: 22px;
+  min-height: 22px;
+  padding: 4px 8px;
+  border: 1px solid #48515c80;
+  border-top: 0;
+  border-radius: 0 0 8px 8px;
+  background: rgb(17 24 29 / 72%);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  pointer-events: none;
+  font: 600 9px/12px system-ui;
 }
 & .m2-hud-bottom > div {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid #48515c;
-  border-radius: 9px;
-  text-align: center;
-  font: 600 10px/1.15 system-ui;
+  min-width: 0;
+  white-space: nowrap;
   overflow: hidden;
+  text-overflow: ellipsis;
 }
 & .m2-phase {
   color: #b6d9c1;
-  background: #17312a;
+  text-align: center;
 }
 & .m2-status {
   color: #ead49d;
-  background: #29251c;
+  text-align: left;
+}
+/* Native GameView mounts this banner only while its connection is down.
+   Preserve that source node and show its message inside the mobile strip. */
+& [class*="_disconnected_"] {
+  display: none !important;
+}
+& .m2-hud-bottom.m2-disconnected {
+  background: rgb(179 38 38 / 60%);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  border-color: #dc7777;
+}
+& .m2-disconnected .m2-phase {
+  font-size: 8px;
+  letter-spacing: -.15px;
+}
+& .m2-disconnected :is(.m2-phase, .m2-status) {
+  color: #fff;
+}
+& .m2-action-dot {
+  display: block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  color: #ead49d;
+  background: currentColor;
+  animation: m2-breathe 2s ease-in-out infinite;
 }
 & [data-m2="commit"] button:not(:disabled) {
   background: var(--m2-card-accent) !important;
@@ -1246,29 +1324,7 @@
   max-height: calc(100dvh - 90px) !important;
   object-fit: contain;
 }
-& .m2-hud-bottom > div {
-  position: relative;
-  box-sizing: border-box;
-  min-width: 0;
-  padding: 3px 17px;
-  white-space: pre-line;
-  overflow-wrap: anywhere;
-  line-height: 12px;
-  font-size: 9px;
-}
-& .m2-hud-bottom > div:before {
-  content: "";
-  position: absolute;
-  left: 7px;
-  top: 50%;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: currentColor;
-  transform: translateY(-50%);
-  animation: m2-breathe 2s ease-in-out infinite;
-}
-/* Action indicator pulse; phase remains static so only the requested action draws attention. */
+/* A single central indicator pulses beside the current action. */
 @keyframes m2-breathe {
   0%,
   100% {
@@ -1281,7 +1337,7 @@
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  & .m2-hud-bottom > div:before {
+  & .m2-action-dot {
     animation: none;
   }
 }
@@ -1294,11 +1350,6 @@
   transform: translate(-50%, -50%) !important;
   animation: none !important;
   z-index: 10002 !important;
-}
-& .m2-phase:before {
-  animation: none !important;
-  opacity: 1;
-  box-shadow: none;
 }
 & [data-m2="hero"] {
   position: relative;
@@ -1413,19 +1464,6 @@
   gap: var(--m2-gap);
 }
 @media (max-height: 500px) {
-  & {
-    --m2-head: 72px;
-  }
-  & .m2-hud-top {
-    height: 30px;
-  }
-  & .m2-hud-bottom {
-    margin-top: 2px;
-  }
-  & .m2-coin img {
-    width: 20px;
-    height: 20px;
-  }
   &[data-m2-mode="hand"] #goa2-m2-details {
     height: 160px;
     min-height: 160px;
@@ -2268,7 +2306,7 @@
 }
 & .m2-board-controls {
   position: absolute;
-  top: 8px;
+  top: calc(var(--m2-status-h, 22px) + 6px);
   right: 8px;
   display: flex;
   gap: 4px;
@@ -2322,7 +2360,7 @@
 /* Choice launchers mirror zoom/reset on the opposite corner of the board. */
 & [data-m2-choice-source] { display: none !important; }
 & .m2-choice-launchers:not([hidden]) {
-  position: absolute; top: 10px; left: 10px; z-index: 85;
+  position: absolute; top: calc(var(--m2-status-h, 22px) + 6px); left: 10px; z-index: 85;
   display: flex; gap: 6px; max-width: calc(100% - 130px); flex-wrap: wrap;
 }
 & .m2-choice-launchers button {
@@ -2440,7 +2478,7 @@ html:not([data-m2-active]) .m2-choice-launchers { display: none !important; }
 & #goa2-m2-details, & #goa2-m2-hero-display { display: none !important; }
 &[data-m2-mode="hand"] #goa2-m2-details:not(:empty),
 &:is([data-m2-mode="hand"], [data-m2-mode="heroes"]) #goa2-m2-hero-display:not(:empty) {
-  display: block !important; position: absolute !important; inset: 8px;
+  display: block !important; position: absolute !important; inset: 0 8px 8px;
   width: auto; height: auto; min-height: 0; max-height: none; margin: 0;
   overflow: auto; z-index: 90; box-sizing: border-box; border-radius: 9px;
 }
@@ -2583,7 +2621,7 @@ html:not([data-m2-active]) .m2-choice-launchers { display: none !important; }
 & .m2-turn-number sup { font-size: 9px; line-height: 1; position: relative; top: -8px; }
 & [data-m2="hero"] .m2-hero-portrait .m2-resolution-info > .m2-symbol {
   left: -4px; top: auto; bottom: -4px; transform: none;
-  border-radius: 3px; background: #111722da;
+  border-radius: 0; background: transparent;
 }
 & .m2-rule-icon { width: 1.3em; height: 1.3em; vertical-align: middle; object-fit: contain; }
 & #goa2-m2-summary .m2-summary-identity { cursor: pointer; }
@@ -2603,8 +2641,8 @@ html:not([data-m2-active]) .m2-choice-launchers { display: none !important; }
 /* Board card inspection uses the same text-card height as the Hand viewer. */
 &[data-m2-mode="board"] [data-m2="board"] { position: relative; }
 &[data-m2-mode="board"] #goa2-m2-hero-display:not(:empty) {
-  display: block !important; position: absolute !important; top: 8px; left: 8px; right: 8px;
-  width: auto; height: var(--m2-card-display-height); min-height: 0; max-height: calc(100% - 16px);
+  display: block !important; position: absolute !important; top: 0; left: 8px; right: 8px;
+  width: auto; height: var(--m2-card-display-height); min-height: 0; max-height: calc(100% - 8px);
   margin: 0; padding: 0; overflow: auto; z-index: 90; box-sizing: border-box;
   border-radius: 9px; background: #090c11;
 }
@@ -2849,8 +2887,8 @@ html:not([data-m2-active]) .m2-choice-launchers { display: none !important; }
 & #goa2-m2-summary .m2-mini-current.m2-micro-hidden {
   display: flex; align-items: center; justify-content: center;
 }
-/* Focus stays inside the same reserved summary height. Constrain its border box,
-   not only its content, and keep history overflow inside its own slot scroller. */
+/* Constrain the focused entry's border box and keep history overflow inside
+   its own slot scroller. Floating focus layout is refined below. */
 &[data-m2-mode="board"] #goa2-m2-summary.m2-summary-focused {
   overflow-x: hidden; overflow-y: auto; align-items: stretch;
 }
@@ -3049,3 +3087,89 @@ html:not([data-m2-active]) .m2-choice-launchers { display: none !important; }
 & #goa2-m2-summary .m2-mini-current.m2-micro-hero .m2-symbol img,
 & .m2-nano-card .m2-symbol,
 & .m2-nano-card .m2-symbol img { width: 14px; min-width: 14px; }
+
+/* Both compact and focused heroes float over the board. Only individual
+   hero entries have tinted, blurred surfaces. */
+&[data-m2-mode="board"] [data-m2="board"] {
+  margin-bottom: 0;
+}
+&[data-m2-mode="board"] #goa2-m2-summary {
+  background: transparent;
+  border-top: 0;
+  pointer-events: none;
+}
+& #goa2-m2-summary:not(.m2-summary-focused) > article {
+  background: rgb(32 41 54 / 72%) !important;
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  pointer-events: auto;
+}
+& #goa2-m2-summary:not(.m2-summary-focused) > article.m2-current-hero {
+  background: rgb(37 39 42 / 72%) !important;
+}
+& #goa2-m2-summary:not(.m2-summary-focused) > article.m2-done-hero {
+  background: rgb(23 29 38 / 72%) !important;
+}
+
+&[data-m2-mode="board"] #goa2-m2-summary.m2-summary-focused {
+  height: auto;
+  max-height: calc(var(--m2-vh, 100dvh) - var(--m2-head) - var(--m2-nav) - 32px);
+  gap: 8px;
+  padding: 5px 8px;
+  overflow: hidden;
+}
+& #goa2-m2-summary .m2-focused-hero {
+  flex: 0 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  pointer-events: auto;
+  background: rgb(27 34 45 / 72%) !important;
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+}
+& .m2-focused-hero .m2-focus-back {
+  font-size: 19px;
+  color: #aeb5be;
+}
+& .m2-focus-portraits {
+  display: flex;
+  flex: 0 0 auto;
+  justify-content: safe center;
+  align-items: flex-start;
+  gap: 6px;
+  min-height: 44px;
+  padding: 3px 4px;
+  overflow-x: auto;
+  background: none;
+  pointer-events: none;
+}
+& #goa2-m2-summary .m2-focus-hero-icon {
+  display: grid;
+  place-items: start center;
+  flex: 0 0 40px;
+  width: 40px;
+  height: 40px;
+  min-height: 0;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0;
+  border-radius: 50%;
+  background: none !important;
+  box-shadow: none !important;
+  cursor: pointer;
+  pointer-events: auto;
+}
+& .m2-focus-hero-icon .m2-hero-portrait {
+  position: relative;
+  grid-area: 1 / 1;
+  margin: 0;
+}
+& .m2-focus-hero-icon[aria-pressed="true"] .m2-hero-portrait {
+  outline: 2px solid #ffe2a0;
+  outline-offset: 2px;
+  box-shadow: 0 0 7px #e6c36c99;
+}
+& .m2-focus-hero-icon:focus-visible {
+  outline: 1px solid #c0cad8;
+  outline-offset: 2px;
+}

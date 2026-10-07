@@ -291,7 +291,7 @@ on(media, 'change', schedule);
 
 // Public teardown for console installs and upgrades: release observers, timers, and DOM changes.
 window.GOA2Mobile2D = {
-  version: '0.16.0',
+  version: '0.17.0',
   destroy() {
     flushEventHistory();
     dead = true;
@@ -360,6 +360,7 @@ window.GOA2Mobile2D = {
     ])
       root.removeAttribute(n);
     root.style.removeProperty('--m2-head');
+    root.style.removeProperty('--m2-status-h');
     root.style.removeProperty('--m2-summary-h');
     root.style.removeProperty('--m2-vh');
     root.style.removeProperty('--m2-offset');

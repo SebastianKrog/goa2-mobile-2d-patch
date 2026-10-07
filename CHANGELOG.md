@@ -1,6 +1,27 @@
 # Changelog
 
-Published releases, newest first. Each entry groups user-visible changes and fixes. Local previews 0.14.10–0.14.18 are included in 0.15.0; 0.15.1–0.15.11 are included in 0.16.0.
+Published releases, newest first. Each entry groups user-visible changes and fixes. Local previews 0.14.10–0.14.18 are included in 0.15.0; 0.15.1–0.15.11 are included in 0.16.0; 0.16.1–0.16.9 are included in 0.17.0.
+
+## 0.17.0
+
+### Changed
+
+- Slim the top header and overlay bold white values with shadows on lives, push, minion and coin icons. Coin labels use smaller, bold BLUE/ORANGE text. Minion counters sit between the coin and lives and count unique minions still on the board.
+- Move phase and action into a translucent, blurred single-line strip flush below the header, with square upper corners and no upper border. Center the phase in its fixed-width column and truncate long actions with an ellipsis.
+- Show Disconnected/Reconnecting in that strip with a translucent red background, retaining the gold pulsing dot in the same position. Restore the latest phase/action after reconnection.
+- Place reset and option controls below the status strip and extend card inspection to cover its top edge.
+- Float Board summary rows and focused Hero entries over the board. Individual entries have translucent, blurred backgrounds; the surrounding container stays transparent.
+- Add floating portraits below the focused Hero in turn order, including initiative/status overlays, active selection highlighting and click-to-switch. A left triangle in the focused portrait returns to the summaries.
+
+### Fixed
+
+- Remove the black rectangular background behind portrait initiative badges in both Heroes and Board.
+- Make the focused Hero's return triangle gray.
+
+### Validation
+
+- All 22 regression test files pass, including connection recovery, stable dot placement, surviving minion counts, ordered focus switching, transparent initiative badges and gray return control.
+- Generated userscript and versioned TXT match the source.
 
 ## 0.16.0
 

@@ -39,7 +39,7 @@ Building alone needs no npm packages: `node scripts/build.mjs` also works before
 
 - `npm run build` combines source files into readable, unminified output in `dist/`.
 - `npm run build:check` checks that committed output matches the source.
-- `npm test` builds and runs all 21 regression test files in isolated Node processes.
+- `npm test` builds and runs all 22 regression test files in isolated Node processes.
 - GitHub Actions checks committed output and runs the tests on pushes and pull requests.
 
 Edit `src/`, then rebuild and commit both source and `dist/`. Do not edit generated
@@ -135,7 +135,9 @@ Facedown cards do not reveal hidden names or stats.
 ## Release notes and planned work
 
 See [CHANGELOG.md](CHANGELOG.md) for published releases and [ROADMAP.md](ROADMAP.md)
-for unfinished work. Version 0.16.0 adds faded artwork, blurred bars, larger Large-card
-stats and tier markers across compact card sizes. The refined Board overview and
-compact Hero/history layout from 0.15.0 remain in place. Unfolded Hero boards are
-disabled; tapping a Board hero opens its compact entry with a portrait back button.
+for unfinished work. Version 0.17.0 adds a slimmer overlaid-icon header and a single-line,
+translucent phase/action strip with blur. Connection warnings replace that strip's
+text while preserving its pulsing dot. Board summaries and focused Hero entries float
+over the board with blurred surfaces; focused entries have a turn-ordered portrait
+selector and a gray return triangle. Portrait initiative badges have transparent
+backgrounds in both Heroes and Board. Unfolded Hero boards remain disabled.

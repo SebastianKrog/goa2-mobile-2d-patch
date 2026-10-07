@@ -91,13 +91,13 @@ try {
   assert.equal(focusStyle.boxSizing, 'border-box');
   assert.equal(focusStyle.minWidth, '0px');
   assert.equal(w.getComputedStyle(summary).overflowX, 'hidden');
-  assert.equal(d.documentElement.style.getPropertyValue('--m2-summary-h'), listHeight, 'focus preserves list and board height');
+  assert.equal(w.getComputedStyle(summary).height, 'auto', 'focused entry floats at its natural height');
   assert(d.querySelector('.m2-summary-focused .m2-focused-hero'));
   assert(!d.querySelector('.m2-focused-hero .m2-expanded-board'), 'focused hero stays compact');
   assert.equal(box.parentElement, originalParent, 'focus never reparents the React-owned hero');
   assert.equal(d.querySelectorAll('.m2-summary-focused .m2-micro-history-slot').length, 5);
   const back = d.querySelector('.m2-focus-back');
-  assert.equal(back.textContent, '<');
+  assert.equal(back.textContent, '◀');
   assert.equal(w.getComputedStyle(back).position, 'absolute');
   assert.equal(w.getComputedStyle(back).display, 'grid');
   assert.equal(w.getComputedStyle(d.querySelector('.m2-focused-hero .m2-resolution-info')).display, 'none');
