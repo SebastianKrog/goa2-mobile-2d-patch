@@ -33,6 +33,13 @@ detailsPanel.id = 'goa2-m2-details';
 const extras = new Set();
 const heroPanel = document.createElement('section');
 heroPanel.id = 'goa2-m2-hero-display';
+// Keep weak ownership markers after removal, so queued mutation records can
+// distinguish generated UI from native changes without retaining detached DOM.
+const generatedRoots = new WeakSet([nav, close, summary, detailsPanel, heroPanel]);
+function addExtra(element) {
+  extras.add(element);
+  generatedRoots.add(element);
+}
 
 // Global listeners share teardown; detached generated nodes retain no global listener registry.
 const on = (e, n, f, options = {}) =>
@@ -55,6 +62,7 @@ let deckMounted = false;
 function setDeckOpen(open) {
   deckOpen = open;
   deckMounted = false;
+  if (open) retryBasicArtwork();
   root.toggleAttribute('data-m2-deck-open', open);
 }
 // Board is the resting state. Every footer control toggles a single overlay/pane;

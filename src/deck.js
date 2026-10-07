@@ -26,6 +26,50 @@ function renderedCard(element) {
 // Native Deck omits basic cards in some layouts. Cache locally painted canvases
 // for the known own-hero basic cards and prune entries that are no longer needed.
 const basicCanvases = new Map();
+const basicPaintStates = new WeakMap();
+function retryBasicArtwork() {
+  for (const canvas of basicCanvases.values()) {
+    const state = basicPaintStates.get(canvas);
+    if (state && !state.painted) {
+      state.retryAt = 0;
+      if (state.pending) state.retryRequested = true;
+    }
+  }
+}
+function paintBasicArtwork(canvas, card, hero, cacheKey) {
+  const state = basicPaintStates.get(canvas);
+  if (state.pending || state.painted || Date.now() < state.retryAt || navigator.onLine === false) return;
+  state.pending = true;
+  (async () => {
+    try {
+      await m2Painter.ensureCardAssetsReady();
+      const slug = hero.id.toLowerCase().replace(/^hero_/, '');
+      const background = card.image_id
+        ? await m2Painter.loadCardBackground(slug, card.image_id) : undefined;
+      if (dead || basicCanvases.get(cacheKey) !== canvas) return;
+      // Paint offscreen first. A missing sprite or other drawing error must
+      // leave the readable fallback on the displayed source canvas intact.
+      const staging = document.createElement('canvas');
+      staging.width = canvas.width;
+      staging.height = canvas.height;
+      const ctx = staging.getContext('2d'), target = canvas.getContext('2d');
+      if (!ctx || !target) return;
+      m2Painter.paintCard(staging, ctx, { ...card, is_facedown: false }, background);
+      target.drawImage(staging, 0, 0);
+      state.painted = !card.image_id || !!background;
+    } catch (error) {
+      if (!dead) console.warn('GoA mobile: basic card artwork unavailable', error);
+    } finally {
+      state.pending = false;
+      state.retryAt = Date.now() + 5000;
+      if (state.retryRequested) {
+        state.retryRequested = false;
+        state.retryAt = 0;
+        if (!dead && !state.painted) schedule();
+      }
+    }
+  })();
+}
 function deckBasics(modal) {
   const candidate = componentProp(modal, 'hero'),
     hero = Array.isArray(candidate?.deck) ? candidate : null;
@@ -46,6 +90,7 @@ function deckBasics(modal) {
         canvas.width = 1192;
         canvas.height = 1664;
         basicCanvases.set(cacheKey, canvas);
+        basicPaintStates.set(canvas, { pending: false, painted: false, retryAt: 0, retryRequested: false });
         const ctx = canvas.getContext('2d');
         if (ctx) {
           ctx.fillStyle = '#202631';
@@ -54,64 +99,48 @@ function deckBasics(modal) {
           ctx.font = '48px sans-serif';
           ctx.fillText(card.name, 50, 100);
         }
-        (async () => {
-          try {
-            await m2Painter.ensureCardAssetsReady();
-            const slug = hero.id.toLowerCase().replace(/^hero_/, '');
-            const bg = card.image_id
-              ? await m2Painter.loadCardBackground(slug, card.image_id)
-              : undefined;
-            if (!dead && ctx)
-              m2Painter.paintCard(canvas, ctx, { ...card, is_facedown: false }, bg);
-          } catch (error) {
-            console.warn('GoA mobile: basic card artwork unavailable', error);
-          }
-        })();
       }
+      paintBasicArtwork(canvas, card, hero, cacheKey);
       return { canvas, card };
     });
 }
 // Reconcile the native Deck modal with the custom browser. If source cards are
 // not ready, retain the native fallback instead of displaying an empty replacement.
+function clearDeckState() {
+  if (!deckState) return;
+  deckState.watchers?.forEach(stop => stop());
+  deckState.host.remove();
+  deckState.zoom.remove();
+  deckState.modal.removeAttribute('data-m2-deck-ready');
+  deckState = null;
+}
 function deckUpdate() {
   const modal = q('[data-m2="deck"]');
   if (!modal || !root.hasAttribute('data-m2-active')) {
-    if (deckState) {
-      deckState.watchers?.forEach((stop) => stop());
-      deckState.host.remove();
-      deckState.zoom.remove();
-      deckState.modal.removeAttribute('data-m2-deck-ready');
-      deckState = null;
-    }
+    clearDeckState();
     return;
   }
   const sources = Array.from(modal.querySelectorAll(c('cardGrid') + ' canvas'));
-  if (!sources.length) return;
+  if (!sources.length) { clearDeckState(); return; }
   const entries = sources.map((canvas) => ({ canvas, card: renderedCard(canvas) }));
   for (const entry of deckBasics(modal)) {
     if (!entries.some((e) => e.card?.id === entry.card.id && e.card?.color === entry.card.color))
       entries.push(entry);
   }
   if (entries.some((e) => !e.card)) {
-    if (deckState) {
-      deckState.watchers?.forEach((stop) => stop());
-      deckState.host.remove();
-      deckState.zoom.remove();
-      deckState.modal.removeAttribute('data-m2-deck-ready');
-      deckState = null;
-    }
+    clearDeckState();
     return;
   } // Retain native deck if framework changes.
   if (!deckState || deckState.modal !== modal) {
-    deckState?.watchers?.forEach((stop) => stop());
-    deckState?.host.remove();
-    deckState?.zoom.remove();
+    clearDeckState();
     const host = document.createElement('section');
     host.className = 'm2-deck-browser';
     const zoom = document.createElement('div');
     zoom.className = 'm2-deck-zoom';
     zoom.hidden = true;
     modal.append(host, zoom);
+    addExtra(host);
+    addExtra(zoom);
     modal.setAttribute('data-m2-deck-ready', '');
     deckState = { modal, host, zoom, key: '', copies: [], dirty: true, watchers: [] };
   }
@@ -336,4 +365,3 @@ function deckPaint() {
     } catch {}
   }
 }
-

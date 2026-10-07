@@ -260,6 +260,74 @@ function upgradedSymbol(items, key, value) {
   return symbol;
 }
 
+// Native controls can change while the card and its artwork stay unchanged.
+// Reconcile their labels, availability and identity independently of card rendering.
+function syncHandActions(foot, card, tip, items) {
+  const sec = card.secondary_actions || {};
+  const original = tip
+    ? Array.from(tip.querySelectorAll('button')).filter((b) => !b.closest('.m2-text-card'))
+    : [];
+  const key = JSON.stringify([items, sec, card.effect_text,
+    original.map(source => [source.textContent, source.disabled])]);
+  if (foot._actionKey === key && foot._actionSources?.length === original.length &&
+      foot._actionSources.every((source, i) => source === original[i])) return;
+  foot._actionKey = key;
+  foot._actionSources = original;
+  const dismissButton = q('.m2-card-dismiss', foot);
+  foot.replaceChildren();
+  if (original.length) {
+    for (const src of original) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.textContent = src.textContent;
+      b.disabled = src.disabled;
+      const key = Object.keys(actionNames).find((k) =>
+        b.textContent.toLowerCase().includes(actionNames[k].toLowerCase()),
+      );
+      b.dataset.action = key || '';
+      if (key) {
+        const raw = b.textContent.match(/\d+\+?/);
+        const value = raw && upgradeValue(key, raw[0], items);
+        if (value !== null && value !== false) {
+          if (raw) {
+            const parts = b.textContent.split(raw[0]);
+            b.textContent = parts[0];
+            const num = document.createElement('span');
+            num.className = 'm2-upgraded-value';
+            num.textContent = value;
+            b.append(num, document.createTextNode(parts.slice(1).join(raw[0])));
+          }
+        }
+      }
+      on(b, 'click', (e) => {
+        e.stopPropagation();
+        if (src.isConnected && !src.disabled) src.click();
+      });
+      foot.append(b);
+    }
+  } else
+    for (const [key, value] of Object.entries(sec)) {
+      if (['MOVEMENT', 'DEFENSE', 'ATTACK'].includes(key) && !relevantStat(card, key, value))
+        continue;
+      const badge = document.createElement('span');
+      badge.className = 'm2-action';
+      badge.dataset.action = key;
+      badge.textContent =
+        (actionNames[key] || key) +
+        (!['HOLD', 'CLEAR', 'FAST_TRAVEL'].includes(key) ? ' ' + value : '');
+      const changed = upgradeValue(key, value, items);
+      if (changed !== null && ['MOVEMENT', 'DEFENSE', 'ATTACK'].includes(key)) {
+        badge.textContent = (actionNames[key] || key) + ' ';
+        const num = document.createElement('span');
+        num.className = 'm2-upgraded-value';
+        num.textContent = changed;
+        badge.append(num);
+      }
+      foot.append(badge);
+    }
+  if (dismissButton) foot.append(dismissButton);
+}
+
 // Shared readable card renderer. Deck shows printed values; Hand and Heroes apply known upgrades.
 // Hand actions proxy native controls so the website remains responsible for game rules.
 function textCard(card, context, tip, heroId) {
@@ -324,61 +392,7 @@ function textCard(card, context, tip, heroId) {
     if (card.item) {
       foot.append(symbol(card.item === 'AREA' ? 'RADIUS' : card.item));
     }
-  } else {
-    const original = tip
-      ? Array.from(tip.querySelectorAll('button')).filter((b) => !b.closest('.m2-text-card'))
-      : [];
-    if (original.length) {
-      for (const src of original) {
-        const b = document.createElement('button');
-        b.type = 'button';
-        b.textContent = src.textContent;
-        b.disabled = src.disabled;
-        const key = Object.keys(actionNames).find((k) =>
-          b.textContent.toLowerCase().includes(actionNames[k].toLowerCase()),
-        );
-        b.dataset.action = key || '';
-        if (key) {
-          const raw = b.textContent.match(/\d+\+?/);
-          const value = raw && upgradeValue(key, raw[0], items);
-          if (value !== null && value !== false) {
-            if (raw) {
-              const parts = b.textContent.split(raw[0]);
-              b.textContent = parts[0];
-              const num = document.createElement('span');
-              num.className = 'm2-upgraded-value';
-              num.textContent = value;
-              b.append(num, document.createTextNode(parts.slice(1).join(raw[0])));
-            }
-          }
-        }
-        on(b, 'click', (e) => {
-          e.stopPropagation();
-          src.click();
-        });
-        foot.append(b);
-      }
-    } else
-      for (const [key, value] of Object.entries(sec)) {
-        if (['MOVEMENT', 'DEFENSE', 'ATTACK'].includes(key) && !relevantStat(card, key, value))
-          continue;
-        const badge = document.createElement('span');
-        badge.className = 'm2-action';
-        badge.dataset.action = key;
-        badge.textContent =
-          (actionNames[key] || key) +
-          (!['HOLD', 'CLEAR', 'FAST_TRAVEL'].includes(key) ? ' ' + value : '');
-        const changed = upgradeValue(key, value, items);
-        if (changed !== null && ['MOVEMENT', 'DEFENSE', 'ATTACK'].includes(key)) {
-          badge.textContent = (actionNames[key] || key) + ' ';
-          const num = document.createElement('span');
-          num.className = 'm2-upgraded-value';
-          num.textContent = changed;
-          badge.append(num);
-        }
-        foot.append(badge);
-      }
-  }
+  } else syncHandActions(foot, card, tip, items);
   box.append(top, body, foot);
   if (context === 'hand') {
     const x = document.createElement('button');

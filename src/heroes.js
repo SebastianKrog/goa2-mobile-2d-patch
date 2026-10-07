@@ -183,7 +183,7 @@ function updateHeroDashboard(box, view, suppliedHero = null) {
     dashboard = document.createElement('div');
     dashboard.className = 'm2-hero-dashboard';
     box.append(dashboard);
-    extras.add(dashboard);
+    addExtra(dashboard);
   }
   dashboard.dataset.key = key;
   dashboard.replaceChildren();
@@ -202,7 +202,7 @@ function updateHeroDashboard(box, view, suppliedHero = null) {
     encodeURIComponent((hero.name || hero.id.replace(/^hero_/i, '')).toLowerCase()) +
     '.webp';
   portraitImage.alt = hero.name || hero.id;
-  if (offboard) portrait.style.filter = 'grayscale(1)';
+  if (offboard) portraitImage.style.filter = 'grayscale(1)';
   portrait.append(portraitImage);
   dashboard.append(portrait);
   if (offboard) {
@@ -399,7 +399,7 @@ function updateTurnPortrait(box, entry, done, offboard, resolving) {
   if (!info) {
     info = document.createElement('div');
     info.className = 'm2-resolution-info';
-    extras.add(info);
+    addExtra(info);
   }
   const portrait = q('.m2-hero-portrait', box), host = portrait || box;
   if (info.parentElement !== host) host.append(info);
@@ -492,7 +492,7 @@ function updateUpgradeCards() {
       foot.setAttribute('aria-label', foot.title);
     }
     button.append(display);
-    extras.add(display);
+    addExtra(display);
   }
 }
 // Read the native resolution queue as the authority for order and initiative.

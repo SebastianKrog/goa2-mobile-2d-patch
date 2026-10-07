@@ -1,12 +1,73 @@
-const {JSDOM}=require('jsdom'),fs=require('fs'),assert=require('assert');
-const d=new JSDOM('<div><header class="_bar_x"><span class="_phase_x">PLANNING</span></header><div class="_sidebar_x"><section><div class="_name_x">Hanu (You)</div><div class="_details_x">Lv 1 · 0 Gold</div><button class="_viewDeckBtn_x">Deck</button></section><section><div class="_label_x">HAND</div></section></div></div>',{url:'https://goa2.frontend.pedroliv.dev/?3d=0',runScripts:'outside-only',pretendToBeVisual:true});
-const w=d.window,doc=w.document;w.matchMedia=()=>({matches:true,addEventListener(){}});
-const row=doc.createElement('div');row.className='_row_x';row.innerHTML='<span class="_cardName_x">Helping Hand</span>';row.__reactFiber$test={memoizedProps:{card:{name:'Helping Hand',color:'RED',tier:'I',initiative:9,primary_action:'ATTACK',primary_action_value:3,range_value:3,secondary_actions:{MOVEMENT:5,DEFENSE:4}}}};doc.querySelector('._label_x').parentElement.append(row);let clicks=0;row.addEventListener('click',()=>clicks++);
-w.eval(fs.readFileSync('dist/goa2-mobile-2d.user.js','utf8'));
-const v=doc.querySelector('.m2-list-card');assert(v);assert.equal(v.firstElementChild.textContent,'9');assert.equal(v.children[1].textContent,'3Helping Hand3');assert.equal(v.lastElementChild.textContent,'54');v.querySelector('.m2-list-name').click();assert.equal(clicks,1);
-assert.equal(doc.querySelectorAll('.m2-own-colors i').length,1);
-assert.deepEqual([...doc.querySelectorAll('#goa2-m2-nav button')].filter(b=>!b.hidden).map(b=>b.dataset.mode),['heroes','hand','deck','tools']);
-assert(!doc.querySelector('.m2-summary-controls'));assert(doc.querySelector('.m2-summary-piles'));assert(doc.querySelector('.m2-summary-upgrades'));assert(doc.querySelector('.m2-summary-level'));
-const setup=doc.createElement('div');setup.setAttribute('aria-label','Starting position');doc.body.append(setup);
-row.className='_row_x _selected_x';
-setTimeout(()=>{try{assert(row.classList.contains('m2-adapted-row'));assert.equal(row.querySelectorAll('.m2-list-card').length,1);assert(!doc.querySelector('[data-mode="setup"]').hidden);w.GOA2Mobile2D.destroy();assert(!doc.querySelector('.m2-list-card'));assert(!row.classList.contains('m2-adapted-row'));assert(doc.querySelector('._cardName_x'));console.log('PASS: ordered rows, native click preserved, own colors, overview switches, contextual Setup, cleanup.');}finally{w.close();}},50);
+const { JSDOM } = require('jsdom'),
+  fs = require('fs'),
+  assert = require('assert');
+const d = new JSDOM(
+  '<div><header class="_bar_x"><span class="_phase_x">PLANNING</span></header><div class="_sidebar_x"><section><div class="_name_x">Hanu (You)</div><div class="_details_x">Lv 1 · 0 Gold</div><button class="_viewDeckBtn_x">Deck</button></section><section><div class="_label_x">HAND</div></section></div></div>',
+  {
+    url: 'https://goa2.frontend.pedroliv.dev/?3d=0',
+    runScripts: 'outside-only',
+    pretendToBeVisual: true,
+  },
+);
+const w = d.window,
+  doc = w.document;
+w.matchMedia = () => ({ matches: true, addEventListener() {} });
+const row = doc.createElement('div');
+row.className = '_row_x';
+row.innerHTML = '<span class="_cardName_x">Helping Hand</span>';
+row.__reactFiber$test = {
+  memoizedProps: {
+    card: {
+      name: 'Helping Hand',
+      color: 'RED',
+      tier: 'I',
+      initiative: 9,
+      primary_action: 'ATTACK',
+      primary_action_value: 3,
+      range_value: 3,
+      secondary_actions: { MOVEMENT: 5, DEFENSE: 4 },
+    },
+  },
+};
+doc.querySelector('._label_x').parentElement.append(row);
+let clicks = 0;
+row.addEventListener('click', () => clicks++);
+w.eval(fs.readFileSync('dist/goa2-mobile-2d.user.js', 'utf8'));
+const v = doc.querySelector('.m2-list-card');
+assert(v);
+assert.equal(v.firstElementChild.textContent, '9');
+assert.equal(v.children[1].textContent, '3Helping Hand3');
+assert.equal(v.lastElementChild.textContent, '54');
+v.querySelector('.m2-list-name').click();
+assert.equal(clicks, 1);
+assert.equal(doc.querySelectorAll('.m2-own-colors i').length, 1);
+assert.deepEqual(
+  [...doc.querySelectorAll('#goa2-m2-nav button')]
+    .filter((b) => !b.hidden)
+    .map((b) => b.dataset.mode),
+  ['heroes', 'hand', 'deck', 'tools'],
+);
+assert(!doc.querySelector('.m2-summary-controls'));
+assert(doc.querySelector('.m2-summary-piles'));
+assert(doc.querySelector('.m2-summary-upgrades'));
+assert(doc.querySelector('.m2-summary-level'));
+const setup = doc.createElement('div');
+setup.setAttribute('aria-label', 'Starting position');
+doc.body.append(setup);
+row.className = '_row_x _selected_x';
+setTimeout(() => {
+  try {
+    assert(row.classList.contains('m2-adapted-row'));
+    assert.equal(row.querySelectorAll('.m2-list-card').length, 1);
+    assert(!doc.querySelector('[data-mode="setup"]').hidden);
+    w.GOA2Mobile2D.destroy();
+    assert(!doc.querySelector('.m2-list-card'));
+    assert(!row.classList.contains('m2-adapted-row'));
+    assert(doc.querySelector('._cardName_x'));
+    console.log(
+      'PASS: ordered rows, native click preserved, own colors, overview switches, contextual Setup, cleanup.',
+    );
+  } finally {
+    w.close();
+  }
+}, 50);

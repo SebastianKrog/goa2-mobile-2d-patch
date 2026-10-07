@@ -1009,15 +1009,15 @@ const m2Painter = (() => {
       });
     }
     // Load standard sprites and inline effect symbols into the shared image map.
-    function preloadImages() {
-      return Promise.all(
-        imageNames.map(async (imageName) => {
-          try {
-            const image = await loadImage(`/cards/sheets/${imageName}.png`);
-            images.set(imageName, image);
-          } catch {}
+    async function preloadImages() {
+      const results = await Promise.allSettled(
+        imageNames.filter(name => !images.has(name)).map(async (imageName) => {
+          const image = await loadImage(`/cards/sheets/${imageName}.png`);
+          images.set(imageName, image);
         }),
       );
+      if (results.some(result => result.status === 'rejected'))
+        throw new Error('Card sprites are incomplete; retry when the connection recovers');
     }
     async function importCardImage(hero, card) {
       try {
@@ -1439,13 +1439,19 @@ const m2Painter = (() => {
     // Share one in-flight promise so simultaneous Deck cards wait on the same assets.
     function ensureCardAssetsReady() {
       if (assetsReadyPromise) return assetsReadyPromise;
-      assetsReadyPromise = Promise.all([
+      assetsReadyPromise = Promise.allSettled([
         preloadImages(),
         document.fonts
           .load(`16px "Modesto Poster"`)
           .then(() => document.fonts.ready)
           .then(() => undefined),
-      ]).then(() => undefined);
+      ]).then(results => {
+        const failed = results.find(result => result.status === 'rejected');
+        if (failed) throw failed.reason;
+      }).catch(error => {
+        assetsReadyPromise = null;
+        throw error;
+      });
       return assetsReadyPromise;
     }
     // Cache promises as well as completed backgrounds to avoid duplicate requests.
@@ -1454,7 +1460,10 @@ const m2Painter = (() => {
       const key = `${heroSlug}/${imageId}`;
       const existing = bgCache.get(key);
       if (existing) return existing;
-      const p = importCardImage(heroSlug, imageId);
+      const p = importCardImage(heroSlug, imageId).then(image => {
+        if (!image) bgCache.delete(key);
+        return image;
+      });
       bgCache.set(key, p);
       return p;
     }

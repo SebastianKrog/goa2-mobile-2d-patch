@@ -254,7 +254,14 @@ function refresh() {
     tip.querySelector(':scope>.m2-text-card')?.remove();
     const unified = textCard(card, 'hand', tip);
     tip.append(unified);
-    extras.add(unified);
+    addExtra(unified);
+  }
+  if (card) {
+    const items = cardUpgrades(card);
+    for (const display of [q(':scope>.m2-text-card', detailsPanel), tip && q(':scope>.m2-text-card', tip)]) {
+      const foot = display && q('.m2-card-foot', display);
+      if (foot) syncHandActions(foot, card, tip, items);
+    }
   }
   if (tip !== dismissedTip && tip?.hasAttribute('data-m2-dismissed'))
     tip.removeAttribute('data-m2-dismissed');
@@ -273,16 +280,36 @@ function refresh() {
 function schedule() {
   if (!frame) frame = requestAnimationFrame(refresh);
 }
-// Watch only structural and relevant native class/label changes. Our own data-m2
-// attributes are intentionally excluded to avoid a self-triggering observer loop.
-const observer = new MutationObserver(schedule);
+function isGeneratedNode(node) {
+  for (let element = node.nodeType === 1 ? node : node.parentElement;
+       element; element = element.parentElement)
+    if (generatedRoots.has(element)) return true;
+  return false;
+}
+// Native text, artwork and controls can change without mounting new nodes.
+// Ignore our generated subtrees and class tokens to avoid feedback refreshes.
+const nativeClasses = value => (value || '').split(/\s+/)
+  .filter(name => name && !name.startsWith('m2-')).sort().join(' ');
+const observer = new MutationObserver(records => {
+  if (records.some(record => {
+    if (isGeneratedNode(record.target)) return false;
+    if (record.type === 'childList')
+      return [...record.addedNodes, ...record.removedNodes].some(node => !isGeneratedNode(node));
+    if (record.type === 'attributes' && record.attributeName === 'class')
+      return nativeClasses(record.oldValue) !== nativeClasses(record.target.getAttribute('class'));
+    return true;
+  })) schedule();
+});
 observer.observe(document.body, {
   subtree: true,
   childList: true,
+  characterData: true,
   attributes: true,
-  attributeFilter: ['class', 'aria-label'],
+  attributeOldValue: true,
+  attributeFilter: ['class', 'aria-label', 'src', 'disabled'],
 });
 on(window, 'resize', schedule);
+on(window, 'online', () => { retryBasicArtwork(); schedule(); });
 if (window.visualViewport) {
   on(window.visualViewport, 'resize', schedule);
   on(window.visualViewport, 'scroll', schedule);
@@ -291,7 +318,7 @@ on(media, 'change', schedule);
 
 // Public teardown for console installs and upgrades: release observers, timers, and DOM changes.
 window.GOA2Mobile2D = {
-  version: '0.17.0',
+  version: '0.18.0',
   destroy() {
     flushEventHistory();
     dead = true;
@@ -337,10 +364,6 @@ window.GOA2Mobile2D = {
       e.removeAttribute('data-m2-dismissed');
       e.removeAttribute('data-m2-other');
       e.removeAttribute('data-m2-fraction');
-    }
-    for (const e of document.querySelectorAll('[data-m2-history-empty]')) {
-      e.hidden = false;
-      e.removeAttribute('data-m2-history-empty');
     }
     for (const e of document.querySelectorAll('[data-m2-upgrade-key]'))
       e.removeAttribute('data-m2-upgrade-key');

@@ -12,6 +12,10 @@ let eventHistoryKey = '',
   lastLogArrays = new Set(),
   blockedLogArrays = new WeakSet();
 const pendingHistoryWrites = new Map();
+// Apply the same shape check to saved and live entries before reading their keys.
+function validEventEntry(entry) {
+  return entry?.event && typeof entry.event === 'object' && typeof entry.timestamp === 'number';
+}
 // Event IDs can restart after refresh; include timestamp and payload for deduplication.
 function eventKey(entry) {
   return JSON.stringify([entry.timestamp, entry.id, entry.event]);
@@ -52,15 +56,23 @@ function changeEventGame() {
     const value = JSON.parse(localStorage.getItem(key) || '[]');
     if (Array.isArray(value))
       savedEvents = value
-        .filter((x) => x?.event && typeof x.event === 'object' && typeof x.timestamp === 'number')
+        .filter(validEventEntry)
         .slice(-EVENT_LIMIT);
   } catch {
     historyError = 'Saved event history could not be read on this device.';
   }
+  // A queued write is newer than storage. Restore it when returning to a game,
+  // including when reading storage fails, before new events replace that write.
+  const pending = pendingHistoryWrites.get(key);
+  if (pending) {
+    savedEvents = [...new Map([...savedEvents, ...JSON.parse(pending)]
+      .map(entry => [eventKey(entry), entry])).values()].slice(-EVENT_LIMIT);
+    historyDirty = true;
+  }
   seenEvents = new Set(savedEvents.map(eventKey));
   for (const el of document.querySelectorAll('.m2-saved-events')) el.remove();
   expandedHeroIds.clear();
-    focusedHeroId = null;
+  focusedHeroId = null;
   clearHeroCard();
   return true;
 }
@@ -127,9 +139,11 @@ function updateEventHistory() {
         String(gameId)
     )
       continue;
+    const delivered = events.filter(validEventEntry);
     let changed = false;
-    for (const entry of events) {
-      if (!entry?.event || typeof entry.timestamp !== 'number') continue;
+    // Older entries in an oversized native backlog cannot be retained. Recollecting
+    // them would evict newer entries and rewrite the archive on every idle poll.
+    for (const entry of delivered.slice(-EVENT_LIMIT)) {
       const key = eventKey(entry);
       if (seenEvents.has(key)) continue;
       seenEvents.add(key);
@@ -147,14 +161,13 @@ function updateEventHistory() {
     const container = toggle.parentElement,
       log = q(c('log'), container);
     if (!log) continue;
-    const liveKeys = new Set(events.map(eventKey)),
+    const liveKeys = new Set(delivered.map(eventKey)),
       earlier = savedEvents.filter((entry) => !liveKeys.has(eventKey(entry)));
     let history = q('.m2-saved-events', log);
     const renderKey = JSON.stringify([historyRevision, earlier.map(eventKey), historyError]);
     const empty = q(c('empty'), log);
     if (empty) {
-      empty.hidden = earlier.length > 0;
-      empty.dataset.m2HistoryEmpty = 'true';
+      managedAttribute(empty, 'hidden', earlier.length > 0 ? '' : null);
     }
     if (!earlier.length && !historyError) {
       history?.remove();
@@ -165,7 +178,7 @@ function updateEventHistory() {
       history = document.createElement('div');
       history.className = 'm2-saved-events';
       log.prepend(history);
-      extras.add(history);
+      addExtra(history);
     }
     const open = new Set(
       Array.from(history.querySelectorAll('details[open]')).map((el) => el.dataset.key),
@@ -193,4 +206,3 @@ on(window, 'pagehide', updateEventHistory);
 // Periodic collection also runs when no relevant DOM mutation occurs; pagehide
 // attempts a final collection/write before the document is unloaded.
 const eventHistoryTimer = setInterval(updateEventHistory, 1500);
-

@@ -1,7 +1,45 @@
-const {JSDOM}=require('jsdom'),fs=require('fs'),assert=require('assert');
-const d=new JSDOM('<div><header class="_bar_x"><span class="_phase_x">PLANNING</span></header><div class="_sidebar_x"><section><div class="_name_x">Hanu (You)</div><div class="_details_x">Lv 1 · 0 Gold</div></section><div><div class="_label_x">HAND</div><div class="_row_x"></div></div></div></div>',{url:'https://goa2.frontend.pedroliv.dev/?3d=0',runScripts:'outside-only',pretendToBeVisual:true});
-const w=d.window,doc=w.document;w.matchMedia=()=>({matches:true,addEventListener(){}});
-doc.querySelector('section').__reactFiber$t={memoizedProps:{hero:{id:'hanu',played_cards:[],items:{},current_turn_card:null}}};doc.querySelector('._sidebar_x').__reactFiber$t={memoizedProps:{view:{phase:'PLANNING'}}};
-w.eval(fs.readFileSync('dist/goa2-mobile-2d.user.js','utf8'));
-const tick=()=>new Promise(r=>setTimeout(r,50));
-(async()=>{try{assert(doc.querySelector('.m2-selection-status .m2-selecting-dots'));doc.querySelector('._row_x').className='_row_x _selected_x';await tick();assert.equal(doc.querySelector('.m2-current-card-slot .m2-selection-status').textContent,'Selected');assert(!doc.querySelector('.m2-current-card-slot .m2-selecting-dots'));assert.equal(doc.querySelector('.m2-summary-turn').getAttribute('aria-label'),'Selected');doc.querySelector('._row_x').className='_row_x';await tick();assert(doc.querySelector('.m2-selection-status .m2-selecting-dots'));assert(doc.querySelector('.m2-summary-turn .m2-selecting-dots'));console.log('PASS: animation stops on local selection and resumes on deselection, Heroes and Board');}finally{w.GOA2Mobile2D.destroy();w.close();}})();
+const { JSDOM } = require('jsdom'),
+  fs = require('fs'),
+  assert = require('assert');
+const d = new JSDOM(
+  '<div><header class="_bar_x"><span class="_phase_x">PLANNING</span></header><div class="_sidebar_x"><section><div class="_name_x">Hanu (You)</div><div class="_details_x">Lv 1 · 0 Gold</div></section><div><div class="_label_x">HAND</div><div class="_row_x"></div></div></div></div>',
+  {
+    url: 'https://goa2.frontend.pedroliv.dev/?3d=0',
+    runScripts: 'outside-only',
+    pretendToBeVisual: true,
+  },
+);
+const w = d.window,
+  doc = w.document;
+w.matchMedia = () => ({ matches: true, addEventListener() {} });
+doc.querySelector('section').__reactFiber$t = {
+  memoizedProps: { hero: { id: 'hanu', played_cards: [], items: {}, current_turn_card: null } },
+};
+doc.querySelector('._sidebar_x').__reactFiber$t = {
+  memoizedProps: { view: { phase: 'PLANNING' } },
+};
+w.eval(fs.readFileSync('dist/goa2-mobile-2d.user.js', 'utf8'));
+const tick = () => new Promise((r) => setTimeout(r, 50));
+(async () => {
+  try {
+    assert(doc.querySelector('.m2-selection-status .m2-selecting-dots'));
+    doc.querySelector('._row_x').className = '_row_x _selected_x';
+    await tick();
+    assert.equal(
+      doc.querySelector('.m2-current-card-slot .m2-selection-status').textContent,
+      'Selected',
+    );
+    assert(!doc.querySelector('.m2-current-card-slot .m2-selecting-dots'));
+    assert.equal(doc.querySelector('.m2-summary-turn').getAttribute('aria-label'), 'Selected');
+    doc.querySelector('._row_x').className = '_row_x';
+    await tick();
+    assert(doc.querySelector('.m2-selection-status .m2-selecting-dots'));
+    assert(doc.querySelector('.m2-summary-turn .m2-selecting-dots'));
+    console.log(
+      'PASS: animation stops on local selection and resumes on deselection, Heroes and Board',
+    );
+  } finally {
+    w.GOA2Mobile2D.destroy();
+    w.close();
+  }
+})();

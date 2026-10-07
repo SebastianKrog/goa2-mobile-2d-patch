@@ -12,5 +12,7 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
+      - run: npm run test:format:check
+      - run: npm run css:format:check
       - run: npm run build:check
       - run: npm test

@@ -35,12 +35,14 @@ npm test
 ```
 
 Building alone needs no npm packages: `node scripts/build.mjs` also works before
-`npm ci`. Dependencies are used only by the browser-fixture tests.
+`npm ci`. Dependencies are used only by the browser-fixture tests and test formatter.
 
 - `npm run build` combines source files into readable, unminified output in `dist/`.
 - `npm run build:check` checks that committed output matches the source.
-- `npm test` builds and runs all 22 regression test files in isolated Node processes.
-- GitHub Actions checks committed output and runs the tests on pushes and pull requests.
+- `npm test` builds and runs all 30 regression test files in isolated Node processes.
+- `npm run test:format` formats test JavaScript; `npm run test:format:check` checks it.
+- `npm run css:format` formats the stylesheet; `npm run css:format:check` checks it.
+- GitHub Actions checks test/CSS formatting, committed output and regressions on pushes and pull requests.
 
 Edit `src/`, then rebuild and commit both source and `dist/`. Do not edit generated
 output directly. For a version change, update `package.json` and `package-lock.json`, the metadata in
@@ -68,6 +70,7 @@ not separately executable ES modules. The builder wraps them in one IIFE, preser
 the existing initialization order and keeping internal state off `window`. Only
 `window.GOA2Mobile2D` is intentionally exported. The CSS marker is replaced at build
 time with an escaped template literal. No minification or runtime loader is used.
+See [the stylesheet guide](src/STYLES.md) for component ownership, cascade rules and CSS checks.
 
 The `m0`–`m3` names inside the painter are inherited internal wrappers and are explained
 in that file. Other UI code calls the painter through its small returned API.
@@ -80,6 +83,8 @@ redraw behavior. `tests/fixtures/goa2-mobile-2d-v0.14.2.txt` is an intentionally
 baseline used to compare canvas commands for 72 card variants.
 
 Fixtures are synthetic; no live game history or credentials are included.
+See [the regression coverage map](tests/README.md) for asserted behaviors, individual
+test commands, formatting rules and remaining manual checks.
 
 Tests do not replace visual checks on Android Firefox. In particular, verify native
 two-finger gestures, browser chrome changes, and real canvas/font rendering on a phone.
@@ -135,7 +140,9 @@ Facedown cards do not reveal hidden names or stats.
 ## Release notes and planned work
 
 See [CHANGELOG.md](CHANGELOG.md) for published releases and [ROADMAP.md](ROADMAP.md)
-for unfinished work. Version 0.17.0 adds a slimmer overlaid-icon header and a single-line,
+for unfinished work. Version 0.18.0 fixes native update synchronization, history and
+artwork recovery, Deck cleanup, desktop log restoration and off-board portrait colors.
+Version 0.17.0 adds a slimmer overlaid-icon header and a single-line,
 translucent phase/action strip with blur. Connection warnings replace that strip's
 text while preserving its pulsing dot. Board summaries and focused Hero entries float
 over the board with blurred surfaces; focused entries have a turn-ordered portrait

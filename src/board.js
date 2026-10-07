@@ -42,7 +42,7 @@ function updateMobileHeader(header) {
     hud.innerHTML =
       '<div class="m2-hud-top"><div class="m2-life red"><img src="/icons/life_counter_red_front.png" alt="Orange lives"><b></b></div><div class="m2-minions red"><img src="/hero-images/minion_melee_red.png" alt=""><b></b></div><div class="m2-round"><span></span><span></span></div><div class="m2-coin"><img alt="Tie breaker"><small></small></div><div class="m2-waves"><img src="/icons/wave_counter.png" alt="Waves"><b></b></div><div class="m2-minions blue"><img src="/hero-images/minion_melee_blue.png" alt=""><b></b></div><div class="m2-life blue"><b></b><img src="/icons/life_counter_blue_front.png" alt="Blue lives"></div></div>';
     header.append(hud);
-    extras.add(hud);
+    addExtra(hud);
   }
   // Only generated nodes are moved; native React elements remain in place.
   if (!mobileStatusStrip) {
@@ -54,7 +54,7 @@ function updateMobileHeader(header) {
   if (mobileStatusStrip.parentElement !== header.parentElement ||
       header.nextElementSibling !== mobileStatusStrip)
     header.after(mobileStatusStrip);
-  extras.add(mobileStatusStrip);
+  addExtra(mobileStatusStrip);
   const put = (sel, text) => {
     const e = q(sel, hud) || q(sel, mobileStatusStrip);
     if (e.textContent !== text) e.textContent = text;
@@ -137,7 +137,7 @@ function updateCursorSetting() {
     b.title = 'Changing this setting reloads the game view';
     sync();
     menu.append(b);
-    extras.add(b);
+    addExtra(b);
   }
 }
 // Shared slim/normal row structure: initiative, colored primary/name/range band,
@@ -158,7 +158,7 @@ function updateCardRow(row, card, knownItems) {
     view = document.createElement('span');
     view.className = 'm2-list-card';
     row.append(view);
-    extras.add(view);
+    addExtra(view);
   }
   view.dataset.key = key;
   view.classList.toggle('m2-small-card', small);
@@ -224,7 +224,7 @@ function updateOwnColors(sidebar) {
     dots = document.createElement('span');
     dots.className = 'm2-own-colors';
     details.prepend(dots);
-    extras.add(dots);
+    addExtra(dots);
   }
   const key = JSON.stringify(colors);
   if (dots.dataset.key === key) return;
@@ -588,6 +588,7 @@ function updateBoardRotation() {
   ])
     on(controls, event, (e) => e.stopPropagation());
   host.append(controls);
+  addExtra(controls);
   state.observer = new MutationObserver(state.sync);
   state.observer.observe(svg, { attributes: true, attributeFilter: ['style', 'viewBox'] });
   if (typeof ResizeObserver !== 'undefined') {
@@ -613,7 +614,7 @@ function updatePlanningActions() {
     const element = document.createElement('div');
     element.className = 'm2-planning-actions';
     planningActions = { element, sources: [] };
-    extras.add(element);
+    addExtra(element);
   }
   const state = planningActions;
   state.element.classList.toggle('m2-on-board', mode === 'board');
@@ -663,7 +664,7 @@ function updateChoiceLaunchers() {
     host = document.createElement('div');
     host.className = 'm2-choice-launchers';
     board.append(host);
-    extras.add(host);
+    addExtra(host);
   }
   const sources = Array.from(board.querySelectorAll('button')).filter(button =>
     !button.closest('.m2-choice-launchers') && /^(Options|Setup|Upgrades?)$/i.test(button.textContent.trim())

@@ -1,51 +1,17 @@
-/* Mobile layout. Rule order is intentional; later sections refine shared styles. */
+/* Mobile 2D stylesheet. & expands to html[data-m2-active] at installation.
+   Definitions are grouped by component: base, variants, then state/media rules. */
+/* 1. Layout and native panes
+   Native tags override the website; keep !important where inline or native styles must be replaced. */
 & {
+  --m2-safe: min(env(safe-area-inset-bottom, 0px), 16px);
+  --m2-nav: calc(48px + var(--m2-safe));
+  --m2-head: 40px;
+  --m2-status-h: 22px;
+  --m2-radius: 8px;
+  --m2-card-display-height: clamp(190px, 30dvh, 260px);
 }
-/* Base mobile layout: constrain overscroll and reserve space for fixed controls. */
 & body {
   overscroll-behavior: none;
-}
-& [data-m2="layout"] {
-  position: relative;
-  box-sizing: border-box;
-  padding-bottom: var(--m2-nav);
-  overflow: hidden;
-}
-& [data-m2="header"] {
-  box-sizing: border-box;
-  z-index: 80;
-}
-& [data-m2="header"] [class*="_teamPanel_"] {
-  min-height: 28px !important;
-  border-radius: 7px;
-}
-& [data-m2="header"] [class*="_teamIdentity_"] {
-  display: none;
-}
-& [data-m2="header"] [class*="_tieBreaker_"] {
-  width: 20px !important;
-  height: 20px !important;
-  transform: none !important;
-}
-& [data-m2="header"] [class*="_matchMeta_"] {
-  font-size: 8px;
-}
-& [data-m2="header"] [class*="_matchMeta_"] > span {
-  display: inline !important;
-}
-& [data-m2="header"] [class*="_waveCounter_"] {
-  width: 14px;
-  height: 14px;
-}
-& [data-m2="header"] [class*="_status_"] {
-  box-sizing: border-box;
-  padding: 3px 8px;
-}
-& [data-m2="header"] [class*="_statusDetail_"] {
-  display: none;
-}
-& [data-m2="header"] [class*="_statusCopy_"] strong {
-  font: 600 12px system-ui;
 }
 & [data-m2="main"] {
   flex: 1 1 0 !important;
@@ -67,14 +33,8 @@
   border-left: 0;
   overscroll-behavior: contain;
 }
-&[data-m2-mode="board"] [data-m2="board"] {
-  flex: 1 1 0 !important;
-}
 &[data-m2-mode="board"] [data-m2="sidebar"] {
   display: none !important;
-}
-&[data-m2-mode="hand"] [data-m2="board"] {
-  flex: 0 0 22% !important;
 }
 & [data-m2="sidebar"] [class*="_row_"]:has([class*="_cardName_"]) {
   box-sizing: border-box;
@@ -99,9 +59,6 @@
 & [data-m2="sidebar"] [class*="_stats_"] {
   flex-shrink: 0;
 }
-& [data-m2="commit"] {
-  background: #111722;
-}
 & [data-m2="commit"] button {
   width: 100%;
   min-height: 44px;
@@ -114,89 +71,15 @@
 & [data-m2="tools"] {
   display: none !important;
 }
-&[data-m2-panel="setup"] [data-m2="setup"],
-&[data-m2-panel="tools"] [data-m2="tools"] {
-  display: flex !important;
-  position: fixed !important;
-  box-sizing: border-box;
-  left: 8px !important;
-  right: 8px !important;
-  top: auto !important;
-  bottom: calc(var(--m2-nav) + 8px) !important;
-  width: auto !important;
-  max-width: none !important;
-  max-height: 40dvh !important;
-  overflow: auto !important;
-  padding: 10px !important;
-  transform: none !important;
-  z-index: 200 !important;
-  background: #141b27f7;
-  border: 1px solid #59667c;
-  border-radius: 12px;
-}
 & [data-m2="setup"] button,
 & [data-m2="tools"] button {
   min-height: 44px;
   opacity: 1;
   font-size: 13px;
 }
-& [data-m2="tip"] {
-  box-sizing: border-box !important;
-  left: 8px !important;
-  right: 8px !important;
-  width: auto !important;
-  max-width: none !important;
-  overflow: auto !important;
-  pointer-events: auto !important;
-  transform: none !important;
-  animation: none !important;
-  opacity: 1 !important;
-  z-index: 400 !important;
-}
-& [data-m2="tip"][data-m2-dismissed] {
-  display: none !important;
-}
+& [data-m2="tip"][data-m2-dismissed],
 &:has([data-m2="tip"]:not([data-m2-dismissed])) [data-m2="setup"] {
   display: none !important;
-}
-& #goa2-m2-close {
-  position: fixed;
-  right: 8px;
-  z-index: 410;
-  min-height: 40px;
-  padding: 8px 15px;
-  background: #253248;
-  color: #fff;
-  border: 1px solid #73829a;
-  border-radius: 8px;
-  font: 600 13px system-ui;
-}
-/* Bottom navigation stays outside the native sidebar so every main view can reach it. */
-& #goa2-m2-nav {
-  box-sizing: border-box;
-  display: grid;
-  gap: 3px;
-  position: fixed;
-  left: 0;
-  right: 0;
-  background: #101621;
-  border-top: 1px solid #3f4c61;
-}
-& #goa2-m2-nav button {
-  min-width: 0;
-  border: 0;
-  background: transparent;
-  color: #c0cbdc;
-  font: 600 12px system-ui;
-  touch-action: manipulation;
-}
-& #goa2-m2-nav button[aria-pressed="true"] {
-  color: #ffe09c;
-  background: #303c4f;
-}
-& [data-m2="deck"] {
-  box-sizing: border-box;
-  overscroll-behavior: contain;
 }
 & [data-m2="deck"] [class*="_header_"] {
   position: sticky;
@@ -224,188 +107,45 @@
   width: 100% !important;
   height: auto !important;
 }
-& {
-  --m2-safe: min(env(safe-area-inset-bottom, 0px), 16px);
-}
 & [data-m2="layout"] {
+  position: relative;
+  box-sizing: border-box;
+  padding-bottom: var(--m2-nav);
+  overflow: hidden;
   height: var(--m2-vh, 100dvh) !important;
-}
-& [data-m2="header"] {
-  grid-template-rows: 24px 18px 28px;
-  overflow: hidden;
-}
-& [data-m2="header"] [class*="_matchPanel_"] {
-  display: contents;
-}
-& [data-m2="header"] [class*="_matchMeta_"] {
-  grid-column: 2;
-  grid-row: 1;
-  flex-wrap: nowrap;
-  white-space: nowrap;
-}
-& [data-m2="header"] [class*="_waveLanes_"] {
-  grid-column: 2;
-  grid-row: 2;
-}
-& [data-m2="header"] [class*="_status_"] {
-  grid-column: 1/-1;
-  grid-row: 3;
-  min-width: 0 !important;
-}
-& [data-m2="header"] [class*="_redPanel_"] {
-  grid-column: 1;
-  grid-row: 1/3;
-}
-& [data-m2="header"] [class*="_bluePanel_"] {
-  grid-column: 3;
-  grid-row: 1/3;
-}
-& [data-m2="header"] [class*="_lifeCounters_"] {
-  max-width: 100%;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 0;
-}
-& [data-m2="header"] [class*="_lifeCounter_"] {
-  width: 12px !important;
-  margin: 0-1px !important;
-}
-& #goa2-m2-nav {
-  padding-bottom: calc(3px + var(--m2-safe));
-  bottom: var(--m2-offset, 0px);
-}
-&[data-m2-mode="hand"] [data-m2="board"] {
-  visibility: hidden;
-  position: absolute !important;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  pointer-events: none;
 }
 & [data-m2="sidebar"] [class*="_hint_"] {
   display: none;
-}
-& [data-m2="hero"] {
-  margin: 0 !important;
-}
-& [data-m2="hero"] [class*="_viewDeckBtn_"] {
-  margin-top: 4px;
-  padding: 5px 10px;
-  min-height: 32px;
 }
 & [data-m2="empty-pile"] {
   display: none !important;
 }
 & [data-m2="tip"] {
+  box-sizing: border-box !important;
+  left: 8px !important;
+  right: 8px !important;
+  width: auto !important;
+  max-width: none !important;
+  overflow: auto !important;
+  pointer-events: auto !important;
+  transform: none !important;
+  animation: none !important;
+  opacity: 1 !important;
+  z-index: 400 !important;
   top: var(--m2-head) !important;
   bottom: auto !important;
   max-height: calc(var(--m2-vh, 100dvh) - var(--m2-head) - var(--m2-nav) - 120px) !important;
   padding: 8px !important;
 }
-& #goa2-m2-close {
-  bottom: calc(var(--m2-nav) + var(--m2-offset, 0px) + 60px);
-}
-& [data-m2="commit"] {
-  left: 8px;
-  right: 8px;
-  bottom: calc(var(--m2-nav) + var(--m2-offset, 0px));
-}
-&[data-m2-mode="board"] [data-m2="commit"] {
-  display: none !important;
-}
-
-& #goa2-m2-nav button {
-  font-size: 11px;
-  padding: 3px 1px;
-}
-&[data-m2-mode="heroes"] [data-m2="board"] {
-  visibility: hidden;
-  position: absolute !important;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  pointer-events: none;
-}
+&[data-m2-mode="board"] [data-m2="commit"],
 &[data-m2-mode="heroes"] [data-m2="hand-list"] {
   display: none !important;
 }
-&[data-m2-mode="hand"] [data-m2="hero"][data-m2-other] {
-  display: none !important;
-}
-&[data-m2-mode="board"] [data-m2="board"] {
-  margin-bottom: var(--m2-summary-h, 78px);
-}
-/* Compact Board overview. Its measured row count determines the reserved height. */
-&[data-m2-mode="board"] #goa2-m2-summary {
-  display: flex;
-  box-sizing: border-box;
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: calc(var(--m2-nav) + var(--m2-offset, 0px));
-  height: var(--m2-summary-h, 78px);
-  z-index: 90;
-  gap: 2px;
-  padding: 5px 8px;
-  flex-direction: column;
-  overflow: hidden;
-  background: #111722f5;
-  border-top: 1px solid #384459;
-}
-& #goa2-m2-summary article {
-  display: grid;
-  align-items: center;
-  gap: 4px;
-  flex: 0 0 24px;
-  box-sizing: border-box;
-  min-width: 0;
-  padding: 2px 6px;
-  border: 1px solid #435066;
-  border-radius: 8px;
-  background: #202936;
-}
-& #goa2-m2-summary strong {
-  display: block;
-  font-size: 11px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-& #goa2-m2-summary small {
-  display: block;
-  font-size: 11px;
-  color: #c4cede;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-& #goa2-m2-summary .m2-colors {
-  display: flex;
-  gap: 3px;
-  margin-top: 0;
-  align-items: center;
-  justify-content: flex-end;
-  font-size: 9px;
-  color: #9facbf;
-}
-& #goa2-m2-summary .m2-colors i {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  display: block;
-}
-& {
-  --m2-nav: 48px;
-}
-& #goa2-m2-nav {
-  height: 48px;
-  padding: 2px 4px;
-}
-& #goa2-m2-nav button {
-  min-height: 44px;
-  border-radius: 6px;
-}
 & [data-m2="commit"] {
+  background: #111722;
+  left: 8px;
+  right: 8px;
+  bottom: calc(var(--m2-nav) + var(--m2-offset, 0px));
   position: static !important;
   padding: 6px 0 !important;
   z-index: auto !important;
@@ -413,36 +153,23 @@
 & [data-m2="sidebar"]:has([data-m2="commit"]) {
   padding-bottom: 12px !important;
 }
-& [data-m2="hero"]:has([class*="_viewDeckBtn_"]) {
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 2px 8px;
-  align-items: center;
-}
-& [data-m2="hero"] > [class*="_name_"] {
-  grid-column: 1;
-  grid-row: 1;
-}
-& [data-m2="hero"] > [class*="_details_"] {
-  grid-column: 1;
-  grid-row: 2;
-}
-& [data-m2="hero"] > [class*="_viewDeckBtn_"] {
-  grid-column: 2;
-  grid-row: 1/3;
-  margin: 0 !important;
-  min-height: 36px;
-}
-&
-  [data-m2="hero"]:has([class*="_viewDeckBtn_"])
-  > div:not([class*="_name_"]):not([class*="_details_"]) {
-  grid-column: 1/-1;
-}
 &[data-m2-panel="setup"] [data-m2="setup"] {
-  visibility: visible !important;
-  pointer-events: auto !important;
-  z-index: 600 !important;
-}
-&[data-m2-panel="tools"] [data-m2="tools"] {
+  display: flex !important;
+  position: fixed !important;
+  box-sizing: border-box;
+  left: 8px !important;
+  right: 8px !important;
+  top: auto !important;
+  bottom: calc(var(--m2-nav) + 8px) !important;
+  width: auto !important;
+  max-width: none !important;
+  max-height: 40dvh !important;
+  overflow: auto !important;
+  padding: 10px !important;
+  transform: none !important;
+  background: #141b27f7;
+  border: 1px solid #59667c;
+  border-radius: 12px;
   visibility: visible !important;
   pointer-events: auto !important;
   z-index: 600 !important;
@@ -451,22 +178,6 @@
 &[data-m2-panel="tools"] [data-m2="board"] {
   overflow: visible !important;
 }
-& [data-m2="life-fraction"] [class*="_lifeCounters_"] {
-  display: none !important;
-}
-& [data-m2="life-fraction"]:after {
-  content: attr(data-m2-fraction);
-  font: 700 18px system-ui;
-  display: block;
-  text-align: center;
-}
-& .m2-hand-actions {
-  display: flex;
-  justify-content: space-between;
-  gap: 6px;
-  margin: 5px 0 8px;
-}
-& .m2-hand-actions button,
 & #goa2-m2-details button {
   min-height: 36px;
   padding: 5px 10px;
@@ -476,288 +187,20 @@
   color: #e7edf5;
   font: 600 12px system-ui;
 }
-& #goa2-m2-details {
-  display: none;
-}
-&[data-m2-mode="hand"] #goa2-m2-details:not(:empty) {
-  display: block;
-  box-sizing: border-box;
-  flex: 0 0 auto;
-  max-height: 42dvh;
-  overflow: auto;
-  margin: 6px 8px;
-  border-radius: 10px;
-}
 &[data-m2-mode="hand"] [data-m2="tip"] {
-  display: none !important;
-}
-&[data-m2-mode="hand"] #goa2-m2-close {
   display: none !important;
 }
 & #goa2-m2-details > div {
   max-width: none !important;
 }
-/* Hide native Deck content only after the replacement is ready; retain it as the data source. */
 & [data-m2-deck-ready] > [class*="_tierGroup_"] {
   display: none !important;
 }
 & [data-m2-deck-ready] > [class*="_header_"] {
   margin-bottom: 4px;
 }
-/* Deck view controls and grouped card layouts. Canvas copies preserve artwork proportions. */
-& .m2-deck-controls {
-  position: sticky;
-  z-index: 3;
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 4px;
-  background: var(--bg-secondary, #111722);
-}
-& .m2-deck-controls button,
-& .m2-deck-zoom > button {
-  min-height: 36px;
-  border: 1px solid #536179;
-  border-radius: 7px;
-  background: #233046;
-  color: #e7edf5;
-}
-& .m2-deck-controls button[aria-pressed="true"] {
-  background: #405473;
-  color: #ffe09c;
-}
-& .m2-deck-browser h3 {
-  margin: 12px 0 5px;
-  font-size: 12px;
-  text-transform: capitalize;
-  color: #aabbd1;
-}
-& .m2-deck-cards {
-  display: grid;
-  gap: 6px;
-}
-& .m2-deck-grid {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-& .m2-deck-list,
-& .m2-deck-large {
-  grid-template-columns: minmax(0, 1fr);
-}
-& .m2-deck-card {
-  min-width: 0;
-  border: 0;
-  padding: 0;
-  background: transparent;
-  color: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-& .m2-deck-card canvas {
-  display: block;
-  width: 100% !important;
-  height: auto !important;
-  border-radius: 6px;
-}
-& .m2-deck-large .m2-deck-card {
-  width: min(100%, 360px);
-  justify-self: center;
-}
-& .m2-deck-list .m2-deck-card {
-  border-radius: 8px;
-}
-& .m2-deck-list strong {
-  display: block;
-  font-size: 14px;
-}
-& .m2-deck-list small {
-  display: block;
-  margin-top: 4px;
-  font-size: 11px;
-  line-height: 1.4;
-  color: #b4c2d5;
-}
-& .m2-deck-list p {
-  margin: 6px 0 0;
-  font-size: 12px;
-  line-height: 1.45;
-  white-space: pre-line;
-}
-/* Enlarged artwork sits above the browser; hidden zoom roots must not capture taps. */
-& .m2-deck-zoom:not([hidden]) {
-  display: flex;
-  position: fixed;
-  inset: 8px;
-  z-index: 10000;
-  padding: 10px;
-  box-sizing: border-box;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  background: #0d1420f7;
-  border: 1px solid #63728a;
-  border-radius: 12px;
-  overflow: auto;
-}
-& .m2-deck-zoom > button {
-  position: sticky;
-  top: 0;
-  align-self: flex-end;
-  min-width: 90px;
-}
-& .m2-deck-zoom canvas {
-  width: min(100%, 440px) !important;
-  height: auto !important;
-  flex: none;
-}
-/* Shared text-card shell used for details, Deck list view, and upgrade choices. */
-& .m2-text-card {
-  border: 1px solid #47515e;
-  border-radius: 9px;
-  background: #191e26;
-  color: #e5e7eb;
-  overflow: hidden;
-  text-align: left;
-  font: 13px/1.45 system-ui;
-  width: 100%;
-  box-sizing: border-box;
-}
-& .m2-card-top {
-  display: grid;
-  grid-template-columns: 48px minmax(0, 1fr) 32px;
-  align-items: center;
-  gap: 4px;
-  padding: 8px;
-  background: var(--card-color);
-  /* Set before artwork loads too, avoiding a black-to-white title flash. */
-  color: #f5f6f8;
-  text-shadow: 0 1px 2px #0009;
-}
-& .m2-card-top > b {
-  text-align: center;
-  font-size: 15px;
-}
-& .m2-card-top > span:last-child {
-  text-align: right;
-  font-weight: 700;
-}
-/* Shared stat icon wrapper. Later value-overlay rules center numbers on the artwork. */
-& .m2-symbol {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  white-space: nowrap;
-  font-weight: 650;
-}
-& .m2-symbol img {
-  width: 21px;
-  height: 21px;
-  object-fit: contain;
-  filter: grayscale(1);
-}
-& .m2-card-body {
-  display: grid;
-  grid-template-columns: 42px minmax(0, 1fr);
-  gap: 8px;
-  padding: 10px 8px;
-}
-& .m2-card-body > aside {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-& .m2-card-type {
-  align-items: center;
-  gap: 5px;
-  margin-bottom: 9px;
-}
-& .m2-card-type > b {
-  flex: 1;
-  font-size: 12px;
-}
-& .m2-card-effect {
-  white-space: pre-line;
-  line-height: 1.5;
-}
-& .m2-card-foot {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 5px;
-  align-items: center;
-  padding: 7px 8px;
-}
-& .m2-card-foot:empty {
-  display: none;
-}
-& .m2-card-foot .m2-action,
-& .m2-card-foot button {
-  border: 1px solid currentColor;
-  border-radius: 4px;
-  padding: 4px 6px;
-  font-size: 11px;
-  background: #252b32;
-  color: #d2d6dc;
-}
-& .m2-card-foot [data-action="MOVEMENT"] {
-  color: #7bbded !important;
-}
-& .m2-card-foot [data-action="DEFENSE"] {
-  color: #87cb8b !important;
-}
-& .m2-card-foot [data-action="ATTACK"] {
-  color: #ef8b83 !important;
-}
-& .m2-card-foot [data-action="SKILL"],
-& .m2-card-foot [data-action="DEFENSE_SKILL"] {
-  color: #d0a4ed !important;
-}
-& .m2-deck-list .m2-deck-card {
-  padding: 0;
-  border: 0;
-  background: none;
-}
-/* Native tooltip adaptation: suppress old contents only when our replacement exists. */
-& [data-m2="tip"]:has(> .m2-text-card) {
-  padding: 0 !important;
-  border: 0 !important;
-  background: transparent !important;
-  box-shadow: none !important;
-}
-& [data-m2="tip"]:has(> .m2-text-card) > :not(.m2-text-card) {
-  display: none !important;
-}
-&[data-m2-mode="hand"] #goa2-m2-details {
-  display: block;
-  box-sizing: border-box;
-  height: clamp(190px, 30dvh, 260px);
-  min-height: clamp(190px, 30dvh, 260px);
-  max-height: none;
-  flex: 0 0 auto;
-  overflow: auto;
-  margin: 6px 8px;
-  padding: 0;
-  border: 0;
-  background: none;
-  border-radius: 9px;
-}
-& #goa2-m2-details:empty:after {
-  content: "Select a card to view details";
-  display: grid;
-  place-items: center;
-  height: 100%;
-  color: #97a2b3;
-  font-size: 13px;
-}
-/* Hand details use a dedicated display area rather than a second border around the card. */
-& #goa2-m2-details > .m2-text-card {
-  min-height: 100%;
-}
-& #goa2-m2-nav {
-  grid-template-columns: repeat(7, minmax(0, 1fr));
-}
 & [class*="_viewDeckBtn_"] {
   display: none !important;
-}
-&[data-m2-mode="hand"] [data-m2="hero"]:not([data-m2-other]) {
-  display: grid !important;
 }
 & [class*="_modal_"] [class*="_cardGrid_"] {
   display: grid !important;
@@ -770,32 +213,6 @@
 & [class*="_modal_"] [class*="_cardGrid_"] canvas {
   width: 100% !important;
   height: auto !important;
-}
-& .m2-text-card {
-  display: flex;
-  flex-direction: column;
-}
-& .m2-card-type {
-  display: grid;
-  grid-template-columns: 40px minmax(0, 1fr) 40px;
-}
-& .m2-card-type > b {
-  text-align: center;
-}
-& .m2-card-type > .m2-symbol:last-child:not(:first-child) {
-  justify-self: end;
-}
-& .m2-card-foot {
-  margin-top: auto;
-  justify-content: center;
-  background: #11161e;
-  min-height: 24px;
-}
-&[data-m2-mode="hand"] #goa2-m2-details:not(:empty) {
-  border: 0 !important;
-  padding: 0 !important;
-  background: transparent !important;
-  box-shadow: none !important;
 }
 & .m2-sort-switch {
   display: flex;
@@ -832,97 +249,12 @@
 & .m2-sort-switch[aria-checked="true"] > i:after {
   transform: translateY(14px);
 }
-& [data-m2="life-fraction"] {
-  display: flex !important;
-  gap: 3px;
-  align-items: center;
-  justify-content: center;
-}
-& [data-m2="life-fraction"]:before {
-  content: "";
-  display: block;
-  width: 18px;
-  height: 22px;
-  background: url(/icons/life_counter_red_front.png) center/contain no-repeat;
-}
-& [aria-label^="Blue team"] [data-m2="life-fraction"] {
-  flex-direction: row-reverse;
-}
-& [aria-label^="Blue team"] [data-m2="life-fraction"]:before {
-  background-image: url(/icons/life_counter_blue_front.png);
-}
-& [data-m2="header"] [class*="_matchMeta_"] {
-  display: grid !important;
-  position: relative;
-}
-& [data-m2="header"] [class*="_matchMeta_"] > span:first-child {
-  grid-column: 1;
-  grid-row: 1;
-  font-size: 8px;
-  white-space: nowrap;
-}
-& [data-m2="header"] [class*="_matchMeta_"] > span:nth-child(3) {
-  grid-column: 1;
-  grid-row: 2;
-  font-size: 8px;
-  white-space: nowrap;
-}
-& [data-m2="header"] [class*="_phase_"] {
-  grid-column: 2;
-  grid-row: 1;
-  align-self: center;
-}
-& [data-m2="header"] [class*="_tieBreaker_"] {
-  justify-self: center;
-}
-& [data-m2="header"] [class*="_matchMeta_"]:after {
-  content: attr(data-m2-coin);
-  text-align: center;
-  text-transform: none;
-}
-& [data-m2="header"] [class*="_waveCounterStack_"],
-& [data-m2="header"] [class*="_waveLaneLabel_"] {
-  display: none !important;
-}
-& [data-m2="header"] [class*="_waveLane_"]:after {
-  content: attr(data-m2-waves);
-  font-size: 10px;
-}
-& [data-m2="header"] [class*="_waveLane_"]:before {
-  content: "";
-  width: 17px;
-  height: 17px;
-  background: url(/icons/wave_counter.png) center/contain no-repeat;
-}
-& [data-m2="header"] [class*="_waveLane_"] {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-}
-& [data-m2="header"] [class*="_waveLanes_"] {
-  pointer-events: none;
-}
-/* The tier/color control is a switch, visually separate from the view buttons. */
-& .m2-deck-controls .m2-sort-switch {
-  background: transparent !important;
-  border: 0 !important;
-  border-radius: 0 !important;
-  box-shadow: none !important;
-}
 & [data-m2="deck"] > [class*="_header_"] {
   display: none !important;
 }
-& .m2-deck-title {
-  text-align: center;
-  font: 600 13px system-ui;
-  padding: 5px 0 7px;
-}
-& .m2-deck-controls {
-  top: 0 !important;
-  margin: 0 0 7px;
-  padding: 5px 0;
-}
 & [data-m2="deck"] {
+  box-sizing: border-box;
+  overscroll-behavior: contain;
   position: fixed !important;
   inset: 0 0 calc(var(--m2-nav) + var(--m2-offset, 0px)) !important;
   width: 100% !important;
@@ -937,171 +269,248 @@
 & [class*="_backdrop_"]:has([data-m2="deck"]) {
   bottom: calc(var(--m2-nav) + var(--m2-offset, 0px)) !important;
 }
-/* A mounted native Deck modal must not leak into another tab when Deck is closed. */
 &:not([data-m2-deck-open]) [class*="_backdrop_"]:has([data-m2="deck"]),
 &:not([data-m2-deck-open]) [data-m2="deck"] {
   display: none !important;
 }
-& #goa2-m2-nav {
-  z-index: 10001 !important;
+& [data-m2="commit"] button:not(:disabled) {
+  background: var(--m2-card-accent) !important;
+  border-color: var(--m2-card-accent) !important;
+  color: #10151b !important;
 }
-& [data-m2="header"] {
-  grid-template-columns: 78px minmax(0, 1fr) 78px !important;
-  gap: 4px !important;
+& [data-m2="sidebar"] [class*="_row_"][class*="_selected_"] {
+  border-color: var(--m2-card-accent) !important;
+  box-shadow: 0 0 0 1px var(--m2-card-accent) !important;
+  background: color-mix(in srgb, var(--m2-card-accent) 14%, #191f29) !important;
 }
-& [data-m2="header"] [class*="_teamPanel_"] {
-  padding: 3px !important;
-}
-& [data-m2="life-fraction"]:after {
-  font-size: 17px;
-}
-& [data-m2="header"] [class*="_matchMeta_"] {
-  grid-template-rows: 20px 16px !important;
-  gap: 0 2px !important;
-  align-items: center;
-}
-& [data-m2="header"] [class*="_phase_"] {
-  justify-self: center;
-  white-space: nowrap;
-}
-& [data-m2="header"] [class*="_waveLanes_"] {
-  margin-top: -16px;
-  min-height: 16px;
-}
-& [data-m2="header"] [class*="_matchMeta_"] > span:first-child,
-& [data-m2="header"] [class*="_matchMeta_"] > span:nth-child(3) {
-  font-size: 7px;
-}
-& [data-m2="header"] [class*="_matchMeta_"]:after {
-  font-size: 7px;
-}
-& #goa2-m2-close {
+& [data-m2="resolution-queue"],
+&[data-m2-hide-cursors] [class*="_remoteCursor_"] {
   display: none !important;
 }
-& .m2-card-top {
-  position: relative;
+&[data-m2-mode="heroes"] [data-m2="own-wrapper"] {
+  display: contents !important;
 }
-& .m2-card-foot.m2-has-dismiss {
-  position: relative;
-  padding-right: 38px;
-  min-height: 30px;
+& img[src*="/hero-cards/"] {
+  width: auto !important;
+  height: auto !important;
+  max-width: calc(100vw - 24px) !important;
+  max-height: calc(100dvh - 90px) !important;
+  object-fit: contain;
 }
-& .m2-card-foot .m2-card-dismiss {
-  position: absolute;
-  right: 3px;
-  bottom: 3px;
-  min-height: 28px !important;
-  width: 28px;
-  padding: 0 !important;
+& img[class*="_heroCard_"][src*="/hero-cards/"] {
+  position: fixed !important;
+  left: 50% !important;
+  top: 50% !important;
+  right: auto !important;
+  bottom: auto !important;
+  transform: translate(-50%, -50%) !important;
+  animation: none !important;
+  z-index: 10002 !important;
+}
+& [data-m2="sidebar"] [class*="_row_"] {
+  border-radius: var(--m2-radius);
+}
+& .m2-effect-active {
+  animation: m2-effect-breathe 2.8s ease-in-out infinite;
+}
+& [class*="_takeBackBtn_"],
+& [class*="_finishPlanningBtn_"] {
+  display: none !important;
+}
+&:is([data-m2-mode="hand"], [data-m2-mode="heroes"], [data-m2-panel="tools"]) [data-m2="board"] {
+  visibility: visible;
+  position: relative !important;
+  width: 100%;
+  height: auto;
+  flex: 0 0 43% !important;
+  min-height: 0 !important;
+  margin-bottom: 0;
+  overflow: hidden !important;
+  pointer-events: auto;
+}
+& #goa2-m2-details,
+& #goa2-m2-hero-display {
+  display: none !important;
+}
+&[data-m2-mode="hand"] #goa2-m2-details:not(:empty) {
+  flex: 0 0 auto;
   border: 0 !important;
+  padding: 0 !important;
   background: transparent !important;
-  color: #c4cedb !important;
-  font: 22px system-ui !important;
+  box-shadow: none !important;
+  display: block !important;
+  position: absolute !important;
+  inset: 0 8px 8px;
+  width: auto;
+  height: auto;
+  min-height: 0;
+  max-height: none;
+  margin: 0;
+  overflow: auto;
+  z-index: 90;
+  box-sizing: border-box;
+  border-radius: 9px;
+}
+&:is([data-m2-mode="hand"], [data-m2-mode="heroes"]) #goa2-m2-hero-display:not(:empty) {
+  display: block !important;
+  position: absolute !important;
+  inset: 0 8px 8px;
+  width: auto;
+  height: auto;
+  min-height: 0;
+  max-height: none;
+  margin: 0;
+  overflow: auto;
+  z-index: 90;
+  box-sizing: border-box;
+  border-radius: 9px;
+}
+&[data-m2-mode="hand"] [data-m2="board"]:has(#goa2-m2-hero-display:not(:empty)) #goa2-m2-details {
+  display: none !important;
+}
+&:is([data-m2-mode="hand"], [data-m2-mode="heroes"]) [data-m2="sidebar"] {
+  display: flex !important;
+  flex-direction: column;
+  gap: 7px;
+  overflow: auto;
+}
+&[data-m2-mode="hand"] [data-m2="own-wrapper"] {
+  display: contents !important;
+}
+&[data-m2-mode="heroes"] [data-m2="commit"] {
+  display: none !important;
+}
+&[data-m2-panel="tools"] [data-m2="tools"] {
+  display: flex !important;
+  position: fixed !important;
+  box-sizing: border-box;
+  width: auto !important;
+  max-width: none !important;
+  overflow: auto !important;
+  padding: 10px !important;
+  transform: none !important;
+  background: #141b27f7;
+  border: 1px solid #59667c;
+  visibility: visible !important;
+  pointer-events: auto !important;
+  z-index: 600 !important;
+  top: calc(
+    var(--m2-head) + (var(--m2-vh, 100dvh) - var(--m2-head) - var(--m2-nav)) * 0.43
+  ) !important;
+  bottom: calc(var(--m2-nav) + var(--m2-offset, 0px)) !important;
+  left: 0 !important;
+  right: 0 !important;
+  max-height: none !important;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  gap: 8px;
+  border-radius: 0;
+}
+&[data-m2-deck-open] [data-m2="board"] {
+  display: none !important;
+}
+&[data-m2-deck-open] [data-m2="sidebar"] {
+  display: block !important;
+  visibility: hidden;
+  pointer-events: none;
+}
+&[data-m2-deck-open] [class*="_backdrop_"]:has([data-m2="deck"]),
+&[data-m2-deck-open] [data-m2="deck"] {
+  visibility: visible !important;
+  pointer-events: auto !important;
+}
+&[data-m2-mode="hand"] [data-m2="hand-list"] {
+  order: -1;
+}
+&[data-m2-mode="board"] #goa2-m2-hero-display:not(:empty) {
+  display: block !important;
+  position: absolute !important;
+  top: 0;
+  left: 8px;
+  right: 8px;
+  width: auto;
+  height: var(--m2-card-display-height);
+  min-height: 0;
+  max-height: calc(100% - 8px);
+  margin: 0;
+  padding: 0;
+  overflow: auto;
+  z-index: 90;
+  box-sizing: border-box;
+  border-radius: 9px;
+  background: #090c11;
+}
+&:has(#goa2-m2-hero-display:not(:empty)) [data-m2="tip"] {
+  display: none !important;
+}
+&[data-m2-mode="board"] [data-m2="board"] {
+  flex: 1 1 0 !important;
+  position: relative;
+  margin-bottom: 0;
+}
+/* 2. Navigation
+   Board is the resting state; Hand, Heroes and Settings preserve the upper board. */
+& #goa2-m2-nav button[aria-pressed="true"] {
+  color: #ffe09c;
+  background: #303c4f;
+}
+& #goa2-m2-nav button {
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: #c0cbdc;
+  font: 600 11px system-ui;
+  touch-action: manipulation;
+  padding: 3px 1px;
+  min-height: 44px;
+  border-radius: 6px;
+}
+& #goa2-m2-nav {
+  box-sizing: border-box;
+  display: grid;
+  gap: 3px;
+  position: fixed;
+  left: 0;
+  right: 0;
+  background: #101621;
+  border-top: 1px solid #3f4c61;
+  bottom: var(--m2-offset, 0px);
+  height: var(--m2-nav);
+  padding: 2px 4px;
+  /* Keep this after the shorthand so safe-area padding is not reset. */
+  padding-bottom: calc(2px + var(--m2-safe));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  z-index: 10001 !important;
+}
+& #goa2-m2-close,
+& #goa2-m2-nav button[hidden] {
+  display: none !important;
 }
 & #goa2-m2-nav button[data-mode="tools"] {
-  font-size: 25px;
   line-height: 1;
 }
+/* 3. Header and connection strip
+   Native header children stay mounted as data sources. Only generated HUD elements are displayed. */
 & [data-m2="header"] {
-  position: relative !important;
-}
-& [data-m2="header"] [class*="_matchPanel_"],
-& [data-m2="header"] [class*="_matchMeta_"] {
-  position: static !important;
-}
-& [data-m2="header"] [class*="_matchMeta_"] {
-  grid-template-columns: 38px minmax(0, 1fr) 38px !important;
-}
-& [data-m2="header"] [class*="_tieBreaker_"] {
-  grid-column: 2 !important;
-  grid-row: 1 !important;
-}
-& [data-m2="header"] [class*="_matchMeta_"]:after {
-  grid-column: 2 !important;
-  grid-row: 2 !important;
-}
-& [data-m2="header"] [class*="_waveLanes_"] {
-  position: absolute !important;
-  right: 86px;
-  top: 10px;
-  margin: 0 !important;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  max-width: 38px;
-}
-& [data-m2="header"] [class*="_phase_"] {
-  position: absolute !important;
-  left: 8px !important;
-  bottom: 5px !important;
-  top: auto !important;
-  width: calc(50% - 10px) !important;
-  max-width: none !important;
-  height: 25px;
-  display: flex !important;
-  align-items: center;
-  justify-content: center;
   box-sizing: border-box;
-  font-size: 10px !important;
-  padding: 3px 8px !important;
-  transform: none !important;
-}
-& [data-m2="header"] [class*="_phase_"]:before {
-  position: static !important;
-  margin-right: 5px;
-}
-& [data-m2="header"] [class*="_status_"] {
-  position: absolute !important;
-  left: auto !important;
-  right: 8px !important;
-  bottom: 5px !important;
-  top: auto !important;
-  width: calc(50% - 10px) !important;
-  min-height: 25px;
-  height: 25px;
-  max-width: none !important;
-  transform: none !important;
-  margin: 0 !important;
-}
-& [data-m2="header"] [class*="_statusCopy_"] strong {
-  font-size: 11px;
-}
-& [data-m2="header"] [class*="_teamPanel_"] {
-  align-self: start !important;
-  margin-top: 5px;
-}
-& [aria-label^="Blue team"] [class*="_teamTop_"] {
-  justify-content: flex-end !important;
-}
-& [aria-label^="Blue team"] [data-m2="life-fraction"] {
-  margin-left: auto !important;
-  justify-content: flex-start !important;
-  width: max-content !important;
-}
-& [data-m2="header"] {
+  z-index: 80;
+  grid-template-rows: 24px 18px 28px;
+  overflow: hidden;
+  grid-template-columns: 78px minmax(0, 1fr) 78px !important;
+  gap: 4px !important;
+  position: relative !important;
   display: block !important;
   height: auto !important;
   min-height: 0 !important;
   flex: 0 0 auto !important;
   padding: 2px 8px !important;
 }
-/* Keep native header elements mounted for data reads while showing only the compact HUD. */
 & [data-m2="header"] > :not(.m2-hud) {
   display: none !important;
-}
-& {
-  --m2-head: 40px;
-  --m2-status-h: 22px;
-  --m2-radius: 8px;
-  --m2-border: #394353;
-  --m2-gap: 6px;
 }
 & .m2-hud {
   width: 100%;
 }
-/* Compact icon/value overlays flank the unchanged round/turn labels. Coin
-   has room for either team name while all overlays share one text style. */
 & .m2-hud-top {
   display: grid;
   grid-template-columns: minmax(34px, 1fr) 32px 44px 56px 44px 32px minmax(34px, 1fr);
@@ -1125,7 +534,11 @@
   color: #fff;
   font: 700 15px/1 system-ui;
   font-variant-numeric: tabular-nums;
-  text-shadow: 0 1px 2px #000, 0 0 3px #000, 1px 0 1px #000, -1px 0 1px #000;
+  text-shadow:
+    0 1px 2px #000,
+    0 0 3px #000,
+    1px 0 1px #000,
+    -1px 0 1px #000;
 }
 & .m2-life {
   width: 34px;
@@ -1147,14 +560,18 @@
   width: 32px;
   justify-self: center;
 }
-/* Each minion counter is halfway from its lives icon to the central coin. */
-& .m2-minions.red, & .m2-minions.blue {
+& .m2-minions.red {
   position: absolute;
   top: 1px;
   transform: translateX(-50%);
+  left: calc(25% + 8.5px);
 }
-& .m2-minions.red { left: calc(25% + 8.5px); }
-& .m2-minions.blue { left: calc(75% - 8.5px); }
+& .m2-minions.blue {
+  position: absolute;
+  top: 1px;
+  transform: translateX(-50%);
+  left: calc(75% - 8.5px);
+}
 & .m2-minions img {
   width: 28px;
   height: 28px;
@@ -1175,9 +592,6 @@
   grid-column: 4;
   width: 56px;
 }
-& .m2-coin small {
-  font-size: 13px;
-}
 & .m2-coin img {
   width: 32px;
   height: 32px;
@@ -1192,13 +606,6 @@
   height: 28px;
   object-fit: contain;
 }
-@media (max-width: 360px) {
-  /* Keep the midpoint counters clear of round/turn and push on narrow phones. */
-  & .m2-minions.red { left: calc(25% - 10px); }
-  & .m2-minions.blue { left: calc(75% + 10px); }
-}
-/* One-line strip flush with the header. A fixed phase column leaves the
-   remaining width for the current action, with one indicator between them. */
 & .m2-hud-bottom {
   position: absolute;
   top: var(--m2-head);
@@ -1236,20 +643,16 @@
   color: #ead49d;
   text-align: left;
 }
-/* Native GameView mounts this banner only while its connection is down.
-   Preserve that source node and show its message inside the mobile strip. */
 & [class*="_disconnected_"] {
   display: none !important;
 }
 & .m2-hud-bottom.m2-disconnected {
   background: rgb(179 38 38 / 60%);
-  backdrop-filter: blur(3px);
-  -webkit-backdrop-filter: blur(3px);
   border-color: #dc7777;
 }
 & .m2-disconnected .m2-phase {
   font-size: 8px;
-  letter-spacing: -.15px;
+  letter-spacing: -0.15px;
 }
 & .m2-disconnected :is(.m2-phase, .m2-status) {
   color: #fff;
@@ -1263,554 +666,130 @@
   background: currentColor;
   animation: m2-breathe 2s ease-in-out infinite;
 }
-& [data-m2="commit"] button:not(:disabled) {
-  background: var(--m2-card-accent) !important;
-  border-color: var(--m2-card-accent) !important;
-  color: #10151b !important;
-}
-& [data-m2="sidebar"] [class*="_row_"][class*="_selected_"] {
-  border-color: var(--m2-card-accent) !important;
-  box-shadow: 0 0 0 1px var(--m2-card-accent) !important;
-  background: color-mix(in srgb, var(--m2-card-accent) 14%, #191f29) !important;
-}
-& [data-m2="resolution-queue"] {
-  display: none !important;
-}
-&[data-m2-mode="heroes"] [data-m2="sidebar"] {
-  display: flex !important;
-  flex-direction: column;
-  gap: 8px;
-}
-& .m2-current-hero {
-  outline: none !important;
-  border-color: #6d6244 !important;
-  box-shadow: inset 2px 0 #d6bc77 !important;
-  background: #25272a !important;
-}
-& .m2-resolution-info {
-  font-size: 11px;
-  color: #e7cc83;
-  margin-top: 4px;
-  grid-column: 1/-1;
-}
-
-&[data-m2-hide-cursors] [class*="_remoteCursor_"] {
-  display: none !important;
-}
-&[data-m2-mode="split"] [data-m2="sidebar"],
-&[data-m2-mode="heroes"] [data-m2="sidebar"] {
-  display: flex !important;
-  flex-direction: column;
-}
-&[data-m2-mode="split"] [data-m2="own-wrapper"],
-&[data-m2-mode="heroes"] [data-m2="own-wrapper"] {
-  display: contents !important;
-}
-&[data-m2-mode="split"] [data-m2="hand-list"] {
-  order: -1;
-}
-& .m2-resolution-info {
-  display: flex;
-  align-items: center;
-}
-& #goa2-m2-summary small .m2-symbol img {
-  width: 13px;
-  height: 13px;
-}
-& img[src*="/hero-cards/"] {
-  width: auto !important;
-  height: auto !important;
-  max-width: calc(100vw - 24px) !important;
-  max-height: calc(100dvh - 90px) !important;
-  object-fit: contain;
-}
-/* A single central indicator pulses beside the current action. */
-@keyframes m2-breathe {
-  0%,
-  100% {
-    opacity: 0.45;
-    box-shadow: 0 0 0 0 currentColor;
-  }
-  50% {
-    opacity: 1;
-    box-shadow: 0 0 7px 1px currentColor;
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  & .m2-action-dot {
-    animation: none;
-  }
-}
-& img[class*="_heroCard_"][src*="/hero-cards/"] {
-  position: fixed !important;
-  left: 50% !important;
-  top: 50% !important;
-  right: auto !important;
-  bottom: auto !important;
-  transform: translate(-50%, -50%) !important;
-  animation: none !important;
-  z-index: 10002 !important;
-}
-& [data-m2="hero"] {
-  position: relative;
-}
-& [data-m2="hero"] > [class*="_name_"] {
-  padding-right: 88px;
-}
-& .m2-resolution-info {
-  position: absolute;
-  right: 9px;
-  top: 9px;
-  margin: 0 !important;
-  gap: 7px;
-}
-& .m2-resolution-info > .m2-symbol img {
-  width: 17px;
-  height: 17px;
-}
-@media (max-height: 500px) {
-  & {
-  }
-  & [data-m2="header"] [class*="_waveLanes_"] {
-    display: none;
-  }
-  &[data-m2-mode="split"] [data-m2="main"] {
-    flex-direction: row !important;
-  }
-  &[data-m2-mode="split"] [data-m2="board"] {
-    flex: 1 1 0 !important;
-  }
-  &[data-m2-mode="split"] [data-m2="sidebar"] {
-    flex: 0 0 44% !important;
-    width: 44% !important;
-  }
-}
-/* Compact hero panels; their card rows match the 24px board summaries. */
-& [data-m2="hero"] {
-  border-radius: var(--m2-radius);
-  border-color: var(--m2-border);
-  padding: 6px 7px !important;
-  box-shadow: none;
-}
-& [data-m2="hero"] > [class*="_details_"] {
-  margin-top: 2px;
-  font-size: 11px;
-  line-height: 15px;
-}
-& [data-m2="hero"] [class*="_currentCard_"] {
-  margin-top: 4px;
-  padding: 4px 0 0;
-}
-& [data-m2="hero"] [class*="_currentLabel_"] {
-  font-size: 10px;
-  line-height: 12px;
-  margin-bottom: 3px;
-}
-& [data-m2="hero"] [class*="_row_"]:has([class*="_cardName_"]) {
-  height: 24px;
-  min-height: 24px;
-  padding: 2px 6px;
-  gap: 4px;
-  border-radius: 6px;
-}
-& [data-m2="hero"] [class*="_row_"] [class*="_cardName_"] {
-  font-size: 11px;
-  line-height: 16px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-& [data-m2="hero"] [class*="_row_"] [class*="_stat_"] {
-  min-width: 0;
-  padding: 0 2px;
-  gap: 1px;
-  font-size: 10px;
-  line-height: 16px;
-}
-& [data-m2="hero"] [class*="_row_"] [class*="_statIcon_"] {
-  width: 12px;
-  height: 12px;
-}
-& [data-m2="hero"] [class*="_row_"] [class*="_colorPip_"] {
-  width: 8px;
-  height: 8px;
-}
-& [data-m2="hero"] .m2-resolution-info {
-  top: 7px;
-  right: 8px;
-  gap: 5px;
-  font-size: 10px;
-  line-height: 17px;
-}
-& [data-m2="hero"] .m2-resolution-info > .m2-symbol img {
-  width: 15px;
-  height: 15px;
-}
-& .m2-life b,
-& .m2-waves b {
-  font-variant-numeric: tabular-nums;
-}
 & .m2-coin small {
-  color: #bac2cf;
-  line-height: 11px;
+  font-size: 13px;
 }
-& [data-m2="sidebar"] [class*="_row_"],
-& .m2-text-card,
-& .m2-deck-controls button:not(.m2-sort-switch) {
-  border-radius: var(--m2-radius);
+/* 4. Shared cards and stats
+   Large text cards and Small/Mini rows share stat symbols; context variants follow their bases. */
+& .m2-card-top > b {
+  text-align: center;
+  font-size: 15px;
 }
-&[data-m2-mode="split"] [data-m2="sidebar"],
-&[data-m2-mode="heroes"] [data-m2="sidebar"] {
-  gap: var(--m2-gap);
+& .m2-symbol img {
+  width: 21px;
+  height: 21px;
+  object-fit: contain;
+  filter: grayscale(1);
 }
-@media (max-height: 500px) {
-  &[data-m2-mode="hand"] #goa2-m2-details {
-    height: 160px;
-    min-height: 160px;
-  }
+& .m2-card-body {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  gap: 8px;
+  padding: 10px 8px;
 }
-
-& .m2-done-hero {
-  background: #171d26 !important;
-  border-color: #303844 !important;
+& .m2-card-body > aside {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+& .m2-card-effect {
+  white-space: pre-line;
+  line-height: 1.5;
+}
+& .m2-card-foot:empty {
+  display: none;
+}
+& .m2-card-foot .m2-action,
+& .m2-card-foot button {
+  border: 1px solid currentColor;
+  border-radius: 4px;
+  padding: 4px 6px;
+  font-size: 11px;
+  background: #252b32;
+  color: #d2d6dc;
+}
+& .m2-card-foot [data-action="MOVEMENT"] {
+  color: #7bbded !important;
+}
+& .m2-card-foot [data-action="DEFENSE"] {
+  color: #87cb8b !important;
+}
+& .m2-card-foot [data-action="ATTACK"] {
+  color: #ef8b83 !important;
+}
+& .m2-card-foot [data-action="SKILL"],
+& .m2-card-foot [data-action="DEFENSE_SKILL"] {
+  color: #d0a4ed !important;
+}
+& [data-m2="tip"]:has(> .m2-text-card) {
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
   box-shadow: none !important;
 }
-& .m2-done-hero > [class*="_name_"],
-& .m2-done-hero > strong {
-  opacity: 0.65;
-}
-& .m2-done-hero .m2-resolution-info {
-  color: #a9b8aa;
-}
-
-/* Compact public hero dashboard. Later heading rules place upgrades at the upper right. */
-& [data-m2="hero"]:has(> .m2-hero-dashboard) > :has([class*="_dots_"]),
-& [data-m2="hero"]:has(> .m2-hero-dashboard) [class*="_items_"] {
+& [data-m2="tip"]:has(> .m2-text-card) > :not(.m2-text-card) {
   display: none !important;
 }
-& .m2-hero-dashboard {
-  flex-direction: column;
-  gap: 5px;
-  margin-top: 5px;
-  font-size: 10px;
-  line-height: 15px;
+& #goa2-m2-details > .m2-text-card {
+  min-height: 100%;
 }
-& .m2-hero-history,
-& .m2-hero-upgrades,
-& .m2-hero-effects {
-  display: flex;
-  flex-wrap: wrap;
+& .m2-card-type {
   align-items: center;
   gap: 5px;
-  min-width: 0;
+  margin-bottom: 9px;
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) 40px;
 }
-& .m2-hero-history {
-  padding-top: 5px;
-  border-top: 1px solid #ffffff12;
-}
-& .m2-history-slot {
-  display: inline-flex;
-  align-items: center;
-  border-radius: 4px;
-  color: #abb7c8;
-  font-size: 10px;
-  cursor: pointer;
-}
-& .m2-history-slot:disabled {
-  cursor: default;
-  opacity: 0.6;
-}
-/* Hand, played, and discard dots share geometry; active styling is added independently. */
-& .m2-history-marker {
-  background: var(--effect-color, #4b5360);
-}
-& .m2-history-slot img {
-  object-fit: contain;
-}
-& .m2-hero-upgrades > .m2-symbol {
-  border-radius: 4px;
-}
-
-& .m2-hero-effects button,
-& .m2-offboard-label {
-  border: 1px solid #a3b4c544;
-  background: #151c29;
-  color: #dbe4ee;
-  border-radius: 5px;
-  font-size: 10px;
-  line-height: 16px;
-  padding: 2px 6px;
-  max-width: 100%;
-  overflow-wrap: anywhere;
-}
-
-& .m2-hero-effects button {
-  border-color: var(--effect-color);
-  cursor: pointer;
-}
-/* Active effects share the card color through --effect-color, including tiny pile dots. */
-& .m2-effect-active {
-  animation: m2-effect-breathe 2.8s ease-in-out infinite;
-}
-/* Gentle glow marks a continuing effect; it does not indicate turn order or selection. */
-@keyframes m2-effect-breathe {
-  0%,
-  100% {
-    box-shadow: 0 0 1px var(--effect-color, #bbab73);
-  }
-  50% {
-    box-shadow: 0 0 7px var(--effect-color, #bbab73);
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  & .m2-effect-active {
-    animation: none;
-    box-shadow: 0 0 3px var(--effect-color, #bbab73);
-  }
-}
-
-/* Hero heading: portrait, name, upgrades, off-board marker. */
-& [data-m2="hero"]:has(> .m2-hero-dashboard) {
-  display: grid !important;
-  column-gap: 6px;
-  row-gap: 3px;
-  align-items: center;
-}
-& [data-m2="hero"]:has(> .m2-hero-dashboard) > [class*="_name_"] {
-  grid-column: 2;
-  grid-row: 1;
-  padding: 0;
-  min-width: 0;
+& .m2-card-type > b {
+  flex: 1;
   font-size: 12px;
-  line-height: 16px;
-  overflow-wrap: anywhere;
+  text-align: center;
 }
-& [data-m2="hero"]:has(> .m2-hero-dashboard) > [class*="_details_"] {
-  grid-column: 2/-1;
-  grid-row: 2;
-  margin: 0;
-}
-& [data-m2="hero"]:has(> .m2-hero-dashboard) > .m2-resolution-info {
-  position: static;
-  grid-column: 2/-1;
-  grid-row: 3;
+& .m2-card-type > .m2-symbol:last-child:not(:first-child) {
   justify-self: end;
 }
-& [data-m2="hero"]:has(> .m2-hero-dashboard) > [class*="_currentCard_"],
-& [data-m2="hero"]:has(> .m2-hero-dashboard) > [class*="_ultimate_"] {
-  grid-column: 1/-1;
-  grid-row: 5;
+& .m2-card-foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  align-items: center;
+  padding: 7px 8px;
+  margin-top: auto;
+  justify-content: center;
+  background: #11161e;
+  min-height: 24px;
 }
-& .m2-hero-dashboard {
-  display: contents;
-}
-/* Portrait anchor for turn number/NOW, completion checkmark, and off-board skull overlays. */
-& .m2-hero-portrait {
-  grid-column: 1;
-  grid-row: 1/3;
-  align-self: start;
-  border: 2px solid;
-  border-radius: 50%;
-  background: #111822;
-  box-sizing: border-box;
-}
-& .m2-hero-portrait img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-/* Keep upgrades in their own layout slot rather than appending them to the hero name. */
-& .m2-hero-upgrades {
-  grid-column: 3;
-  grid-row: 1;
-  justify-content: flex-end;
-  gap: 2px;
-}
-& .m2-hero-upgrades > .m2-symbol {
-  padding: 0 2px;
-  background: none;
-  border: 0;
-  font-size: 10px;
-  gap: 1px;
-}
-
-& .m2-offboard-label {
-  grid-column: 4;
-  grid-row: 1;
-  align-self: center;
-  padding: 0;
-  border: 0;
-  background: none;
-  color: #969da7;
-  font-size: 18px;
-  line-height: 20px;
-}
-& .m2-hero-history {
-  grid-column: 2/-1;
-  padding: 0;
-  border: 0;
-  gap: 3px;
-  color: #9ba7b7;
-  font-size: 9px;
-}
-& .m2-history-slot {
-  min-height: 18px;
-  height: 18px;
-  min-width: 10px;
-  padding: 0;
-  border: 0;
-  background: none;
-  gap: 1px;
-}
-& .m2-history-marker {
-  width: 8px;
-  height: 8px;
-  border: 0;
-  border-radius: 50%;
-}
-& .m2-history-slot img {
-  width: 11px;
-  height: 11px;
-}
-& .m2-hero-effects {
-  grid-column: 1/-1;
-  grid-row: 6;
-}
-
-& [data-m2="hero"]:has(> .m2-hero-dashboard) > [class*="_details_"]:first-of-type {
-  display: none !important;
-}
-& [data-m2="hero"]:has(> .m2-hero-dashboard) > [class*="_name_"] + [class*="_details_"] {
-  display: none !important;
-}
-& .m2-hero-history {
-  grid-row: 2;
-  line-height: 16px;
-}
-& .m2-hero-history > span:first-child {
-  white-space: nowrap;
-}
-& .m2-selection-status {
-  grid-row: 3;
-  color: #b8c6b9;
-  font-size: 10px;
-  line-height: 14px;
-}
-
-& [data-m2="hero"] [class*="_currentLabel_"] {
-  display: none !important;
-}
-& .m2-selection-status {
-  grid-column: 1/-1;
-  justify-self: stretch;
-  text-align: center;
-  border-top: 1px solid #ffffff16;
-  padding-top: 7px;
-  margin-top: 4px;
-}
-& .m2-hero-history {
-  column-gap: 4px;
-}
-& .m2-history-slot {
-  margin: 0 1px;
-}
-& .m2-hero-portrait {
+& .m2-card-top {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr) 32px;
+  align-items: center;
+  gap: 4px;
+  padding: 8px;
+  background: var(--card-color);
+  color: #f5f6f8;
+  text-shadow: 0 1px 2px #0009;
   position: relative;
 }
-& .m2-hero-portrait:has(.m2-offboard-label) img {
-  opacity: 0.5;
+& .m2-card-foot.m2-has-dismiss {
+  position: relative;
+  padding-right: 38px;
+  min-height: 30px;
 }
-& .m2-hero-portrait .m2-offboard-label {
+& .m2-card-foot .m2-card-dismiss {
   position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 21px;
-  line-height: 1;
-  color: #d5d8dc;
-  text-shadow:
-    0 1px 3px #000,
-    0 0 3px #000;
+  right: 3px;
+  bottom: 3px;
+  min-height: 28px !important;
+  width: 28px;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  color: #c4cedb !important;
+  font: 22px system-ui !important;
 }
-
-& .m2-selecting-dots {
-  display: inline-block;
-  font-family: monospace;
-  width: 1.8em;
-  text-align: left;
-  animation: m2-selecting-dots 1.5s infinite step-end;
-}
-@keyframes m2-selecting-dots {
-  0% {
-    clip-path: inset(0 66.666% 0 0);
-  }
-  33.333% {
-    clip-path: inset(0 33.333% 0 0);
-  }
-  66.666%,
-  100% {
-    clip-path: inset(0 0 0 0);
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  & .m2-selecting-dots {
-    animation: none;
-  }
-}
-
-& #goa2-m2-summary small.m2-summary-content {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  overflow: visible;
-  font-size: 9px;
-}
-& #goa2-m2-summary .m2-summary-turn {
-  white-space: nowrap;
-  font-size: 8px;
-  flex-shrink: 0;
-}
-& #goa2-m2-summary .m2-summary-piles {
-  min-width: 0;
-}
-& #goa2-m2-summary .m2-summary-piles > span {
-  gap: 2px;
-}
-& #goa2-m2-summary .m2-summary-piles i {
-  width: 6px;
-  height: 6px;
-}
-& #goa2-m2-summary .m2-summary-upgrades {
-  display: flex;
-  gap: 3px;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-}
-& #goa2-m2-summary .m2-summary-upgrades .m2-symbol {
-  font-size: 8px;
-  gap: 1px;
-}
-
 & .m2-upgraded-value {
   color: #d7a4ff !important;
   font-weight: 750;
-}
-/* One hero layout, including the local player. Native card rows keep their handlers. */
-& [data-m2="hero"]:has([class*="_viewDeckBtn_"]) {
-  display: block;
-}
-& .m2-own-colors {
-  display: inline-flex;
-  gap: 3px;
-  align-items: center;
-  margin-right: 5px;
-}
-& .m2-own-colors i {
-  display: block;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
 }
 & [data-m2="sidebar"] [class*="_row_"]:has(> .m2-list-card) > :not(.m2-list-card) {
   display: none !important;
@@ -1869,76 +848,12 @@
   flex-shrink: 0;
   color: #e1e5eb;
 }
-& .m2-list-card .m2-symbol img {
-  object-fit: contain;
-}
-& .m2-list-secondary:empty {
-  display: flex;
-}
-& [data-m2="hero"] .m2-list-card {
-  min-height: 22px;
-  gap: 3px;
-}
-& [data-m2="hero"] .m2-list-secondary {
-  flex-basis: 48px;
-  min-width: 48px;
-}
-& [data-m2="hero"] .m2-list-card > .m2-symbol {
-  flex-basis: 25px;
-}
-& [data-m2="hero"] .m2-list-name {
-  font-size: 11px;
-}
-& [data-m2="hero"] .m2-list-band {
-  padding: 1px 4px;
-  gap: 3px;
-}
-& [data-m2="hero"] .m2-list-card .m2-symbol {
-  font-size: 10px;
-  gap: 1px;
-}
-
-& #goa2-m2-summary article {
-  grid-template-columns: minmax(85px, 0.85fr) minmax(0, 1.65fr);
-}
-& #goa2-m2-summary .m2-summary-controls {
-  display: flex;
-  gap: 4px;
-  flex: 0 0 28px;
-  align-items: stretch;
-}
-& .m2-summary-controls button {
-  flex: 1;
-  padding: 2px 4px;
-  border: 1px solid #394353;
-  border-radius: 6px;
-  background: transparent;
-  color: #bcc6d3;
-  font: 600 10px system-ui;
-}
-& .m2-summary-controls button[aria-pressed="true"] {
-  background: #303c4f;
-  color: #ffe09c;
-}
-& #goa2-m2-summary .m2-summary-piles {
-  display: flex;
-  align-items: center;
-}
-& .m2-summary-piles > span {
+& .m2-symbol {
   display: inline-flex;
   align-items: center;
-  gap: 2px;
-}
-& .m2-summary-piles i {
-  display: inline-block;
-  flex-shrink: 0;
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-}
-
-/* Shared overlaid values: retain purple only for modified card values. */
-& .m2-symbol {
+  gap: 3px;
+  white-space: nowrap;
+  font-weight: 650;
   position: relative;
   justify-content: center;
   vertical-align: middle;
@@ -1960,27 +875,9 @@
   z-index: 1;
 }
 & .m2-list-card .m2-symbol img {
+  object-fit: contain;
   width: 24px;
   height: 24px;
-}
-& [data-m2="hero"] .m2-list-card .m2-symbol img {
-  width: 19px;
-  height: 19px;
-}
-& .m2-hero-upgrades img {
-  width: 23px;
-  height: 23px;
-}
-& #goa2-m2-summary .m2-summary-upgrades img {
-  width: 18px;
-  height: 18px;
-}
-& [data-m2="hero"]:has(> .m2-hero-dashboard) {
-  grid-template-columns: 36px minmax(0, 1fr) auto;
-}
-& .m2-hero-upgrades {
-  justify-self: end;
-  max-width: 144px;
 }
 & .m2-gold {
   display: inline-flex;
@@ -1997,23 +894,1027 @@
   stroke-width: 1.6;
   stroke-linecap: round;
 }
-& [data-m2="hero"].m2-pending-hero {
-  border-color: #8993a2;
+& button[class*="_upgradeCard_"]:has(> .m2-text-card) {
+  padding: 0 !important;
+  background: transparent !important;
+  border: 0 !important;
+  text-align: left;
+  min-width: 0;
+  width: 100%;
 }
-& [data-m2="hero"].m2-current-hero {
-  border-color: #cabb83 !important;
+& button[class*="_upgradeCard_"]:has(> .m2-text-card) > :not(.m2-text-card) {
+  display: none !important;
+}
+& button[class*="_upgradeCard_"] > .m2-text-card {
+  margin: 0;
+  width: 100%;
+  box-sizing: border-box;
+  height: 100%;
+  cursor: pointer;
+}
+& button[class*="_upgradeCard_"]:focus-visible {
+  outline: 2px solid #e9c956;
+  outline-offset: 3px;
+}
+& #goa2-m2-hero-display .m2-list-card {
+  min-height: 24px;
+  height: 24px;
+  gap: 3px;
+}
+& #goa2-m2-hero-display .m2-list-card > .m2-symbol {
+  flex-basis: 25px;
+}
+& #goa2-m2-hero-display .m2-list-secondary {
+  flex-basis: 44px;
+  min-width: 44px;
+}
+& #goa2-m2-hero-display .m2-list-card .m2-symbol img {
+  width: 19px;
+  height: 19px;
+}
+& #goa2-m2-hero-display .m2-list-name {
+  font-size: 11px;
+}
+& #goa2-m2-hero-display > .m2-text-card {
+  min-height: 100%;
+  margin: 0;
+}
+& .m2-card-foot.m2-upgrade-footer {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  column-gap: 10px;
+}
+& .m2-upgrade-footer > .m2-symbol {
+  grid-column: 2;
+  grid-row: 1;
+}
+& .m2-upgrade-gain {
+  grid-column: 3;
+  grid-row: 1;
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #9ba4b2;
+  font-size: 11px;
+}
+& .m2-upgrade-gain .m2-symbol {
+  opacity: 0.65;
+}
+& .m2-item-upgrades {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  flex-shrink: 0;
+}
+& .m2-item-upgrades > .m2-symbol {
+  width: 23px;
+  height: 26px;
+  padding: 0;
+}
+& .m2-upgrade-empty {
+  opacity: 0.22;
+  filter: grayscale(1);
+}
+& .m2-upgrade-rest {
+  position: relative;
+  display: block;
+  width: 23px;
+  height: 29px;
+}
+& .m2-upgrade-rest > .m2-symbol {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+}
+& .m2-upgrade-rest > .m2-symbol:nth-child(1) {
+  top: 0;
+  left: 0;
+}
+& .m2-upgrade-rest > .m2-symbol:nth-child(2) {
+  top: 8px;
+  right: 0;
+}
+& .m2-upgrade-rest > .m2-symbol:nth-child(3) {
+  bottom: 0;
+  left: 0;
+}
+& .m2-upgrade-rest .m2-symbol img {
+  width: 14px;
+  height: 14px;
+}
+& .m2-gold-overlay {
+  position: relative;
+  width: 16px;
+  height: 18px;
+  flex-shrink: 0;
+}
+& .m2-gold-overlay svg {
+  width: 16px;
+  height: 18px;
+}
+& .m2-gold-overlay .m2-gold-value {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: white;
+  font-size: 10px;
+  font-weight: 800;
+  text-shadow:
+    0 1px 2px #000,
+    0 0 2px #000;
+}
+&:is([data-m2-mode="hand"], [data-m2-mode="heroes"]) [data-m2="tip"]:has(> .m2-text-card) {
+  display: none !important;
+}
+& .m2-micro-button:disabled {
+  cursor: default;
+}
+& .m2-mini-current .m2-symbol {
+  width: 17px;
+  height: 22px;
+  font-size: 12px;
+}
+& .m2-mini-current .m2-symbol img {
+  width: 17px;
+  height: 20px;
+}
+& .m2-card-resolved:not(.m2-effect-active) > .m2-mini-current > * {
+  opacity: 0.5;
+}
+& .m2-nano-card img {
+  width: 17px;
+  height: 20px;
+}
+& .m2-rule-icon {
+  width: 1.3em;
+  height: 1.3em;
+  vertical-align: middle;
+  object-fit: contain;
+}
+& .m2-micro-button:focus-visible {
+  outline: 1px solid #c0cad8;
+  outline-offset: 2px;
+}
+& .m2-micro-button {
+  align-items: center;
+  justify-content: center;
+  border-radius: 3px;
+  cursor: pointer;
+  appearance: none;
+  display: inline-flex;
+  flex: 0 0 auto;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  vertical-align: middle;
+}
+& .m2-mini-current {
+  grid-template-columns: repeat(4, 15px);
+  width: 64px;
+  display: grid;
+  grid-auto-flow: column;
+  align-items: center;
+  box-sizing: border-box;
+  height: 24px;
+  min-height: 24px;
+  padding: 1px;
+  gap: 0;
+  border: 1px solid var(--card-color, #858c98);
+  border-radius: 3px;
+  background: var(--m2-card-fill, #333b48);
+}
+& .m2-nano-card {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 3px;
+  width: 20px;
+  min-width: 20px;
+  height: 24px;
+  box-sizing: border-box;
+  padding: 1px;
+  border: 1px solid var(--card-color, #858c98);
+  background: var(--m2-card-fill, #333b48);
+}
+& .m2-mini-current.m2-micro-board .m2-symbol {
+  height: 18px;
+  width: 20px;
+  min-width: 20px;
+  font-size: 12px;
+}
+& .m2-mini-current.m2-micro-board .m2-symbol img {
+  height: 18px;
+  width: 20px;
+}
+& .m2-text-card {
+  border: 1px solid #47515e;
+  background: #191e26;
+  color: #e5e7eb;
+  overflow: hidden;
+  text-align: left;
+  font: 13px/1.45 system-ui;
+  width: 100%;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--m2-radius);
+  position: relative;
+  isolation: isolate;
+}
+& .m2-card-art {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  overflow: hidden;
+  pointer-events: none;
+  opacity: 0;
+}
+& .m2-has-art > .m2-card-art {
+  opacity: 0.4;
+  mask-mode: alpha;
+  mask-image: linear-gradient(
+    135deg,
+    transparent 0%,
+    rgb(0 0 0 / 15%) 30%,
+    rgb(0 0 0 / 50%) 65%,
+    #000 100%
+  );
+  -webkit-mask-image: linear-gradient(
+    135deg,
+    transparent 0%,
+    rgb(0 0 0 / 15%) 30%,
+    rgb(0 0 0 / 50%) 65%,
+    #000 100%
+  );
+}
+& .m2-card-art > img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 34%;
+  transform: scale(1.08);
+}
+& .m2-text-card > :is(.m2-card-top, .m2-card-body, .m2-card-foot) {
+  position: relative;
+  z-index: auto;
+}
+& .m2-has-art > :is(.m2-card-top, .m2-card-body, .m2-card-foot) > * {
+  z-index: 3;
+}
+& .m2-has-art > .m2-card-top {
+  background: var(--card-color);
+}
+& .m2-has-art > .m2-card-foot {
+  background: #0e1219;
+}
+& .m2-has-art > :is(.m2-card-top, .m2-card-foot)::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background: transparent;
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+}
+& .m2-has-art > .m2-card-body {
+  text-shadow: 0 1px 2px #000b;
+}
+& .m2-text-card :is(.m2-card-top, .m2-card-body) .m2-symbol img {
+  width: 27.3px;
+  height: 27.3px;
+}
+& .m2-text-card :is(.m2-card-top, .m2-card-body) .m2-symbol-value {
+  font-size: 1.495em;
+}
+& .m2-text-card .m2-card-body .m2-rule-icon {
+  width: 1.69em;
+  height: 1.69em;
+}
+& .m2-card-top > span:last-child {
+  font-weight: 700;
+  display: grid;
+  place-items: center;
+  align-self: stretch;
+  justify-self: stretch;
+  text-align: center;
+}
+& .m2-small-card > .m2-list-band > :not(.m2-card-art) {
+  position: relative;
+  z-index: 2;
+}
+& .m2-small-card > .m2-list-band.m2-has-art > .m2-card-art {
+  opacity: 0.4;
+  mask-image: linear-gradient(90deg, transparent 0%, #000 100%);
+  -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 100%);
+}
+& .m2-small-card > .m2-list-band > .m2-card-art > img {
+  filter: blur(4px);
+  transform: scale(1.12);
+}
+& .m2-small-card > .m2-list-band::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 3;
+  width: calc(var(--m2-tier-lines, 1) * 5px - 2px);
+  background: repeating-linear-gradient(90deg, var(--card-color) 0 3px, transparent 3px 5px);
+  pointer-events: none;
+  left: 0;
+}
+& .m2-small-card > .m2-list-band::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 3;
+  width: calc(var(--m2-tier-lines, 1) * 5px - 2px);
+  background: repeating-linear-gradient(90deg, var(--card-color) 0 3px, transparent 3px 5px);
+  pointer-events: none;
+  right: 0;
+}
+& .m2-small-card > .m2-list-band {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border-left: 0;
+  padding-left: 18px;
+  padding-right: 18px;
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) 24px;
+}
+& .m2-small-card > .m2-list-band > .m2-list-primary {
+  grid-column: 1;
+  grid-row: 1;
+  justify-self: center;
+}
+& .m2-small-card > .m2-list-band > .m2-list-name {
+  grid-column: 2;
+  grid-row: 1;
+}
+& .m2-small-card > .m2-list-band > .m2-list-utility {
+  grid-column: 3;
+  grid-row: 1;
+  justify-self: center;
+}
+& .m2-mini-card > .m2-list-band {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border-left: 0;
+  padding-left: 12px;
+  padding-right: 12px;
+  display: grid;
+  grid-template-columns: 19px minmax(0, 1fr) 19px;
+  gap: 3px;
+}
+& .m2-mini-card > .m2-list-band > * {
+  position: relative;
+  z-index: 2;
+}
+& .m2-mini-card > .m2-list-band::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 3;
+  width: calc(var(--m2-tier-lines, 1) * 3px - 1px);
+  background: repeating-linear-gradient(90deg, var(--card-color) 0 2px, transparent 2px 3px);
+  pointer-events: none;
+  left: 0;
+}
+& .m2-mini-card > .m2-list-band::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 3;
+  width: calc(var(--m2-tier-lines, 1) * 3px - 1px);
+  background: repeating-linear-gradient(90deg, var(--card-color) 0 2px, transparent 2px 3px);
+  pointer-events: none;
+  right: 0;
+}
+& .m2-mini-card > .m2-list-band > .m2-list-primary {
+  grid-column: 1;
+  grid-row: 1;
+  justify-self: center;
+}
+& .m2-mini-card > .m2-list-band > .m2-list-name {
+  grid-column: 2;
+  grid-row: 1;
+}
+& .m2-mini-card > .m2-list-band > .m2-list-utility {
+  grid-column: 3;
+  grid-row: 1;
+  justify-self: center;
+}
+& .m2-mini-card > .m2-list-band > .m2-symbol img {
+  width: 19px;
+  height: 19px;
+}
+& :is(.m2-mini-current, .m2-nano-card) {
+  position: relative;
+  isolation: isolate;
+  border-width: 1px;
+  border-style: solid;
+  padding-left: 2px;
+  padding-right: 2px;
+  --m2-tier-edge-color: var(--card-color);
+}
+& :is(.m2-mini-current, .m2-nano-card) > * {
+  position: relative;
+  z-index: 1;
+}
+& :is(.m2-mini-current, .m2-nano-card)::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  z-index: 2;
+  pointer-events: none;
+  left: 0;
+}
+& :is(.m2-mini-current, .m2-nano-card)::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  z-index: 2;
+  pointer-events: none;
+  right: 0;
+}
+& :is(.m2-mini-current, .m2-nano-card)[data-tier-lines="2"]::before {
+  background: linear-gradient(90deg, transparent 0 1px, var(--m2-tier-edge-color) 1px 2px);
+}
+& :is(.m2-mini-current, .m2-nano-card)[data-tier-lines="2"]::after {
+  background: linear-gradient(270deg, transparent 0 1px, var(--m2-tier-edge-color) 1px 2px);
+}
+& :is(.m2-mini-current, .m2-nano-card)[data-tier-lines="3"]::before,
+& :is(.m2-mini-current, .m2-nano-card)[data-tier-lines="3"]::after {
+  background: var(--m2-tier-edge-color);
+}
+& .m2-card-resolved > .m2-mini-current {
+  background: var(--m2-card-muted, #202731);
+  border-color: var(--m2-card-muted, #384459);
+  --m2-tier-edge-color: var(--m2-card-muted);
+}
+& .m2-mini-current.m2-micro-board {
+  width: 70px;
+  min-width: 70px;
+  max-width: 70px;
+  flex-shrink: 0;
+  border-radius: 2px;
+  color: #ddd;
+  font-size: 10px;
+  box-sizing: border-box;
+  height: 24px;
+  min-height: 24px;
+  padding: 1px;
+  grid-template-columns: repeat(3, 20px);
+  justify-content: stretch;
+  justify-items: center;
+  position: relative;
+  isolation: isolate;
+  border-width: 1px;
+  border-style: solid;
+  padding-left: 2px;
+  padding-right: 2px;
+  gap: 2px;
+}
+& .m2-mini-current.m2-micro-hero {
+  width: 64px;
+  min-width: 64px;
+  max-width: 64px;
+  box-sizing: border-box;
+  position: relative;
+  isolation: isolate;
+  border-width: 1px;
+  border-style: solid;
+  padding-left: 2px;
+  padding-right: 2px;
+  height: 24px;
+  min-height: 24px;
+  grid-template-columns: repeat(4, 14.5px);
+  justify-items: center;
+}
+& .m2-mini-current.m2-micro-hero .m2-symbol {
+  height: 20px;
+  font-size: 12px;
+  width: 14px;
+  min-width: 14px;
+}
+& .m2-mini-current.m2-micro-hero .m2-symbol img {
+  height: 20px;
+  width: 14px;
+  min-width: 14px;
+}
+& .m2-nano-card .m2-symbol {
+  height: 20px;
+  font-size: 12px;
+  width: 14px;
+  min-width: 14px;
+}
+& .m2-nano-card .m2-symbol img {
+  width: 14px;
+  min-width: 14px;
+}
+/* Hidden markers replace all stat cells, including in focused Hero history. */
+& .m2-mini-current.m2-micro-board.m2-micro-hidden,
+& .m2-mini-current.m2-micro-hero.m2-micro-hidden {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+/* 5. Deck browser
+   Preserve native card canvases and hide them only after the generated browser is ready. */
+& .m2-deck-controls button {
+  min-height: 36px;
+  border: 1px solid #536179;
+  border-radius: 7px;
+  background: #233046;
+  color: #e7edf5;
+}
+& .m2-deck-controls button[aria-pressed="true"] {
+  background: #405473;
+  color: #ffe09c;
+}
+& .m2-deck-browser h3 {
+  margin: 12px 0 5px;
+  font-size: 12px;
+  text-transform: capitalize;
+  color: #aabbd1;
+}
+& .m2-deck-cards {
+  display: grid;
+  gap: 6px;
+}
+& .m2-deck-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+& .m2-deck-list {
+  grid-template-columns: minmax(0, 1fr);
+}
+& .m2-deck-card {
+  min-width: 0;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+& .m2-deck-card canvas {
+  display: block;
+  width: 100% !important;
+  height: auto !important;
+  border-radius: 6px;
+}
+& .m2-deck-list strong {
+  display: block;
+  font-size: 14px;
+}
+& .m2-deck-list small {
+  display: block;
+  margin-top: 4px;
+  font-size: 11px;
+  line-height: 1.4;
+  color: #b4c2d5;
+}
+& .m2-deck-list p {
+  margin: 6px 0 0;
+  font-size: 12px;
+  line-height: 1.45;
+  white-space: pre-line;
+}
+& .m2-deck-zoom:not([hidden]) {
+  display: flex;
+  position: fixed;
+  inset: 8px;
+  z-index: 10000;
+  padding: 10px;
+  box-sizing: border-box;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  background: #0d1420f7;
+  border: 1px solid #63728a;
+  border-radius: 12px;
+  overflow: auto;
+}
+& .m2-deck-zoom > button {
+  min-height: 36px;
+  border: 1px solid #536179;
+  border-radius: 7px;
+  background: #233046;
+  color: #e7edf5;
+  position: sticky;
+  top: 0;
+  align-self: flex-end;
+  min-width: 90px;
+}
+& .m2-deck-zoom canvas {
+  width: min(100%, 440px) !important;
+  height: auto !important;
+  flex: none;
+}
+& .m2-deck-list .m2-deck-card {
+  border-radius: 8px;
+  padding: 0;
+  border: 0;
+  background: none;
+}
+& .m2-deck-controls .m2-sort-switch {
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+& .m2-deck-title {
+  text-align: center;
+  font: 600 13px system-ui;
+  padding: 5px 0 7px;
+}
+& .m2-deck-controls {
+  position: sticky;
+  z-index: 3;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+  background: var(--bg-secondary, #111722);
+  top: 0 !important;
+  margin: 0 0 7px;
+  padding: 5px 0;
+}
+& .m2-deck-controls button:not(.m2-sort-switch) {
+  border-radius: var(--m2-radius);
+}
+& .m2-deck-browser[data-view="compact"] {
+  height: calc(var(--m2-vh, 100dvh) - var(--m2-nav) - 12px);
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+& .m2-deck-preview {
+  position: relative;
+  top: auto;
+  z-index: 3;
+  height: var(--m2-card-display-height);
+  min-height: var(--m2-card-display-height);
+  flex: 0 0 var(--m2-card-display-height);
+  overflow: auto;
+  background: #090c11;
+  border-radius: 8px;
+  margin: 5px 0 10px;
+}
+& .m2-deck-preview:empty:after {
+  content: "Select a card to view details";
+  display: grid;
+  place-items: center;
+  height: 100%;
+  color: #97a2b3;
+  font: 13px system-ui;
+}
+& .m2-deck-preview > .m2-text-card {
+  min-height: 100%;
+  margin: 0;
+}
+& .m2-deck-compact {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+& .m2-deck-compact .m2-deck-card {
+  display: block;
+  padding: 0 3px;
+  height: 26px;
+  min-height: 26px;
+  width: 100%;
+  max-width: none;
+  border: 1px solid #ffffff16;
+  border-radius: 5px;
+  background: #202731;
+  color: #e1e5eb;
+}
+& .m2-deck-compact .m2-list-card {
+  height: 24px;
+  min-height: 24px;
+}
+& .m2-deck-compact .m2-list-card .m2-symbol img {
+  width: 19px;
+  height: 19px;
+}
+& .m2-deck-compact .m2-list-name {
+  font-size: 11px;
+}
+& .m2-deck-compact .m2-list-secondary {
+  flex-basis: 42px;
+  min-width: 42px;
+}
+& .m2-deck-compact .m2-deck-card[aria-pressed="true"] {
+  border-color: #b8c4d7;
+}
+& .m2-deck-row-list {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow: auto;
+}
+& .m2-deck-browser[data-view="compact"] > :is(.m2-deck-title, .m2-deck-controls) {
+  flex-shrink: 0;
+}
+/* 6. Hero entries and portraits
+   One compact entry is shared by Heroes, Hand and Board focus. */
+& [data-m2="hero"] [class*="_viewDeckBtn_"] {
+  margin-top: 4px;
+  padding: 5px 10px;
+  min-height: 32px;
+}
+& [data-m2="hero"] > [class*="_viewDeckBtn_"] {
+  grid-column: 2;
+  grid-row: 1/3;
+  margin: 0 !important;
+  min-height: 36px;
+}
+&
+  [data-m2="hero"]:has([class*="_viewDeckBtn_"])
+  > div:not([class*="_name_"]):not([class*="_details_"]) {
+  grid-column: 1/-1;
+}
+& [data-m2="hero"] > [class*="_name_"] {
+  grid-column: 1;
+  grid-row: 1;
+  padding-right: 88px;
+}
+& .m2-resolution-info {
+  font-size: 11px;
+  color: #e7cc83;
+  margin-top: 4px;
+  grid-column: 1/-1;
+  display: flex;
+  align-items: center;
+  position: absolute;
+  right: 9px;
+  top: 9px;
+  margin: 0 !important;
+  gap: 7px;
+}
+& .m2-resolution-info > .m2-symbol img {
+  width: 17px;
+  height: 17px;
+}
+& [data-m2="hero"] {
+  margin: 0 !important;
+  position: relative;
+  border-radius: var(--m2-radius);
+  border-color: var(--m2-border);
+  padding: 6px 7px !important;
+  box-shadow: none;
+}
+& [data-m2="hero"] > [class*="_details_"] {
+  grid-column: 1;
+  grid-row: 2;
+  margin-top: 2px;
+  font-size: 11px;
+  line-height: 15px;
+}
+& [data-m2="hero"] [class*="_currentCard_"] {
+  margin-top: 4px;
+  padding: 4px 0 0;
+}
+& [data-m2="hero"] [class*="_row_"]:has([class*="_cardName_"]):not(.m2-adapted-row) {
+  height: 24px;
+  min-height: 24px;
+  padding: 2px 6px;
+  gap: 4px;
+  border-radius: 6px;
+}
+& [data-m2="hero"] [class*="_row_"] [class*="_cardName_"] {
+  font-size: 11px;
+  line-height: 16px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+& [data-m2="hero"] [class*="_row_"] [class*="_stat_"] {
+  min-width: 0;
+  padding: 0 2px;
+  gap: 1px;
+  font-size: 10px;
+  line-height: 16px;
+}
+& [data-m2="hero"] [class*="_row_"] [class*="_statIcon_"] {
+  width: 12px;
+  height: 12px;
+}
+& [data-m2="hero"] [class*="_row_"] [class*="_colorPip_"] {
+  width: 8px;
+  height: 8px;
+}
+& [data-m2="hero"] .m2-resolution-info {
+  top: 7px;
+  right: 8px;
+  gap: 5px;
+  font-size: 10px;
+  line-height: 17px;
+}
+& [data-m2="hero"] .m2-resolution-info > .m2-symbol img {
+  width: 15px;
+  height: 15px;
+}
+& .m2-done-hero > [class*="_name_"],
+& .m2-done-hero > strong {
+  opacity: 0.65;
+}
+& .m2-done-hero .m2-resolution-info {
+  color: #a9b8aa;
+}
+& [data-m2="hero"]:has(> .m2-hero-dashboard) > :has([class*="_dots_"]),
+& [data-m2="hero"]:has(> .m2-hero-dashboard) [class*="_items_"] {
+  display: none !important;
+}
+& .m2-history-slot:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+& [data-m2="hero"]:has(> .m2-hero-dashboard) > [class*="_details_"] {
+  grid-column: 2/-1;
+  grid-row: 2;
+  margin: 0;
+}
+& [data-m2="hero"]:has(> .m2-hero-dashboard) > .m2-resolution-info {
+  position: static;
+  grid-column: 2/-1;
+  grid-row: 3;
+  justify-self: end;
+}
+& [data-m2="hero"]:has(> .m2-hero-dashboard) > [class*="_currentCard_"],
+& [data-m2="hero"]:has(> .m2-hero-dashboard) > [class*="_ultimate_"] {
+  grid-column: 1/-1;
+  grid-row: 5;
+}
+& .m2-hero-dashboard {
+  flex-direction: column;
+  gap: 5px;
+  margin-top: 5px;
+  font-size: 10px;
+  line-height: 15px;
+  display: contents;
+}
+& .m2-offboard-label {
+  border-radius: 5px;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  grid-column: 4;
+  grid-row: 1;
+  align-self: center;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #969da7;
+  font-size: 18px;
+  line-height: 20px;
+}
+& .m2-history-marker {
+  background: var(--effect-color, #4b5360);
+  width: 8px;
+  height: 8px;
+  border: 0;
+  border-radius: 50%;
+}
+& .m2-history-slot img {
+  object-fit: contain;
+  width: 11px;
+  height: 11px;
+}
+& [data-m2="hero"]:has(> .m2-hero-dashboard) > [class*="_details_"]:first-of-type,
+& [data-m2="hero"]:has(> .m2-hero-dashboard) > [class*="_name_"] + [class*="_details_"] {
+  display: none !important;
+}
+& .m2-hero-history > span:first-child {
+  white-space: nowrap;
+}
+& [data-m2="hero"] [class*="_currentLabel_"] {
+  font-size: 10px;
+  line-height: 12px;
+  margin-bottom: 3px;
+  display: none !important;
+}
+& .m2-history-slot {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 4px;
+  color: #abb7c8;
+  font-size: 10px;
+  cursor: pointer;
+  min-height: 18px;
+  height: 18px;
+  min-width: 10px;
+  padding: 0;
+  border: 0;
+  background: none;
+  gap: 1px;
+  margin: 0 1px;
+}
+& .m2-hero-portrait:has(.m2-offboard-label) img {
+  opacity: 0.5;
+}
+& .m2-hero-portrait .m2-offboard-label {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 21px;
+  line-height: 1;
+  color: #d5d8dc;
+  text-shadow:
+    0 1px 3px #000,
+    0 0 3px #000;
+}
+& .m2-selecting-dots {
+  display: inline-block;
+  font-family: monospace;
+  width: 1.8em;
+  text-align: left;
+  animation: m2-selecting-dots 1.5s infinite step-end;
+}
+& [data-m2="hero"]:has([class*="_viewDeckBtn_"]) {
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 2px 8px;
+  align-items: center;
+  display: block;
+}
+& .m2-own-colors {
+  display: inline-flex;
+  gap: 3px;
+  align-items: center;
+  margin-right: 5px;
+}
+& .m2-own-colors i {
+  display: block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+& [data-m2="hero"] .m2-list-card {
+  min-height: 22px;
+  gap: 3px;
+}
+& [data-m2="hero"] .m2-list-secondary {
+  flex-basis: 48px;
+  min-width: 48px;
+}
+& [data-m2="hero"] .m2-list-card > .m2-symbol {
+  flex-basis: 25px;
+}
+& [data-m2="hero"] .m2-list-name {
+  font-size: 11px;
+}
+& [data-m2="hero"] .m2-list-band {
+  gap: 3px;
+  padding-top: 1px;
+  padding-bottom: 1px;
+}
+& [data-m2="hero"] .m2-list-card .m2-symbol {
+  font-size: 10px;
+  gap: 1px;
+}
+& [data-m2="hero"] .m2-list-card .m2-symbol img {
+  width: 19px;
+  height: 19px;
+}
+& .m2-hero-upgrades img {
+  width: 23px;
+  height: 23px;
 }
 & .m2-hero-portrait {
+  grid-column: 1;
+  grid-row: 1/3;
+  align-self: start;
+  border: 2px solid;
+  border-radius: 50%;
+  background: #111822;
+  box-sizing: border-box;
+  position: relative;
   width: 34px;
   height: 34px;
   overflow: visible;
   justify-self: center;
 }
 & .m2-hero-portrait img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
   border-radius: 50%;
-}
-& .m2-hero-portrait:has(.m2-resolution-info) {
-  margin-bottom: 15px;
 }
 & .m2-hero-portrait:has(.m2-resolution-info) img {
   opacity: 0.45;
@@ -2051,14 +1952,6 @@
   font-size: 13px;
   color: #ffe5a1;
 }
-& [data-m2="hero"] .m2-hero-portrait .m2-resolution-info > .m2-symbol {
-  position: absolute;
-  left: 50%;
-  top: 35px;
-  transform: translateX(-50%);
-  height: 14px;
-  font-size: 10px;
-}
 & [data-m2="hero"] .m2-hero-portrait .m2-resolution-info > .m2-symbol img {
   width: 16px;
   height: 14px;
@@ -2067,1033 +1960,614 @@
 & [data-m2="hero"] .m2-hero-portrait .m2-resolution-info .m2-symbol-value {
   color: #abb2bc;
 }
-& #goa2-m2-summary small.m2-summary-content {
-  gap: 3px;
-}
-& #goa2-m2-summary .m2-summary-piles {
-  gap: 4px;
-  font-size: 8px;
-}
-& #goa2-m2-summary .m2-mini-current {
-  display: inline-flex;
-  flex-shrink: 0;
-  width: 13px;
-  height: 18px;
-  border: 1px solid var(--card-color);
-  border-radius: 2px;
-  background: color-mix(in srgb, var(--card-color) 40%, #18202b);
-  align-items: center;
-  justify-content: center;
-  color: #ddd;
-  font-size: 10px;
-}
-& #goa2-m2-summary .m2-mini-current .m2-symbol img {
-  width: 11px;
-  height: 13px;
-}
-
-& button[class*="_upgradeCard_"]:has(> .m2-text-card) {
-  padding: 0 !important;
-  background: transparent !important;
-  border: 0 !important;
-  text-align: left;
-  min-width: 0;
-  width: 100%;
-}
-& button[class*="_upgradeCard_"]:has(> .m2-text-card) > :not(.m2-text-card) {
+& [data-m2="hero"] > [class*="_currentCard_"],
+& [data-m2="hero"] > [class*="_ultimate_"],
+&[data-m2-mode="hand"] [data-m2="hero"][data-m2-other] {
   display: none !important;
 }
-& button[class*="_upgradeCard_"] > .m2-text-card {
-  margin: 0;
-  width: 100%;
-  box-sizing: border-box;
-  height: 100%;
-  cursor: pointer;
+& [data-m2="hero"] [aria-disabled="true"] {
+  cursor: default;
 }
-& button[class*="_upgradeCard_"]:focus-visible {
-  outline: 2px solid #e9c956;
-  outline-offset: 3px;
+&[data-m2-mode="hand"] [data-m2="hero"]:not([data-m2-other]) {
+  display: grid !important;
+  order: -2 !important;
 }
-& .m2-hero-history {
-  row-gap: 2px;
+& .m2-hero-portrait:has(.m2-resolution-info) {
+  margin-bottom: 0;
 }
-& .m2-expanded-board {
-  grid-column: 1/-1;
-  grid-row: 5;
+& .m2-turn-number > span {
   display: flex;
-  flex-direction: column;
-  gap: 9px;
-  border-top: 1px solid #ffffff1b;
-  padding-top: 7px;
-  min-width: 0;
+  align-items: baseline;
 }
-& .m2-expanded-board section {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 0;
-}
-& .m2-expanded-board h4 {
-  margin: 0;
-  color: #aeb9c8;
-  font-size: 10px;
-  font-weight: 600;
-}
-& .m2-hero-slot {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  min-width: 0;
-  min-height: 24px;
-}
-& .m2-slot-label {
-  flex: 0 0 37px;
+& .m2-turn-number sup {
   font-size: 9px;
-  color: #9da9b9;
+  line-height: 1;
+  position: relative;
+  top: -8px;
 }
-& .m2-slot-empty,
-& .m2-slot-hidden {
-  color: #8b96a6;
+& [data-m2="hero"] .m2-hero-portrait .m2-resolution-info > .m2-symbol {
+  position: absolute;
+  height: 14px;
   font-size: 10px;
+  left: -4px;
+  top: auto;
+  bottom: -4px;
+  transform: none;
+  border-radius: 0;
+  background: transparent;
 }
-& .m2-expanded-card {
+& .m2-micro-history-slot:not(:last-child) {
+  width: 64px;
+  min-width: 64px;
+}
+& .m2-hero-played-label {
+  flex: 0 0 auto;
+  color: #aeb9c8;
+  font: 10px/1.2 system-ui;
+}
+& .m2-current-card-mini {
+  appearance: none;
   display: block;
-  flex: 1;
+  flex: 1 1 0;
   min-width: 0;
+  width: 100%;
   height: 26px;
-  overflow: hidden;
-  padding: 0 3px;
-  background: #202731;
+  padding: 0;
+  margin: 0;
   border: 1px solid #ffffff16;
   border-radius: 5px;
+  background: #202731;
   color: #e1e5eb;
   cursor: pointer;
 }
-& [data-m2="hero"] .m2-expanded-card .m2-list-card {
+& .m2-current-card-mini .m2-list-card {
   height: 24px;
   min-height: 24px;
 }
-& [data-m2="hero"] .m2-expanded-card .m2-list-secondary {
-  flex-basis: 42px;
-  min-width: 42px;
+& .m2-current-card-mini .m2-list-card > .m2-symbol {
+  flex-basis: 32px;
+  min-width: 32px;
 }
-& .m2-expanded-hand-dots {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  min-height: 18px;
-}
-& [data-m2="hero"].m2-hero-expanded > [class*="_currentCard_"],
-& [data-m2="hero"].m2-hero-expanded > [class*="_ultimate_"] {
-  display: none !important;
-}
-& #goa2-m2-hero-display {
-  display: none;
-}
-&[data-m2-mode="heroes"] #goa2-m2-hero-display {
-  display: block;
-  position: relative;
-  box-sizing: border-box;
-  flex: 0 0 38dvh;
-  height: 38dvh;
-  overflow: auto;
-  margin: 6px 8px;
-  border-radius: 9px;
-}
-&[data-m2-mode="heroes"] #goa2-m2-hero-display:empty:after {
-  content: "Select a card to view details";
-  display: grid;
-  place-items: center;
-  height: 100%;
-  color: #97a2b3;
-  font-size: 12px;
-}
-&[data-m2-mode="split"] #goa2-m2-hero-display:not(:empty) {
-  display: block;
-  position: absolute;
-  top: 8px;
-  left: 8px;
-  right: 8px;
-  max-height: calc(100% - 16px);
-  z-index: 70;
-  overflow: auto;
-  padding: 0;
-  background: #171d27f5;
-  border: 1px solid #465060;
-  border-radius: 9px;
-}
-& #goa2-m2-hero-display .m2-expanded-board {
-  padding: 0;
-  border: 0;
-  gap: 7px;
-}
-& #goa2-m2-hero-display h4:empty {
-  display: none;
-}
-& #goa2-m2-hero-display .m2-list-card {
-  min-height: 24px;
-  height: 24px;
-  gap: 3px;
-}
-& #goa2-m2-hero-display .m2-list-card > .m2-symbol {
-  flex-basis: 25px;
-}
-& #goa2-m2-hero-display .m2-list-secondary {
-  flex-basis: 44px;
-  min-width: 44px;
-}
-& #goa2-m2-hero-display .m2-list-card .m2-symbol img {
+& .m2-current-card-mini .m2-symbol img {
   width: 19px;
   height: 19px;
 }
-& #goa2-m2-hero-display .m2-list-name {
+& .m2-current-card-mini .m2-symbol {
+  font-size: 12px;
+}
+& .m2-current-card-mini .m2-list-name {
   font-size: 11px;
 }
-& [data-m2="hero"] > [class*="_currentCard_"],
-& [data-m2="hero"] > [class*="_ultimate_"] {
-  display: none !important;
+& .m2-current-card-mini .m2-list-secondary {
+  flex-basis: 42px;
+  min-width: 42px;
 }
-& .m2-saved-events {
-  border-bottom: 1px solid #ffffff22;
-  margin-bottom: 6px;
-  padding-bottom: 5px;
-  font-size: 11px;
+& [data-m2="hero"]:has(> .m2-hero-dashboard) {
+  display: grid !important;
+  column-gap: 6px;
+  grid-template-columns: 36px minmax(0, 1fr) auto;
+  row-gap: 1px;
+  align-items: start;
 }
-& .m2-saved-events > small {
-  color: #9da9b9;
-}
-& .m2-saved-events details {
-  padding: 3px 0;
-}
-& .m2-saved-events pre {
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-  font-size: 10px;
-}
-& .m2-expanded-board h4:empty {
-  display: none;
-}
-&[data-m2-mode="heroes"] #goa2-m2-hero-display {
+& [data-m2="hero"]:has(> .m2-hero-dashboard) > [class*="_name_"] {
+  grid-column: 2;
+  grid-row: 1;
   padding: 0;
-  border: 0;
-  background: none;
-}
-& #goa2-m2-hero-display > .m2-text-card {
-  min-height: 100%;
+  min-width: 0;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+  align-self: start;
   margin: 0;
+  line-height: 15px;
 }
-& #goa2-m2-nav button[hidden] {
-  display: none !important;
+& .m2-hero-upgrades {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  grid-column: 3;
+  justify-content: flex-end;
+  justify-self: end;
+  max-width: 144px;
+  grid-row: 1/3;
+  align-self: start;
+  gap: 3px;
+  flex-wrap: nowrap;
 }
-& [data-m2-rotation-host] {
-  position: absolute !important;
-  inset: 0;
-  box-sizing: border-box;
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
-  touch-action: none;
+& .m2-hero-upgrades > .m2-symbol {
+  border-radius: 4px;
+  background: none;
+  border: 0;
+  gap: 1px;
+  padding: 0;
+  width: 22px;
+  height: 26px;
+  font-size: 11px;
 }
-& svg[data-m2-rotate] {
-  transform: var(--m2-native-transform) rotate(var(--m2-angle)) scale(var(--m2-rotation-fit)) !important;
-  transform-origin: 50% 50%;
+& .m2-hero-upgrades > .m2-symbol img {
+  width: 22px;
+  height: 26px;
 }
-& [data-m2-rotation-host] > [class*="_zoomReset_"] {
-  display: none !important;
+& .m2-hero-upgrades .m2-upgrade-rest {
+  width: 22px;
 }
-.m2-board-controls {
-  display: none;
-}
-& .m2-board-controls {
-  position: absolute;
-  top: calc(var(--m2-status-h, 22px) + 6px);
-  right: 8px;
-  display: flex;
-  gap: 4px;
-  z-index: 60;
-  touch-action: manipulation;
-}
-& .m2-board-controls button {
-  height: 34px;
-  min-width: 34px;
-  padding: 4px 8px;
-  border: 1px solid #48515c;
-  border-radius: 8px;
-  background: #10151ee8;
-  color: #e0e6ed;
-  font: 600 12px system-ui;
-}
-
-& [class*="_takeBackBtn_"],
-& [class*="_finishPlanningBtn_"] {
-  display: none !important;
-}
-& .m2-planning-actions {
+& .m2-hero-history {
   display: flex;
   flex-wrap: wrap;
-  justify-content: center;
-  gap: 6px;
-  margin-top: 8px;
-}
-& .m2-planning-actions button {
-  min-height: 36px;
-  padding: 6px 14px;
-  border: 1px solid #637b9d;
-  border-radius: 8px;
-  background: #1b2637;
-  color: #a8ccff;
-  font: 600 12px system-ui;
-}
-& .m2-planning-actions.m2-on-board {
-  position: absolute;
-  bottom: 8px;
-  left: 8px;
-  right: 76px;
+  align-items: center;
+  min-width: 0;
+  padding-top: 5px;
+  border-top: 1px solid #ffffff12;
+  color: #9ba7b7;
+  row-gap: 2px;
+  align-self: start;
+  column-gap: 6px;
+  grid-column: 2;
+  grid-row: 2;
+  gap: 2px 5px;
+  padding: 0;
   margin: 0;
-  z-index: 65;
-  pointer-events: none;
+  border: 0;
+  font-size: 10px;
+  line-height: 17px;
+}
+& .m2-hero-resources {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+& .m2-hero-history .m2-gold-overlay,
+& .m2-hero-history .m2-gold-overlay svg {
+  width: 16px;
+  height: 18px;
+}
+& .m2-hero-history .m2-gold-value {
+  font-size: 12px;
+}
+& .m2-history-pile {
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+  gap: 3px;
+}
+& .m2-hero-history .m2-history-marker {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 7px;
 }
-& .m2-planning-actions.m2-on-board button {
-  pointer-events: auto;
-}
-
-/* Choice launchers mirror zoom/reset on the opposite corner of the board. */
-& [data-m2-choice-source] { display: none !important; }
-& .m2-choice-launchers:not([hidden]) {
-  position: absolute; top: calc(var(--m2-status-h, 22px) + 6px); left: 10px; z-index: 85;
-  display: flex; gap: 6px; max-width: calc(100% - 130px); flex-wrap: wrap;
-}
-& .m2-choice-launchers button {
-  min-height: 36px; padding: 8px 12px; border: 1px solid #48515c;
-  border-radius: 9px; background: #10151ee8; color: #e0e6ed;
-  font: 600 12px system-ui;
-}
-html:not([data-m2-active]) .m2-choice-launchers { display: none !important; }
-
-/* Keep a stable Hand-sized inspection area, even with no card selected. */
-& { --m2-card-display-height: clamp(190px, 30dvh, 260px); }
-&[data-m2-mode="hand"] #goa2-m2-details,
-&[data-m2-mode="hand"] #goa2-m2-hero-display:not(:empty),
-&[data-m2-mode="heroes"] #goa2-m2-hero-display {
-  display: block;
-  height: var(--m2-card-display-height);
-  min-height: var(--m2-card-display-height);
-  flex: 0 0 var(--m2-card-display-height);
-  overflow: auto;
-}
-@media (max-height: 500px) {
-  & { --m2-card-display-height: 160px; }
-}
-
-/* Keep the printed item centered; the alternative's awarded item is separate. */
-& .m2-card-foot.m2-upgrade-footer {
-  display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-  align-items: center; column-gap: 10px;
-}
-& .m2-upgrade-footer > .m2-symbol { grid-column: 2; grid-row: 1; }
-& .m2-upgrade-gain {
-  grid-column: 3; grid-row: 1; justify-self: start;
-  display: inline-flex; align-items: center; gap: 4px;
-  color: #9ba4b2; font-size: 11px;
-}
-& .m2-upgrade-gain .m2-symbol { opacity: .65; }
-
-/* Hand can inspect a history card in the same space used for a hand card. */
-&[data-m2-mode="hand"] :has(> #goa2-m2-hero-display:not(:empty)) > #goa2-m2-details {
-  display: none;
-}
-&[data-m2-mode="hand"] #goa2-m2-hero-display:not(:empty) {
-  position: relative; box-sizing: border-box; margin: 6px 8px; border-radius: 9px;
-}
-&[data-m2-mode="hand"] [data-m2="hero"][data-m2-other] { display: none !important; }
-& [data-m2="hero"] [aria-disabled="true"] { cursor: default; }
-
-/* Four reserved item slots prevent headings shifting when an upgrade is gained. */
-& .m2-item-upgrades { display: inline-flex; align-items: center; gap: 3px; flex-shrink: 0; }
-& .m2-item-upgrades > .m2-symbol { width: 23px; height: 26px; padding: 0; }
-& .m2-upgrade-empty { opacity: .22; filter: grayscale(1); }
-& .m2-upgrade-rest { position: relative; display: block; width: 23px; height: 29px; }
-& .m2-upgrade-rest > .m2-symbol { position: absolute; width: 14px; height: 14px; }
-& .m2-upgrade-rest > .m2-symbol:nth-child(1) { top: 0; left: 0; }
-& .m2-upgrade-rest > .m2-symbol:nth-child(2) { top: 8px; right: 0; }
-& .m2-upgrade-rest > .m2-symbol:nth-child(3) { bottom: 0; left: 0; }
-& .m2-upgrade-rest .m2-symbol img { width: 14px; height: 14px; }
-
-/* A single compact overview. Names take the flexible space; icon groups stay fixed.
-   Long piles may scroll horizontally rather than overlap adjacent information. */
-& #goa2-m2-summary article {
-  display: flex; flex: 0 0 30px; gap: 2px; padding: 1px 4px;
-  font: 9px/1.1 system-ui; color: #b1bac7; overflow-x: auto; overflow-y: hidden;
-  scrollbar-width: none;
-}
-& #goa2-m2-summary article::-webkit-scrollbar { display: none; }
-& #goa2-m2-summary .m2-summary-turn {
-  width: 23px; min-width: 23px; height: 26px; display: flex;
-  flex-direction: column; align-items: center; justify-content: center;
-  font-size: 13px; line-height: 1; color: #dbe2eb;
-}
-& #goa2-m2-summary .m2-summary-turn b { font-size: 10px; }
-& #goa2-m2-summary .m2-summary-turn .m2-symbol { height: 13px; font-size: 10px; }
-& #goa2-m2-summary .m2-summary-turn .m2-symbol img { width: 13px; height: 13px; opacity: .5; }
-& #goa2-m2-summary .m2-summary-turn .m2-symbol-value { color: #aeb5be; }
-& #goa2-m2-summary .m2-summary-identity {
-  display: flex; align-items: center; gap: 2px; flex: 1 1 120px; min-width: 72px;
-  white-space: nowrap; overflow: hidden;
-}
-& #goa2-m2-summary .m2-summary-identity strong { font-size: 10px; flex-shrink: 0; }
-& #goa2-m2-summary .m2-summary-player { color: #a0a6b0; overflow: hidden; text-overflow: ellipsis; }
-& #goa2-m2-summary .m2-summary-level { white-space: nowrap; flex-shrink: 0; }
-& #goa2-m2-summary .m2-summary-separator { opacity: .65; flex-shrink: 0; }
-& #goa2-m2-summary .m2-summary-piles { display: flex; align-items: center; gap: 3px; flex-shrink: 0; font-size: 7px; }
-& #goa2-m2-summary .m2-summary-piles > span { display: flex; align-items: center; gap: 1.5px; }
-& #goa2-m2-summary .m2-summary-piles i { width: 4px; height: 4px; border-radius: 50%; flex-shrink: 0; }
-& #goa2-m2-summary .m2-mini-current {
-  display: grid; grid-template-columns: repeat(4, 13px); width: 52px; height: 20px;
-  gap: 0; padding: 0 1px; box-sizing: content-box; justify-content: center;
-}
-& #goa2-m2-summary .m2-mini-current .m2-symbol { width: 13px; height: 16px; font-size: 10px; }
-& #goa2-m2-summary .m2-mini-current .m2-symbol img { width: 13px; height: 16px; }
-& #goa2-m2-summary .m2-summary-upgrades { gap: 1px; flex-wrap: nowrap; }
-& #goa2-m2-summary .m2-summary-upgrades > .m2-symbol { width: 13px; height: 18px; font-size: 9px; }
-& #goa2-m2-summary .m2-summary-upgrades img { width: 13px; height: 16px; }
-& #goa2-m2-summary .m2-upgrade-rest { width: 14px; height: 22px; }
-& #goa2-m2-summary .m2-upgrade-rest > .m2-symbol { width: 10px; height: 10px; }
-& #goa2-m2-summary .m2-upgrade-rest > .m2-symbol:nth-child(2) { top: 6px; }
-& #goa2-m2-summary .m2-upgrade-rest img { width: 10px; height: 10px; }
-& .m2-gold-overlay { position: relative; width: 16px; height: 18px; flex-shrink: 0; }
-& .m2-gold-overlay svg { width: 16px; height: 18px; }
-& .m2-gold-overlay .m2-gold-value {
-  position: absolute; inset: 0; display: grid; place-items: center;
-  color: white; font-size: 10px; font-weight: 800; text-shadow: 0 1px 2px #000, 0 0 2px #000;
-}
-
-
-/* Board-first navigation: Hand/Heroes/Settings share a lower pane. Only a selected
-   card covers the upper board area; closing the active toggle restores full Board. */
-&:is([data-m2-mode="hand"], [data-m2-mode="heroes"], [data-m2-panel="tools"]) [data-m2="board"] {
-  visibility: visible; position: relative !important; width: 100%; height: auto;
-  flex: 0 0 43% !important; min-height: 0 !important; margin-bottom: 0;
-  overflow: hidden !important; pointer-events: auto;
-}
-& #goa2-m2-details, & #goa2-m2-hero-display { display: none !important; }
-&[data-m2-mode="hand"] #goa2-m2-details:not(:empty),
-&:is([data-m2-mode="hand"], [data-m2-mode="heroes"]) #goa2-m2-hero-display:not(:empty) {
-  display: block !important; position: absolute !important; inset: 0 8px 8px;
-  width: auto; height: auto; min-height: 0; max-height: none; margin: 0;
-  overflow: auto; z-index: 90; box-sizing: border-box; border-radius: 9px;
-}
-&[data-m2-mode="hand"] [data-m2="board"]:has(#goa2-m2-hero-display:not(:empty)) #goa2-m2-details {
-  display: none !important;
-}
-&:is([data-m2-mode="hand"], [data-m2-mode="heroes"]) [data-m2="sidebar"] {
-  display: flex !important; flex-direction: column; gap: 7px; overflow: auto;
-}
-&[data-m2-mode="hand"] [data-m2="own-wrapper"] { display: contents !important; }
-&[data-m2-mode="heroes"] [data-m2="commit"] { display: none !important; }
-&[data-m2-panel="tools"] #goa2-m2-summary { display: none !important; }
-&[data-m2-panel="tools"] [data-m2="tools"] {
-  top: calc(var(--m2-head) + (var(--m2-vh, 100dvh) - var(--m2-head) - var(--m2-nav)) * .43) !important;
-  bottom: calc(var(--m2-nav) + var(--m2-offset, 0px)) !important;
-  left: 0 !important; right: 0 !important; max-height: none !important;
-  flex-wrap: wrap; align-content: flex-start; gap: 8px; border-radius: 0;
-}
-&[data-m2-deck-open] [data-m2="board"],
-&[data-m2-deck-open] [data-m2="sidebar"],
-&[data-m2-deck-open] #goa2-m2-summary { display: none !important; }
-& #goa2-m2-nav button[data-mode="tools"] { font-size: 11px; }
-/* Bound the identity column so long player names cannot push stats off screen. */
-& #goa2-m2-summary .m2-summary-identity { flex: 1 1 112px; min-width: 60px; max-width: 140px; }
-& #goa2-m2-summary .m2-summary-identity strong { flex-shrink: 0; max-width: 80px; min-width: 0; }
-& #goa2-m2-summary .m2-summary-player {
-  min-width: 0; flex: 0 1 auto; white-space: nowrap; text-overflow: clip; padding-right: 9px;
-  mask-image: linear-gradient(to right, #000 calc(100% - 9px), transparent);
-}
-& #goa2-m2-summary .m2-mini-current { grid-template-columns: repeat(3, 13px); width: 39px; }
-
-&:is([data-m2-mode="hand"], [data-m2-mode="heroes"]) [data-m2="tip"]:has(> .m2-text-card) {
-  display: none !important;
-}
-
-/* Deck is nested inside the native hero/sidebar, not portalled. Keep its ancestor
-   chain mounted and visible to layout; conceal everything except the fixed modal. */
-&[data-m2-deck-open] [data-m2="sidebar"] {
-  display: block !important; visibility: hidden; pointer-events: none;
-}
-&[data-m2-deck-open] [class*="_backdrop_"]:has([data-m2="deck"]),
-&[data-m2-deck-open] [data-m2="deck"] {
-  visibility: visible !important; pointer-events: auto !important;
-}
-
-
-/* Fixed overview columns retain alignment after a card resolves. The empty slot
-   is plain space, not an empty card; item upgrades always occupy the right edge. */
-& #goa2-m2-summary article {
-  display: grid;
-  grid-template-columns: 20px minmax(60px, 1fr) 18px 1px 14px 1px 60px 1px 43px 1px 46px;
-  column-gap: 1px;
-}
-& #goa2-m2-summary .m2-summary-current-slot { width: 43px; min-width: 43px; }
-& #goa2-m2-summary .m2-summary-upgrades { justify-self: end; }
-& #goa2-m2-summary .m2-summary-identity { min-width: 0; }
-& #goa2-m2-summary .m2-summary-piles { overflow: hidden; }
-/* The local hero must precede Hand regardless of their resolution queue order. */
-&[data-m2-mode="hand"] [data-m2="hero"]:not([data-m2-other]) { order: -2 !important; }
-&[data-m2-mode="hand"] [data-m2="hand-list"] { order: -1; }
-
-/* Compact Deck: sticky dark inspection area above independently scrollable rows. */
-& .m2-deck-browser[data-view="compact"] {
-  height: calc(var(--m2-vh, 100dvh) - var(--m2-nav) - 12px);
-  min-height: 0; display: flex; flex-direction: column;
-}
-& .m2-deck-preview {
-  position: relative; top: auto; z-index: 3;
-  height: var(--m2-card-display-height); min-height: var(--m2-card-display-height);
-  flex: 0 0 var(--m2-card-display-height); overflow: auto;
-  background: #090c11; border-radius: 8px; margin: 5px 0 10px;
-}
-& .m2-deck-preview:empty:after {
-  content: "Select a card to view details"; display: grid; place-items: center;
-  height: 100%; color: #97a2b3; font: 13px system-ui;
-}
-& .m2-deck-preview > .m2-text-card { min-height: 100%; margin: 0; }
-& .m2-deck-compact { display: flex; flex-direction: column; gap: 5px; }
-& .m2-deck-compact .m2-deck-card {
-  display: block; padding: 0 3px; height: 26px; min-height: 26px;
-  width: 100%; max-width: none; border: 1px solid #ffffff16; border-radius: 5px;
-  background: #202731; color: #e1e5eb;
-}
-& .m2-deck-compact .m2-list-card { height: 24px; min-height: 24px; }
-& .m2-deck-compact .m2-list-card .m2-symbol img { width: 19px; height: 19px; }
-& .m2-deck-compact .m2-list-name { font-size: 11px; }
-& .m2-deck-compact .m2-list-secondary { flex-basis: 42px; min-width: 42px; }
-& .m2-deck-compact .m2-deck-card[aria-pressed="true"] { border-color: #b8c4d7; }
-
-& .m2-deck-row-list { flex: 1 1 0; min-height: 0; overflow: auto; }
-& .m2-deck-browser[data-view="compact"] > :is(.m2-deck-title, .m2-deck-controls) { flex-shrink: 0; }
-
-& #goa2-m2-summary .m2-summary-turn { width: 20px; min-width: 20px; }
-& #goa2-m2-summary .m2-summary-upgrades > .m2-symbol { width: 10px; font-size: 8px; }
-& #goa2-m2-summary .m2-summary-upgrades > .m2-symbol img { width: 11px; }
-/* Fixed history remains visible in the shared compact hero entry. */
-& .m2-micro-button {
-  display: inline-flex; align-items: center; justify-content: center;
-  padding: 0; margin: 0; border: 0; border-radius: 3px;
-  background: transparent; color: inherit; cursor: pointer;
-}
-& .m2-micro-button:disabled { cursor: default; }
-& .m2-mini-current {
-  display: grid; grid-template-columns: repeat(4, 15px); width: 64px;
-  height: 22px; padding: 1px; box-sizing: content-box; gap: 0;
-  border: 1px solid color-mix(in srgb, var(--card-color) 75%, #fff 25%);
-  border-radius: 3px; background: color-mix(in srgb, var(--card-color) 36%, #171d26 64%);
-}
-& .m2-mini-current .m2-symbol { width: 17px; height: 22px; font-size: 12px; }
-& .m2-mini-current .m2-symbol img { width: 17px; height: 20px; }
-& .m2-card-resolved > .m2-mini-current {
-  background: color-mix(in srgb, var(--card-color) 15%, #10151d 85%);
-  border-color: color-mix(in srgb, var(--card-color) 35%, #252c36 65%);
-}
-& .m2-card-resolved:not(.m2-effect-active) > .m2-mini-current > * { opacity: .5; }
-& .m2-nano-card {
-  display: inline-flex; align-items: center; justify-content: center;
-  width: 19px; height: 22px; border-radius: 3px;
-  background: color-mix(in srgb, var(--card-color) 30%, #171d26 70%);
-  border: 1px solid color-mix(in srgb, var(--card-color) 65%, #333 35%);
-}
-& .m2-nano-card .m2-symbol { width: 17px; height: 20px; font-size: 12px; }
-& .m2-nano-card img { width: 17px; height: 20px; }
-& .m2-hero-current-micro {
-  grid-column: 3; grid-row: 2; justify-self: end; align-self: center;
-}
-& .m2-hero-history { grid-column: 2/-1; align-self: start; }
-& .m2-hero-micro-slots {
-  grid-column: 1/-1; grid-row: 4; display: grid;
-  grid-template-columns: repeat(5, 64px); gap: 4px;
-  padding-top: 7px; border-top: 1px solid #ffffff16;
-}
-& .m2-micro-history-slot {
-  min-width: 0; min-height: 24px; display: flex; align-items: center;
-  flex-wrap: wrap; gap: 3px;
-}
-& .m2-micro-placeholder { color: #727e8d; font-size: 10px; white-space: nowrap; }
-& .m2-hero-portrait:has(.m2-resolution-info) { margin-bottom: 0; }
-& .m2-turn-number > span { display: flex; align-items: baseline; }
-& .m2-turn-number sup { font-size: 9px; line-height: 1; position: relative; top: -8px; }
-& [data-m2="hero"] .m2-hero-portrait .m2-resolution-info > .m2-symbol {
-  left: -4px; top: auto; bottom: -4px; transform: none;
-  border-radius: 0; background: transparent;
-}
-& .m2-rule-icon { width: 1.3em; height: 1.3em; vertical-align: middle; object-fit: contain; }
-& #goa2-m2-summary .m2-summary-identity { cursor: pointer; }
-& #goa2-m2-summary .m2-summary-identity:focus-visible,
-& .m2-micro-button:focus-visible { outline: 1px solid #c0cad8; outline-offset: 2px; }
-& #goa2-m2-summary.m2-summary-focused { overflow: auto; padding: 8px; }
-& #goa2-m2-summary .m2-focused-hero {
-  flex: 0 0 auto; padding: 8px; border: 1px solid #697485;
-  border-radius: 9px; background: #1b222d; grid-template-columns: 36px minmax(0, 1fr) auto;
-}
-& .m2-focus-back {
-  position: absolute; inset: 0; z-index: 3; width: 100%; border: 0;
-  border-radius: 50%; background: #10151dcc; color: white;
-  font-size: 25px; font-weight: 700; cursor: pointer;
-}
-
-/* Board card inspection uses the same text-card height as the Hand viewer. */
-&[data-m2-mode="board"] [data-m2="board"] { position: relative; }
-&[data-m2-mode="board"] #goa2-m2-hero-display:not(:empty) {
-  display: block !important; position: absolute !important; top: 0; left: 8px; right: 8px;
-  width: auto; height: var(--m2-card-display-height); min-height: 0; max-height: calc(100% - 8px);
-  margin: 0; padding: 0; overflow: auto; z-index: 90; box-sizing: border-box;
-  border-radius: 9px; background: #090c11;
-}
-&:has(#goa2-m2-hero-display:not(:empty)) [data-m2="tip"] { display: none !important; }
-/* Align hero and player labels within their shared flexible identity column. */
-& #goa2-m2-summary .m2-summary-identity {
-  display: grid; grid-template-columns: minmax(0, .9fr) 2px minmax(0, 1fr); gap: 2px;
-}
-& #goa2-m2-summary .m2-summary-identity strong { max-width: none; }
-
-/* Fixed card variants. Empty stats retain their cell; cards never stack vertically. */
-& .m2-micro-button {
-  appearance: none; display: inline-flex; flex: 0 0 auto;
-  padding: 0; margin: 0; border: 0; background: transparent; color: inherit;
-  font: inherit; vertical-align: middle;
-}
-& .m2-mini-current {
-  display: grid; grid-auto-flow: column; align-items: center;
-  box-sizing: border-box; height: 24px; min-height: 24px;
-  padding: 1px; gap: 0; border: 1px solid var(--card-color, #858c98);
-  border-radius: 3px; background: var(--m2-card-fill, #333b48);
-}
-& .m2-mini-current.m2-micro-hero,
-& #goa2-m2-summary .m2-mini-current.m2-micro-hero {
-  width: 64px; min-width: 64px; max-width: 64px;
-  box-sizing: border-box;
-  grid-template-columns: repeat(4, 15px);
-}
-& .m2-mini-current.m2-micro-board,
-& #goa2-m2-summary .m2-mini-current.m2-micro-board {
-  width: 43px; min-width: 43px; max-width: 43px; height: 22px;
-  grid-template-columns: repeat(3, 13px);
-}
-& .m2-mini-current.m2-micro-hero .m2-symbol,
-& #goa2-m2-summary .m2-mini-current.m2-micro-hero .m2-symbol {
-  width: 15px; min-width: 15px; height: 20px; font-size: 12px;
-}
-& .m2-mini-current.m2-micro-hero .m2-symbol img,
-& #goa2-m2-summary .m2-mini-current.m2-micro-hero .m2-symbol img {
-  width: 15px; height: 20px;
-}
-& .m2-card-resolved > .m2-mini-current {
-  background: var(--m2-card-muted, #202731); border-color: var(--m2-card-muted, #384459);
-}
-& .m2-nano-card {
-  width: 20px; min-width: 20px; height: 24px; box-sizing: border-box;
-  padding: 1px; border: 1px solid var(--card-color, #858c98);
-  background: var(--m2-card-fill, #333b48);
-}
-& .m2-hero-current-micro { grid-column: 3; grid-row: 2; justify-self: end; }
-& .m2-hero-history { grid-column: 2/-1; grid-row: 2; }
-& .m2-hero-micro-slots {
-  display: grid; grid-template-columns: repeat(5, 64px);
-  gap: 4px; justify-content: start; overflow-x: auto; min-width: 0;
-}
-& .m2-micro-history-slot:not(:last-child) { width: 64px; min-width: 64px; }
-/* Board rows share one column template even when piles/cards/items are empty. */
-& #goa2-m2-summary > article {
-  display: grid; grid-template-columns: 20px minmax(60px, 1fr) 18px 1px 14px 1px 60px 1px 43px 1px 46px;
-  column-gap: 1px; width: 100%; flex: 0 0 30px; overflow: hidden;
-}
-& #goa2-m2-summary .m2-summary-identity { max-width: none; width: 100%; }
-& #goa2-m2-summary .m2-summary-current-slot { width: 43px; min-width: 43px; }
-& #goa2-m2-summary .m2-summary-upgrades { width: 46px; justify-self: end; justify-content: flex-end; }
-/* Focus replaces portrait status with a real back control in the same circle. */
-& .m2-focused-hero .m2-hero-portrait { position: relative; margin-bottom: 0; }
-& .m2-focused-hero .m2-hero-portrait :is(.m2-resolution-info, .m2-offboard-label) { display: none !important; }
-& .m2-focused-hero .m2-focus-back {
-  appearance: none; position: absolute; inset: 0; display: grid; place-items: center;
-  width: 100%; height: 100%; padding: 0; margin: 0; z-index: 3;
-  border: 0; border-radius: 50%; background: #10151dcc; color: #fff;
-  font: 800 24px/1 system-ui; cursor: pointer;
-}
-
-& .m2-mini-current.m2-micro-board .m2-symbol,
-& #goa2-m2-summary .m2-mini-current.m2-micro-board .m2-symbol {
-  width: 13px; min-width: 13px; height: 18px; font-size: 10px;
-}
-& .m2-mini-current.m2-micro-board .m2-symbol img,
-& #goa2-m2-summary .m2-mini-current.m2-micro-board .m2-symbol img {
-  width: 13px; height: 18px;
-}
-
-/* Shared hero entry: metadata, commitment/current card, then fixed history slots. */
-& .m2-history-pile { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
-& .m2-hero-history { grid-column: 2/-1; grid-row: 2; column-gap: 6px; }
-& .m2-hero-current-mini {
-  grid-column: 1/-1; grid-row: 3; display: flex; align-items: center; gap: 7px;
-  min-width: 0; margin-top: 4px; padding-top: 7px; border-top: 1px solid #ffffff16;
-}
-& .m2-hero-played-label { flex: 0 0 auto; color: #aeb9c8; font: 10px/1.2 system-ui; }
-& .m2-current-card-mini {
-  appearance: none; display: block; flex: 1 1 0; min-width: 0; width: 100%;
-  height: 26px; padding: 0; margin: 0; border: 1px solid #ffffff16;
-  border-radius: 5px; background: #202731; color: #e1e5eb; cursor: pointer;
-}
-& .m2-current-card-mini .m2-list-card { height: 24px; min-height: 24px; }
-& .m2-current-card-mini .m2-list-card > .m2-symbol { flex-basis: 32px; min-width: 32px; }
-& .m2-current-card-mini .m2-symbol img { width: 19px; height: 19px; }
-& .m2-current-card-mini .m2-symbol { font-size: 12px; }
-& .m2-current-card-mini .m2-list-name { font-size: 11px; }
-& .m2-current-card-mini .m2-list-secondary { flex-basis: 42px; min-width: 42px; }
-/* Reserve more space for piles, cards and items; shorten player names first. */
-& #goa2-m2-summary > article {
-  grid-template-columns: 20px minmax(48px, 1fr) 22px 2px 18px 2px 66px 2px 43px 2px 54px;
-  column-gap: 2px;
-}
-& #goa2-m2-summary .m2-summary-identity { grid-template-columns: minmax(0, 1.2fr) 2px minmax(0, .8fr); }
-& #goa2-m2-summary .m2-summary-piles { gap: 4px; }
-& #goa2-m2-summary .m2-summary-current-slot { overflow: hidden; }
-& #goa2-m2-summary .m2-summary-upgrades { width: 54px; gap: 2px; }
-& #goa2-m2-summary.m2-summary-focused { min-height: 0; }
-
-/* Six Board columns: turn, identity, resources, piles, current card, items.
-   Only identity flexes; the stat/card columns keep the same width on every row. */
-& #goa2-m2-summary > article {
-  grid-template-columns: 23px minmax(var(--m2-name-min, 70px), 1fr) 45px var(--m2-piles-width, 48px) 70px 54px;
-  column-gap: 3px;
-}
-& #goa2-m2-summary .m2-summary-identity {
-  display: flex; gap: 3px; min-width: 0; width: 100%;
-}
-& #goa2-m2-summary .m2-summary-identity strong {
-  flex: 0 0 auto; max-width: none; overflow: visible; text-overflow: clip;
-}
-& #goa2-m2-summary .m2-summary-player { flex: 1 1 auto; min-width: 0; }
-& #goa2-m2-summary .m2-summary-resources {
-  display: flex; align-items: center; justify-content: center; gap: 3px;
-  min-width: 0; white-space: nowrap;
-}
-& #goa2-m2-summary .m2-summary-piles { gap: 3px; }
-& #goa2-m2-summary .m2-summary-current-slot { width: 70px; min-width: 70px; }
-& .m2-mini-current.m2-micro-board,
-& #goa2-m2-summary .m2-mini-current.m2-micro-board {
-  width: 70px; min-width: 70px; max-width: 70px;
-  box-sizing: border-box; height: 24px; min-height: 24px;
-  padding: 1px; grid-template-columns: repeat(3, 20px); gap: 3px;
-  justify-content: stretch; justify-items: center;
-}
-& .m2-mini-current.m2-micro-board .m2-symbol,
-& #goa2-m2-summary .m2-mini-current.m2-micro-board .m2-symbol {
-  width: 20px; min-width: 20px; font-size: 12px;
-}
-& .m2-mini-current.m2-micro-board .m2-symbol img,
-& #goa2-m2-summary .m2-mini-current.m2-micro-board .m2-symbol img { width: 20px; }
-
-/* Name and metadata occupy the left of the item column. Items span both lines;
-   a small, consistent dot gap keeps Hand/Played/Discard equally compact. */
-& [data-m2="hero"]:has(> .m2-hero-dashboard) { row-gap: 1px; align-items: start; }
-& [data-m2="hero"]:has(> .m2-hero-dashboard) > [class*="_name_"] {
-  align-self: start; margin: 0; line-height: 15px;
-}
-& .m2-hero-upgrades { grid-row: 1/3; align-self: start; gap: 3px; flex-wrap: nowrap; }
-& .m2-hero-upgrades > .m2-symbol { padding: 0; width: 22px; height: 26px; font-size: 11px; }
-& .m2-hero-upgrades > .m2-symbol img { width: 22px; height: 26px; }
-& .m2-hero-upgrades .m2-upgrade-rest { width: 22px; }
-& .m2-hero-history {
-  grid-column: 2; grid-row: 2; gap: 2px 5px; padding: 0; margin: 0;
-  border: 0; font-size: 10px; line-height: 17px;
-}
-& .m2-hero-resources { display: inline-flex; align-items: center; gap: 2px; }
-& .m2-hero-history .m2-gold-overlay { width: 16px; height: 18px; }
-& .m2-hero-history .m2-gold-overlay svg { width: 16px; height: 18px; }
-& .m2-hero-history .m2-gold-value { font-size: 12px; }
-& .m2-history-pile { gap: 3px; }
-& .m2-hero-history .m2-history-marker { width: 7px; height: 7px; flex: 0 0 7px; }
 & .m2-hero-history .m2-history-slot {
-  min-width: 7px; width: 7px; min-height: 14px; height: 14px;
-  margin: 0; padding: 0; border: 0; gap: 0; position: relative;
+  min-width: 7px;
+  width: 7px;
+  min-height: 14px;
+  height: 14px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  gap: 0;
+  position: relative;
 }
 & .m2-hero-history .m2-history-slot img {
-  position: absolute; width: 7px; height: 7px; right: -1px; bottom: 0;
+  position: absolute;
+  width: 7px;
+  height: 7px;
+  right: -1px;
+  bottom: 0;
 }
-/* The current Mini/status row uses space, without another dividing line. */
-& .m2-hero-current-mini, & .m2-selection-status {
-  border-top: 0; margin-top: 2px; padding-top: 0;
+& .m2-selection-status {
+  grid-row: 3;
+  color: #b8c6b9;
+  font-size: 10px;
+  line-height: 14px;
+  grid-column: 1/-1;
+  justify-self: stretch;
+  text-align: center;
+  border-top: 0;
+  margin-top: 2px;
+  padding-top: 0;
 }
-& .m2-hero-micro-slots { border-top: 1px solid #ffffff16; margin-top: 4px; padding-top: 2px; align-items: start; }
-& .m2-micro-history-slot { justify-content: center; align-content: center; box-sizing: border-box; }
+& .m2-hero-micro-slots {
+  grid-column: 1/-1;
+  grid-row: 4;
+  display: grid;
+  grid-template-columns: repeat(5, 64px);
+  gap: 4px;
+  justify-content: start;
+  overflow-x: auto;
+  min-width: 0;
+  border-top: 1px solid #ffffff16;
+  margin-top: 4px;
+  padding-top: 2px;
+  align-items: start;
+}
+& .m2-micro-history-slot {
+  min-width: 0;
+  min-height: 24px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 3px;
+  justify-content: center;
+  align-content: center;
+  box-sizing: border-box;
+}
 & .m2-micro-history-slot.m2-history-empty:not(:last-child) {
-  border: 1px solid #ffffff12; border-radius: 3px; min-height: 24px;
+  border: 1px solid #ffffff12;
+  border-radius: 3px;
+  min-height: 24px;
 }
-& .m2-micro-placeholder { width: 100%; text-align: center; font-size: 9px; color: #7f8997; }
-/* Discards share the same 24px row: Nano cards overlay their label, rather than
-   creating a second line. Extra discards scroll within this fixed-width slot. */
+& .m2-micro-placeholder {
+  white-space: nowrap;
+  width: 100%;
+  text-align: center;
+  font-size: 9px;
+  color: #7f8997;
+}
 & .m2-micro-history-slot:last-child {
-  position: relative; height: 24px; min-height: 24px; border: 0;
-  flex-wrap: nowrap; justify-content: center; overflow: visible;
+  position: relative;
+  height: 24px;
+  min-height: 24px;
+  border: 0;
+  flex-wrap: nowrap;
+  justify-content: center;
+  overflow: visible;
   scrollbar-width: none;
 }
-& .m2-micro-history-slot:last-child::-webkit-scrollbar { display: none; }
-& .m2-micro-history-slot:last-child .m2-micro-placeholder {
-  position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none;
+& .m2-micro-history-slot:last-child::-webkit-scrollbar {
+  display: none;
 }
-& .m2-micro-history-slot:last-child:has(.m2-nano-card) .m2-micro-placeholder { opacity: .35; }
-& .m2-micro-history-slot:last-child .m2-micro-button { position: relative; z-index: 1; }
-
-/* Played always reserves one Mini, including hidden/selecting/resolved states. */
-& .m2-hero-current-mini { height: 26px; min-height: 26px; flex-wrap: nowrap; }
+& .m2-micro-history-slot:last-child .m2-micro-placeholder {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+& .m2-micro-history-slot:last-child:has(.m2-nano-card) .m2-micro-placeholder {
+  opacity: 0.35;
+}
+& .m2-micro-history-slot:last-child .m2-micro-button {
+  position: relative;
+  z-index: 1;
+}
+& .m2-hero-current-mini {
+  grid-column: 1/-1;
+  grid-row: 3;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  border-top: 0;
+  margin-top: 2px;
+  padding-top: 0;
+  height: 26px;
+  min-height: 26px;
+  flex-wrap: nowrap;
+}
 & .m2-current-card-slot {
-  flex: 1 1 0; min-width: 0; height: 26px; box-sizing: border-box;
-  display: flex; align-items: center; justify-content: center;
-  border: 1px solid #ffffff16; border-radius: 5px;
-  background: #202731; color: #9eabbc; font: 10px/1.2 system-ui;
+  flex: 1 1 0;
+  min-width: 0;
+  height: 26px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #ffffff16;
+  border-radius: 5px;
+  background: #202731;
+  color: #9eabbc;
+  font: 10px/1.2 system-ui;
 }
 & .m2-current-card-slot .m2-selection-status {
-  display: inline-flex; align-items: center; justify-content: center;
-  height: 100%; margin: 0; padding: 0; border: 0; line-height: 1.2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  line-height: 1.2;
 }
 & .m2-discard-cards {
-  display: flex; align-items: center; justify-content: center;
-  width: 64px; height: 24px; flex: 0 0 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 24px;
+  flex: 0 0 64px;
 }
-& .m2-discard-cards > .m2-micro-button + .m2-micro-button { margin-left: var(--m2-discard-gap, 2px); }
-
-/* Retain all pile renderers without duplicating the visible history cards. */
-& .m2-history-pile[hidden] { display: none !important; }
-& #goa2-m2-summary > article { overflow-x: auto; }
-
-/* Summary-specific legacy rules must not replace the shared card color or
-   outer-box sizing, including history cards inside the focused hero. */
-& #goa2-m2-summary .m2-mini-current {
-  box-sizing: border-box; padding: 1px;
-  background: var(--m2-card-fill, #333b48); border-color: var(--card-color, #858c98);
+& .m2-discard-cards > .m2-micro-button + .m2-micro-button {
+  margin-left: var(--m2-discard-gap, 2px);
 }
-& #goa2-m2-summary .m2-card-resolved > .m2-mini-current {
-  background: var(--m2-card-muted, #202731); border-color: var(--m2-card-muted, #384459);
+& .m2-history-pile[hidden] {
+  display: none !important;
 }
-/* Board Micro is exactly three 20px icon slots. Tier-edge rules below fit
-   two 2px gaps and 6px of padding/border into the same 70px outer width. Neither the card nor its button expands with the table column.
-   An absent primary/range/movement stat still leaves its fixed cell empty;
-   secondary defense is reserved for the four-cell Hero history variant. */
+/* 7. Board summaries and focus
+   Fixed columns and card widths remain stable; individual surfaces float over the board. */
+& #goa2-m2-summary strong {
+  display: block;
+  font-size: 11px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+& #goa2-m2-summary small {
+  display: block;
+  font-size: 11px;
+  color: #c4cede;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+& #goa2-m2-summary .m2-colors {
+  display: flex;
+  gap: 3px;
+  margin-top: 0;
+  align-items: center;
+  justify-content: flex-end;
+  font-size: 9px;
+  color: #9facbf;
+}
+& #goa2-m2-summary .m2-colors i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  display: block;
+}
+& #goa2-m2-summary small .m2-symbol img {
+  width: 13px;
+  height: 13px;
+}
+& #goa2-m2-summary .m2-summary-upgrades .m2-symbol {
+  font-size: 8px;
+  gap: 1px;
+}
+& .m2-summary-piles > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+& .m2-summary-piles i {
+  display: inline-block;
+  flex-shrink: 0;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+& #goa2-m2-summary small.m2-summary-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  overflow: visible;
+  font-size: 9px;
+  gap: 3px;
+}
+& #goa2-m2-summary article::-webkit-scrollbar {
+  display: none;
+}
+& #goa2-m2-summary .m2-summary-turn b {
+  font-size: 10px;
+}
+& #goa2-m2-summary .m2-summary-turn .m2-symbol {
+  height: 13px;
+  font-size: 10px;
+}
+& #goa2-m2-summary .m2-summary-turn .m2-symbol img {
+  width: 13px;
+  height: 13px;
+  opacity: 0.5;
+}
+& #goa2-m2-summary .m2-summary-turn .m2-symbol-value {
+  color: #aeb5be;
+}
+& #goa2-m2-summary .m2-summary-level {
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+& #goa2-m2-summary .m2-summary-separator {
+  opacity: 0.65;
+  flex-shrink: 0;
+}
+& #goa2-m2-summary .m2-summary-piles > span {
+  display: flex;
+  align-items: center;
+  gap: 1.5px;
+}
+& #goa2-m2-summary .m2-summary-piles i {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+& #goa2-m2-summary .m2-summary-upgrades img {
+  width: 13px;
+  height: 16px;
+}
+& #goa2-m2-summary .m2-upgrade-rest {
+  width: 14px;
+  height: 22px;
+}
+& #goa2-m2-summary .m2-upgrade-rest > .m2-symbol {
+  width: 10px;
+  height: 10px;
+}
+& #goa2-m2-summary .m2-upgrade-rest > .m2-symbol:nth-child(2) {
+  top: 6px;
+}
+& #goa2-m2-summary .m2-upgrade-rest img {
+  width: 10px;
+  height: 10px;
+}
+&[data-m2-panel="tools"] #goa2-m2-summary,
+&[data-m2-deck-open] #goa2-m2-summary {
+  display: none !important;
+}
+& #goa2-m2-summary article {
+  align-items: center;
+  box-sizing: border-box;
+  min-width: 0;
+  border: 1px solid #435066;
+  border-radius: 8px;
+  background: #202936;
+  flex: 0 0 30px;
+  gap: 2px;
+  padding: 1px 4px;
+  font: 9px/1.1 system-ui;
+  color: #b1bac7;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  display: grid;
+}
+& #goa2-m2-summary .m2-summary-turn {
+  white-space: nowrap;
+  flex-shrink: 0;
+  height: 26px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  line-height: 1;
+  color: #dbe2eb;
+  width: 20px;
+  min-width: 20px;
+}
+& #goa2-m2-summary .m2-summary-upgrades > .m2-symbol {
+  height: 18px;
+  width: 10px;
+  font-size: 8px;
+}
+& #goa2-m2-summary .m2-summary-upgrades > .m2-symbol img {
+  width: 11px;
+}
+& #goa2-m2-summary .m2-summary-identity:focus-visible {
+  outline: 1px solid #c0cad8;
+  outline-offset: 2px;
+}
+& .m2-focused-hero .m2-hero-portrait {
+  position: relative;
+  margin-bottom: 0;
+}
+& .m2-focused-hero .m2-hero-portrait :is(.m2-resolution-info, .m2-offboard-label) {
+  display: none !important;
+}
+& #goa2-m2-summary .m2-summary-upgrades {
+  display: flex;
+  flex-wrap: nowrap;
+  justify-self: end;
+  justify-content: flex-end;
+  width: 54px;
+  gap: 2px;
+}
+& #goa2-m2-summary.m2-summary-focused {
+  min-height: 0;
+}
+& #goa2-m2-summary .m2-summary-identity {
+  align-items: center;
+  white-space: nowrap;
+  overflow: hidden;
+  flex: 1 1 112px;
+  cursor: pointer;
+  max-width: none;
+  display: flex;
+  gap: 3px;
+  min-width: 0;
+  width: 100%;
+}
+& #goa2-m2-summary .m2-summary-identity strong {
+  font-size: 10px;
+  flex-shrink: 0;
+  min-width: 0;
+  flex: 0 0 auto;
+  max-width: none;
+  overflow: visible;
+  text-overflow: clip;
+}
+& #goa2-m2-summary .m2-summary-player {
+  color: #a0a6b0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: clip;
+  padding-right: 9px;
+  mask-image: linear-gradient(to right, #000 calc(100% - 9px), transparent);
+  flex: 1 1 auto;
+  min-width: 0;
+}
+& #goa2-m2-summary .m2-summary-resources {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-width: 0;
+  white-space: nowrap;
+}
+& #goa2-m2-summary .m2-summary-piles {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  font-size: 7px;
+  overflow: hidden;
+  gap: 3px;
+}
+& #goa2-m2-summary > article {
+  display: grid;
+  width: 100%;
+  flex: 0 0 30px;
+  overflow: hidden;
+  grid-template-columns:
+    23px minmax(var(--m2-name-min, 70px), 1fr) 45px var(--m2-piles-width, 48px)
+    70px 54px;
+  column-gap: 3px;
+  overflow-x: auto;
+}
 & #goa2-m2-summary .m2-summary-current-slot {
-  display: flex; align-items: center; min-width: 0; box-sizing: border-box;
+  width: 70px;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  box-sizing: border-box;
   overflow: visible;
 }
 & #goa2-m2-summary .m2-summary-current-slot > .m2-micro-button {
-  width: 70px; min-width: 70px; max-width: 70px; box-sizing: border-box;
-  flex: 0 0 auto; height: 24px; overflow: visible;
+  width: 70px;
+  min-width: 70px;
+  max-width: 70px;
+  box-sizing: border-box;
+  flex: 0 0 auto;
+  height: 24px;
+  overflow: visible;
 }
-& .m2-mini-current.m2-micro-hidden,
-& #goa2-m2-summary .m2-mini-current.m2-micro-hidden {
-  display: flex; align-items: center; justify-content: center;
+/* Turn state follows base rows; tinted summary surfaces follow these defaults. */
+& .m2-current-hero {
+  outline: none !important;
+  border-color: #6d6244 !important;
+  box-shadow: inset 2px 0 #d6bc77 !important;
+  background: #25272a !important;
 }
-/* Constrain the focused entry's border box and keep history overflow inside
-   its own slot scroller. Floating focus layout is refined below. */
-&[data-m2-mode="board"] #goa2-m2-summary.m2-summary-focused {
-  overflow-x: hidden; overflow-y: auto; align-items: stretch;
+& .m2-done-hero {
+  background: #171d26 !important;
+  border-color: #303844 !important;
+  box-shadow: none !important;
 }
-& #goa2-m2-summary .m2-focused-hero {
-  width: 100%; max-width: 100%; min-width: 0; box-sizing: border-box;
-  align-self: stretch; overflow: hidden;
+& [data-m2="hero"].m2-pending-hero {
+  border-color: #8993a2;
 }
-
-/* One crop spans the complete card. Fade the IMAGE's alpha, rather than
-   covering it with a dark rectangle: transparent pixels reveal the shell's
-   normal body/footer background or the title's actual card color underneath. */
-& .m2-text-card { position: relative; isolation: isolate; }
-& .m2-card-art {
-  position: absolute; inset: 0; z-index: 1; overflow: hidden;
-  pointer-events: none; opacity: 0;
-}
-/* At most 40% artwork = 60% of the underlying surface still showing. The mask
-   shares the full-card coordinate space, including title and footer. Its black
-   stops specify alpha only; they are never painted as a visible black layer. */
-& .m2-has-art > .m2-card-art {
-  opacity: .4;
-  mask-mode: alpha;
-  mask-image: linear-gradient(135deg, transparent 0%, rgb(0 0 0 / 15%) 30%, rgb(0 0 0 / 50%) 65%, #000 100%);
-  -webkit-mask-image: linear-gradient(135deg, transparent 0%, rgb(0 0 0 / 15%) 30%, rgb(0 0 0 / 50%) 65%, #000 100%);
-}
-& .m2-card-art > img {
-  display: block; width: 100%; height: 100%; object-fit: cover;
-  object-position: 50% 34%; transform: scale(1.08);
-}
-/* Bar backgrounds paint below the full-card art. Their blur panes sample that
-   same image in place above it, and text/controls remain sharp above the blur.
-   Keep bars in the card's stacking context so their backgrounds cannot hide art. */
-& .m2-text-card > :is(.m2-card-top, .m2-card-body, .m2-card-foot) {
-  position: relative; z-index: auto;
-}
-& .m2-has-art > :is(.m2-card-top, .m2-card-body, .m2-card-foot) > * {
-  z-index: 3;
-}
-& .m2-has-art > .m2-card-top { background: var(--card-color); }
-& .m2-has-art > .m2-card-foot { background: #0e1219; }
-& .m2-has-art > :is(.m2-card-top, .m2-card-foot)::before {
-  content: ""; position: absolute; inset: 0; z-index: 2;
-  pointer-events: none; background: transparent;
-  backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px);
-}
-& .m2-has-art > .m2-card-body { text-shadow: 0 1px 2px #000b; }
-
-/* Large-only stat enlargement: 21px icons -> 27.3px, and overlaid values from
-   1.15em -> 1.495em. Existing grid columns have room; footer actions/items and
-   all Small/Mini/Micro/Nano renderers retain their own dimensions. */
-& .m2-text-card :is(.m2-card-top, .m2-card-body) .m2-symbol img {
-  width: 27.3px; height: 27.3px;
-}
-& .m2-text-card :is(.m2-card-top, .m2-card-body) .m2-symbol-value {
-  font-size: 1.495em;
-}
-& .m2-text-card .m2-card-body .m2-rule-icon {
-  width: 1.69em; height: 1.69em;
-}
-
-/* Center the tier within its reserved right-hand corner, not against its edge. */
-& .m2-card-top > span:last-child {
-  display: grid; place-items: center;
-  align-self: stretch; justify-self: stretch; text-align: center;
-}
-/* Small Hand cards: one blurred crop, confined to the colored center. Fade the
-   artwork alpha horizontally from invisible to 40%; the existing color shows
-   underneath. Name and primary/range icons stay sharp above the decoration. */
-& .m2-small-card > .m2-list-band {
-  position: relative; isolation: isolate; overflow: hidden;
-}
-& .m2-small-card > .m2-list-band > :not(.m2-card-art) {
-  position: relative; z-index: 2;
-}
-& .m2-small-card > .m2-list-band.m2-has-art > .m2-card-art {
-  opacity: .4;
-  mask-image: linear-gradient(90deg, transparent 0%, #000 100%);
-  -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 100%);
-}
-& .m2-small-card > .m2-list-band > .m2-card-art > img {
-  filter: blur(4px); transform: scale(1.12);
-}
-
-/* Reserve 13px for three 3px stripes separated by 2px, plus a 5px gap to the
-   primary/range icons. The gutters never change with tier or artwork loading. */
-& .m2-small-card > .m2-list-band {
-  border-left: 0; padding-left: 18px; padding-right: 18px;
-}
-& .m2-small-card > .m2-list-band::before,
-& .m2-small-card > .m2-list-band::after {
-  content: ""; position: absolute; top: 0; bottom: 0; z-index: 3;
-  width: calc(var(--m2-tier-lines, 1) * 5px - 2px);
-  background: repeating-linear-gradient(90deg, var(--card-color) 0 3px, transparent 3px 5px);
-  pointer-events: none;
-}
-& .m2-small-card > .m2-list-band::before { left: 0; }
-& .m2-small-card > .m2-list-band::after { right: 0; }
-
-/* Equal primary and utility columns keep the title centered even when an icon
-   is absent. Named grid positions reserve empty slots without dummy symbols. */
-& .m2-small-card > .m2-list-band {
-  display: grid; grid-template-columns: 24px minmax(0, 1fr) 24px;
-}
-& .m2-small-card > .m2-list-band > .m2-list-primary {
-  grid-column: 1; grid-row: 1; justify-self: center;
-}
-& .m2-small-card > .m2-list-band > .m2-list-name {
-  grid-column: 2; grid-row: 1;
-}
-& .m2-small-card > .m2-list-band > .m2-list-utility {
-  grid-column: 3; grid-row: 1; justify-self: center;
-}
-
-/* Mini cards share the tier cue and symmetric icon slots, with smaller gutters:
-   three 2px stripes and 1px gaps occupy 8px, plus 4px before each 19px icon.
-   No artwork is attached to these rows, so their colored fill stays plain. */
-& .m2-mini-card > .m2-list-band {
-  position: relative; isolation: isolate; overflow: hidden;
-  border-left: 0; padding-left: 12px; padding-right: 12px;
-  display: grid; grid-template-columns: 19px minmax(0, 1fr) 19px; gap: 3px;
-}
-& .m2-mini-card > .m2-list-band > * { position: relative; z-index: 2; }
-& .m2-mini-card > .m2-list-band::before,
-& .m2-mini-card > .m2-list-band::after {
-  content: ""; position: absolute; top: 0; bottom: 0; z-index: 3;
-  width: calc(var(--m2-tier-lines, 1) * 3px - 1px);
-  background: repeating-linear-gradient(90deg, var(--card-color) 0 2px, transparent 2px 3px);
-  pointer-events: none;
-}
-& .m2-mini-card > .m2-list-band::before { left: 0; }
-& .m2-mini-card > .m2-list-band::after { right: 0; }
-& .m2-mini-card > .m2-list-band > .m2-list-primary {
-  grid-column: 1; grid-row: 1; justify-self: center;
-}
-& .m2-mini-card > .m2-list-band > .m2-list-name {
-  grid-column: 2; grid-row: 1;
-}
-& .m2-mini-card > .m2-list-band > .m2-list-utility {
-  grid-column: 3; grid-row: 1; justify-self: center;
-}
-& .m2-mini-card > .m2-list-band > .m2-symbol img {
-  width: 19px; height: 19px;
-}
-
-/* Micro/Nano tier edges consume existing space: retain the 1px outer border,
-   reserve two internal pixels at each side, and paint only those pixels. Basic
-   leaves both pixels as card fill; Tier II paints the inner one; Tier III paints
-   both, giving a solid 3px edge. Top/bottom borders and outer widths stay put. */
-& :is(.m2-mini-current, .m2-nano-card),
-& .m2-mini-current.m2-micro-board,
-& .m2-mini-current.m2-micro-hero,
-& #goa2-m2-summary :is(.m2-mini-current, .m2-nano-card),
-& #goa2-m2-summary .m2-mini-current.m2-micro-board,
-& #goa2-m2-summary .m2-mini-current.m2-micro-hero {
-  position: relative; isolation: isolate;
-  border-width: 1px; border-style: solid;
-  padding-left: 2px; padding-right: 2px;
-  --m2-tier-edge-color: var(--card-color);
-}
-& :is(.m2-mini-current, .m2-nano-card) > * { position: relative; z-index: 1; }
-& :is(.m2-mini-current, .m2-nano-card)::before,
-& :is(.m2-mini-current, .m2-nano-card)::after {
-  content: ""; position: absolute; top: 0; bottom: 0;
-  width: 2px; z-index: 2; pointer-events: none;
-}
-& :is(.m2-mini-current, .m2-nano-card)::before { left: 0; }
-& :is(.m2-mini-current, .m2-nano-card)::after { right: 0; }
-& :is(.m2-mini-current, .m2-nano-card)[data-tier-lines="2"]::before {
-  background: linear-gradient(90deg, transparent 0 1px, var(--m2-tier-edge-color) 1px 2px);
-}
-& :is(.m2-mini-current, .m2-nano-card)[data-tier-lines="2"]::after {
-  background: linear-gradient(270deg, transparent 0 1px, var(--m2-tier-edge-color) 1px 2px);
-}
-& :is(.m2-mini-current, .m2-nano-card)[data-tier-lines="3"]::before,
-& :is(.m2-mini-current, .m2-nano-card)[data-tier-lines="3"]::after {
-  background: var(--m2-tier-edge-color);
-}
-& .m2-card-resolved > .m2-mini-current,
-& #goa2-m2-summary .m2-card-resolved > .m2-mini-current {
-  --m2-tier-edge-color: var(--m2-card-muted);
-}
-/* The Board's 70px still fits three 20px cells: reduce its two gaps by 1px.
-   Hero's 64px keeps four equal cells; Nano's 20px keeps one centered icon. */
-& .m2-mini-current.m2-micro-board,
-& #goa2-m2-summary .m2-mini-current.m2-micro-board { gap: 2px; }
-& .m2-mini-current.m2-micro-hero,
-& #goa2-m2-summary .m2-mini-current.m2-micro-hero {
-  height: 24px; min-height: 24px;
-  grid-template-columns: repeat(4, 14.5px); justify-items: center;
-}
-& .m2-mini-current.m2-micro-hero .m2-symbol,
-& #goa2-m2-summary .m2-mini-current.m2-micro-hero .m2-symbol {
-  width: 14px; min-width: 14px;
-}
-& .m2-mini-current.m2-micro-hero .m2-symbol img,
-& #goa2-m2-summary .m2-mini-current.m2-micro-hero .m2-symbol img,
-& .m2-nano-card .m2-symbol,
-& .m2-nano-card .m2-symbol img { width: 14px; min-width: 14px; }
-
-/* Both compact and focused heroes float over the board. Only individual
-   hero entries have tinted, blurred surfaces. */
-&[data-m2-mode="board"] [data-m2="board"] {
-  margin-bottom: 0;
+& [data-m2="hero"].m2-current-hero {
+  border-color: #cabb83 !important;
 }
 &[data-m2-mode="board"] #goa2-m2-summary {
+  display: flex;
+  box-sizing: border-box;
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: calc(var(--m2-nav) + var(--m2-offset, 0px));
+  height: var(--m2-summary-h, 78px);
+  z-index: 90;
+  gap: 2px;
+  padding: 5px 8px;
+  flex-direction: column;
+  overflow: hidden;
   background: transparent;
   border-top: 0;
   pointer-events: none;
@@ -3110,8 +2584,10 @@ html:not([data-m2-active]) .m2-choice-launchers { display: none !important; }
 & #goa2-m2-summary:not(.m2-summary-focused) > article.m2-done-hero {
   background: rgb(23 29 38 / 72%) !important;
 }
-
 &[data-m2-mode="board"] #goa2-m2-summary.m2-summary-focused {
+  overflow-x: hidden;
+  overflow-y: auto;
+  align-items: stretch;
   height: auto;
   max-height: calc(var(--m2-vh, 100dvh) - var(--m2-head) - var(--m2-nav) - 32px);
   gap: 8px;
@@ -3119,6 +2595,16 @@ html:not([data-m2-active]) .m2-choice-launchers { display: none !important; }
   overflow: hidden;
 }
 & #goa2-m2-summary .m2-focused-hero {
+  padding: 8px;
+  border: 1px solid #697485;
+  border-radius: 9px;
+  grid-template-columns: 36px minmax(0, 1fr) auto;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  align-self: stretch;
+  overflow: hidden;
   flex: 0 1 auto;
   min-height: 0;
   overflow-y: auto;
@@ -3128,7 +2614,21 @@ html:not([data-m2-active]) .m2-choice-launchers { display: none !important; }
   -webkit-backdrop-filter: blur(3px);
 }
 & .m2-focused-hero .m2-focus-back {
-  font-size: 19px;
+  appearance: none;
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  margin: 0;
+  z-index: 3;
+  border: 0;
+  border-radius: 50%;
+  background: #10151dcc;
+  font: 800 19px/1 system-ui;
+  cursor: pointer;
   color: #aeb5be;
 }
 & .m2-focus-portraits {
@@ -3172,4 +2672,177 @@ html:not([data-m2-active]) .m2-choice-launchers { display: none !important; }
 & .m2-focus-hero-icon:focus-visible {
   outline: 1px solid #c0cad8;
   outline-offset: 2px;
+}
+/* 8. Board gestures and controls
+   Rotate only the marked SVG; generated controls stay below the phase/action strip. */
+& [data-m2-rotation-host] {
+  position: absolute !important;
+  inset: 0;
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  touch-action: none;
+}
+& svg[data-m2-rotate] {
+  transform: var(--m2-native-transform) rotate(var(--m2-angle)) scale(var(--m2-rotation-fit)) !important;
+  transform-origin: 50% 50%;
+}
+& [data-m2-rotation-host] > [class*="_zoomReset_"] {
+  display: none !important;
+}
+.m2-board-controls {
+  display: none;
+}
+& .m2-board-controls {
+  position: absolute;
+  top: calc(var(--m2-status-h, 22px) + 6px);
+  right: 8px;
+  display: flex;
+  gap: 4px;
+  z-index: 60;
+  touch-action: manipulation;
+}
+& .m2-board-controls button {
+  height: 34px;
+  min-width: 34px;
+  padding: 4px 8px;
+  border: 1px solid #48515c;
+  border-radius: 8px;
+  background: #10151ee8;
+  color: #e0e6ed;
+  font: 600 12px system-ui;
+}
+& .m2-planning-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 8px;
+}
+& .m2-planning-actions button {
+  min-height: 36px;
+  padding: 6px 14px;
+  border: 1px solid #637b9d;
+  border-radius: 8px;
+  background: #1b2637;
+  color: #a8ccff;
+  font: 600 12px system-ui;
+}
+& .m2-planning-actions.m2-on-board {
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  right: 76px;
+  margin: 0;
+  z-index: 65;
+  pointer-events: none;
+}
+& .m2-planning-actions.m2-on-board button {
+  pointer-events: auto;
+}
+& [data-m2-choice-source] {
+  display: none !important;
+}
+& .m2-choice-launchers:not([hidden]) {
+  position: absolute;
+  top: calc(var(--m2-status-h, 22px) + 6px);
+  left: 10px;
+  z-index: 85;
+  display: flex;
+  gap: 6px;
+  max-width: calc(100% - 130px);
+  flex-wrap: wrap;
+}
+& .m2-choice-launchers button {
+  min-height: 36px;
+  padding: 8px 12px;
+  border: 1px solid #48515c;
+  border-radius: 9px;
+  background: #10151ee8;
+  color: #e0e6ed;
+  font: 600 12px system-ui;
+}
+html:not([data-m2-active]) .m2-choice-launchers {
+  display: none !important;
+}
+/* 9. Saved event log
+   The archive supplements the native live log. */
+& .m2-saved-events {
+  border-bottom: 1px solid #ffffff22;
+  margin-bottom: 6px;
+  padding-bottom: 5px;
+  font-size: 11px;
+}
+& .m2-saved-events > small {
+  color: #9da9b9;
+}
+& .m2-saved-events details {
+  padding: 3px 0;
+}
+& .m2-saved-events pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 10px;
+}
+@media (max-width: 360px) {
+  & .m2-minions.red {
+    left: calc(25% - 10px);
+  }
+  & .m2-minions.blue {
+    left: calc(75% + 10px);
+  }
+}
+@keyframes m2-breathe {
+  0%,
+  100% {
+    opacity: 0.45;
+    box-shadow: 0 0 0 0 currentColor;
+  }
+  50% {
+    opacity: 1;
+    box-shadow: 0 0 7px 1px currentColor;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  & .m2-action-dot {
+    animation: none;
+  }
+}
+@keyframes m2-effect-breathe {
+  0%,
+  100% {
+    box-shadow: 0 0 1px var(--effect-color, #bbab73);
+  }
+  50% {
+    box-shadow: 0 0 7px var(--effect-color, #bbab73);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  & .m2-effect-active {
+    animation: none;
+    box-shadow: 0 0 3px var(--effect-color, #bbab73);
+  }
+}
+@keyframes m2-selecting-dots {
+  0% {
+    clip-path: inset(0 66.666% 0 0);
+  }
+  33.333% {
+    clip-path: inset(0 33.333% 0 0);
+  }
+  66.666%,
+  100% {
+    clip-path: inset(0 0 0 0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  & .m2-selecting-dots {
+    animation: none;
+  }
+}
+@media (max-height: 500px) {
+  & {
+    --m2-card-display-height: 160px;
+  }
 }

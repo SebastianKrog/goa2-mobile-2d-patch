@@ -66,7 +66,8 @@ function managedAttribute(el, key, value) {
     changedAttributes.set(el, before);
   }
   if (!before.has(key)) before.set(key, el.getAttribute(key));
-  if (el.getAttribute(key) !== String(value)) el.setAttribute(key, value);
+  if (value === null) el.removeAttribute(key);
+  else if (el.getAttribute(key) !== String(value)) el.setAttribute(key, value);
 }
 function clearHeroCard() {
   selectedHeroCard = null;
@@ -82,8 +83,8 @@ const style = document.createElement('style');
 style.id = 'goa2-m2-style';
 // 2. Mobile stylesheet
 // The ampersand is a placeholder replaced with html[data-m2-active] below.
-// Rules are deliberately ordered: shared layout first, followed by narrower view
-// and component overrides. Keep that order when changing selectors or specificity.
+// Component definitions are grouped in styles.css. Edit the owning block instead
+// of appending overrides; shared card geometry must remain independent of its pane.
 /* BUILD:STYLES */
 style.textContent =
   'html:not([data-m2-active]) :is(#goa2-m2-nav,#goa2-m2-close,#goa2-m2-summary,#goa2-m2-details,#goa2-m2-hero-display,.m2-list-card,.m2-text-card,.m2-hero-dashboard,.m2-resolution-info,.m2-hud,.m2-hud-bottom,.m2-planning-actions,.m2-deck-browser,.m2-deck-zoom,.m2-own-colors,.m2-cursors,.m2-saved-events){display:none!important}' +
