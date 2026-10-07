@@ -9,8 +9,9 @@ Standardize card presentation into a small set of reusable sizes:
 - **Full / Image** — the rendered card image.
 - **Large** — full text-card view, as used in the Card Viewer in Hand, Heroes and Deck. May vary slightly between upgrade, Deck and in-play contexts. Uses a colored header bar.
 - **Small** — full-width, fixed-height card showing title plus icons/values, but no ability text. Used in Hand.
-- **Mini / Tiny** — similar to Small, but shorter.
-- **Micro** — fixed-width inline colored card showing only selected icons/numbers, with no text. Uses a breathing highlight while the card has an active ability.
+- **Mini / Tiny** — similar to Small, but not as tall.
+- **Micro** — fixed-width inline colored card showing only selected icons/numbers, with no text. Uses a breathing highlight while the card has an active ability. Shows the main ability icon and movement/defense.
+- **Extended Micro** — Like micro, but also shows initiative and upgrade icon. These are leftmost and rightmost respectively. Their background is not coulered. Total width: 5 icons.
 - **Nano** — single-icon, fixed-width representation with the same height as Micro.
 - **Dot** — colored dot only. Also breathes for an active card.
 
@@ -19,25 +20,25 @@ Standardize card presentation into a small set of reusable sizes:
 ### Minimal hero list
 
 - Rework the list into a more tabular layout with fixed-width columns.
-- Keep a played card visible after resolution, but darken/fade it.
-- Tapping a Mini card opens that card in the **Large** Card Viewer at the top.
+- Keep the Micro card that was played visible after it has moved to played/has been resolved, but darken/fade it.
+- Tapping a Micro card opens that card in the **Large** Card Viewer at the top.
 - Tapping a hero name replaces the minimal list with that hero's expanded Heroes-list entry.
 - In this focused hero view, show a **<** back button on the hero portrait to return to the minimal list.
 
 ## Heroes
 
-Improve the expanded hero view:
+Improve the unexpanded hero view:
 
-- Move the current / played / unresolved / just-resolved card to a **Mini** card beneath the upgrades.
-- Replace the old current-card area with five Mini-sized history slots:
+- Move the current / played / unresolved / just-resolved card to a **Micro** card beneath the upgrades.
+- Replace the old current-card area with five Micro-sized slots:
   - Turn 1
   - Turn 2
   - Turn 3
   - Turn 4
   - Discard
 - Use grey placeholder text while a slot is empty.
-- Populate these slots during resolution as cards are resolved or discarded.
-- Within the history slots, use **Nano** card representations showing the defense icon/value when the card has a defense stat.
+- Populate these slots during resolution with Micro cards cards are resolved or discarded.
+- Except for discard slot, where it uses **Nano** cards representations showing the defense icon/value when the card has a defense stat.
 - Do not show active effects separately; the relevant Micro/Nano card should breathe instead.
 - Move turn-order initiative from below the hero portrait to the portrait's lower-left corner.
 - On the portrait, render turn positions as **2nd**, **3rd**, **4th**, etc., with superscript suffixes rather than a trailing period.
@@ -96,11 +97,11 @@ Behavior:
 This should let players plan later upgrade choices without confusing planned selections with actual game state.
 
 ## Log
-
 - Move **Log** into the bottom menu immediately before **Settings**.
 - Replace the current log approach if possible.
 - Preferred solution: a REST-style implementation that retrieves log deltas from the server.
-- Possible fallback: derive history from the replay list. This is incomplete and should be treated as a temporary compromise.
+- If possible, this could be retrieved from a replay REST-ful access that might already be available.
+- Other possible fallback: derive history from the replay list. This is incomplete and should be treated as a temporary compromise.
 
 ## Horizontal phone layout
 
@@ -110,7 +111,7 @@ Create a dedicated landscape-phone layout:
 - Lists on the right.
 - Menu buttons at the far right.
 - Rework the top menu for landscape, either:
-  - primarily left-aligned; or
+  - on a leftmost left-side vertical bar
   - split between the two corners with a small central status area.
 
 ## Tablet layout
@@ -136,4 +137,4 @@ Consider carrying the reusable visual improvements from the mobile UI into the d
 
 - **Razzle:** currently shown as dead when one figure is still on the board.
 - **Inline token/marker icons:** card rules text that refers to tokens or markers should render the corresponding icon inline instead of plain text.
-  - Example: Emmitt's Silver card. Exact icon mapping/details still TBD.
+  - Example: Emmitt's Silver card has the text :glitch_token:
