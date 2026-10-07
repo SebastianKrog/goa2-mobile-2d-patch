@@ -98,6 +98,10 @@ The canvas card painter is adapted from `PedroVIOliv/goa2-frontend-portfolio`.
 Card art, icons, and fonts are loaded from the game website and are not copied into
 this repository. No new license grant is asserted for third-party code or artwork.
 
+## Roadmap
+
+See [ROADMAP.md](ROADMAP.md).
+
 ## Changelog
 
 See [CHANGELOG.md](CHANGELOG.md).
