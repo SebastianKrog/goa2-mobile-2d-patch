@@ -2534,3 +2534,325 @@ html:not([data-m2-active]) .m2-choice-launchers { display: none !important; }
 & #goa2-m2-summary .m2-summary-turn { width: 20px; min-width: 20px; }
 & #goa2-m2-summary .m2-summary-upgrades > .m2-symbol { width: 10px; font-size: 8px; }
 & #goa2-m2-summary .m2-summary-upgrades > .m2-symbol img { width: 11px; }
+/* Fixed history remains visible in the shared compact hero entry. */
+& .m2-micro-button {
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 0; margin: 0; border: 0; border-radius: 3px;
+  background: transparent; color: inherit; cursor: pointer;
+}
+& .m2-micro-button:disabled { cursor: default; }
+& .m2-mini-current {
+  display: grid; grid-template-columns: repeat(4, 15px); width: 64px;
+  height: 22px; padding: 1px; box-sizing: content-box; gap: 0;
+  border: 1px solid color-mix(in srgb, var(--card-color) 75%, #fff 25%);
+  border-radius: 3px; background: color-mix(in srgb, var(--card-color) 36%, #171d26 64%);
+}
+& .m2-mini-current .m2-symbol { width: 17px; height: 22px; font-size: 12px; }
+& .m2-mini-current .m2-symbol img { width: 17px; height: 20px; }
+& .m2-card-resolved > .m2-mini-current {
+  background: color-mix(in srgb, var(--card-color) 15%, #10151d 85%);
+  border-color: color-mix(in srgb, var(--card-color) 35%, #252c36 65%);
+}
+& .m2-card-resolved:not(.m2-effect-active) > .m2-mini-current > * { opacity: .5; }
+& .m2-nano-card {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 19px; height: 22px; border-radius: 3px;
+  background: color-mix(in srgb, var(--card-color) 30%, #171d26 70%);
+  border: 1px solid color-mix(in srgb, var(--card-color) 65%, #333 35%);
+}
+& .m2-nano-card .m2-symbol { width: 17px; height: 20px; font-size: 12px; }
+& .m2-nano-card img { width: 17px; height: 20px; }
+& .m2-hero-current-micro {
+  grid-column: 3; grid-row: 2; justify-self: end; align-self: center;
+}
+& .m2-hero-history { grid-column: 2/-1; align-self: start; }
+& .m2-hero-micro-slots {
+  grid-column: 1/-1; grid-row: 4; display: grid;
+  grid-template-columns: repeat(5, 64px); gap: 4px;
+  padding-top: 7px; border-top: 1px solid #ffffff16;
+}
+& .m2-micro-history-slot {
+  min-width: 0; min-height: 24px; display: flex; align-items: center;
+  flex-wrap: wrap; gap: 3px;
+}
+& .m2-micro-placeholder { color: #727e8d; font-size: 10px; white-space: nowrap; }
+& .m2-hero-portrait:has(.m2-resolution-info) { margin-bottom: 0; }
+& .m2-turn-number > span { display: flex; align-items: baseline; }
+& .m2-turn-number sup { font-size: 9px; line-height: 1; position: relative; top: -8px; }
+& [data-m2="hero"] .m2-hero-portrait .m2-resolution-info > .m2-symbol {
+  left: -4px; top: auto; bottom: -4px; transform: none;
+  border-radius: 3px; background: #111722da;
+}
+& .m2-rule-icon { width: 1.3em; height: 1.3em; vertical-align: middle; object-fit: contain; }
+& #goa2-m2-summary .m2-summary-identity { cursor: pointer; }
+& #goa2-m2-summary .m2-summary-identity:focus-visible,
+& .m2-micro-button:focus-visible { outline: 1px solid #c0cad8; outline-offset: 2px; }
+& #goa2-m2-summary.m2-summary-focused { overflow: auto; padding: 8px; }
+& #goa2-m2-summary .m2-focused-hero {
+  flex: 0 0 auto; padding: 8px; border: 1px solid #697485;
+  border-radius: 9px; background: #1b222d; grid-template-columns: 36px minmax(0, 1fr) auto;
+}
+& .m2-focus-back {
+  position: absolute; inset: 0; z-index: 3; width: 100%; border: 0;
+  border-radius: 50%; background: #10151dcc; color: white;
+  font-size: 25px; font-weight: 700; cursor: pointer;
+}
+
+/* Board card inspection uses the same text-card height as the Hand viewer. */
+&[data-m2-mode="board"] [data-m2="board"] { position: relative; }
+&[data-m2-mode="board"] #goa2-m2-hero-display:not(:empty) {
+  display: block !important; position: absolute !important; top: 8px; left: 8px; right: 8px;
+  width: auto; height: var(--m2-card-display-height); min-height: 0; max-height: calc(100% - 16px);
+  margin: 0; padding: 0; overflow: auto; z-index: 90; box-sizing: border-box;
+  border-radius: 9px; background: #090c11;
+}
+&:has(#goa2-m2-hero-display:not(:empty)) [data-m2="tip"] { display: none !important; }
+/* Align hero and player labels within their shared flexible identity column. */
+& #goa2-m2-summary .m2-summary-identity {
+  display: grid; grid-template-columns: minmax(0, .9fr) 2px minmax(0, 1fr); gap: 2px;
+}
+& #goa2-m2-summary .m2-summary-identity strong { max-width: none; }
+
+/* Fixed card variants. Empty stats retain their cell; cards never stack vertically. */
+& .m2-micro-button {
+  appearance: none; display: inline-flex; flex: 0 0 auto;
+  padding: 0; margin: 0; border: 0; background: transparent; color: inherit;
+  font: inherit; vertical-align: middle;
+}
+& .m2-mini-current {
+  display: grid; grid-auto-flow: column; align-items: center;
+  box-sizing: border-box; height: 24px; min-height: 24px;
+  padding: 1px; gap: 0; border: 1px solid var(--card-color, #858c98);
+  border-radius: 3px; background: var(--m2-card-fill, #333b48);
+}
+& .m2-mini-current.m2-micro-hero,
+& #goa2-m2-summary .m2-mini-current.m2-micro-hero {
+  width: 64px; min-width: 64px; max-width: 64px;
+  box-sizing: border-box;
+  grid-template-columns: repeat(4, 15px);
+}
+& .m2-mini-current.m2-micro-board,
+& #goa2-m2-summary .m2-mini-current.m2-micro-board {
+  width: 43px; min-width: 43px; max-width: 43px; height: 22px;
+  grid-template-columns: repeat(3, 13px);
+}
+& .m2-mini-current.m2-micro-hero .m2-symbol,
+& #goa2-m2-summary .m2-mini-current.m2-micro-hero .m2-symbol {
+  width: 15px; min-width: 15px; height: 20px; font-size: 12px;
+}
+& .m2-mini-current.m2-micro-hero .m2-symbol img,
+& #goa2-m2-summary .m2-mini-current.m2-micro-hero .m2-symbol img {
+  width: 15px; height: 20px;
+}
+& .m2-card-resolved > .m2-mini-current {
+  background: var(--m2-card-muted, #202731); border-color: var(--m2-card-muted, #384459);
+}
+& .m2-nano-card {
+  width: 20px; min-width: 20px; height: 24px; box-sizing: border-box;
+  padding: 1px; border: 1px solid var(--card-color, #858c98);
+  background: var(--m2-card-fill, #333b48);
+}
+& .m2-hero-current-micro { grid-column: 3; grid-row: 2; justify-self: end; }
+& .m2-hero-history { grid-column: 2/-1; grid-row: 2; }
+& .m2-hero-micro-slots {
+  display: grid; grid-template-columns: repeat(5, 64px);
+  gap: 4px; justify-content: start; overflow-x: auto; min-width: 0;
+}
+& .m2-micro-history-slot:not(:last-child) { width: 64px; min-width: 64px; }
+/* Board rows share one column template even when piles/cards/items are empty. */
+& #goa2-m2-summary > article {
+  display: grid; grid-template-columns: 20px minmax(60px, 1fr) 18px 1px 14px 1px 60px 1px 43px 1px 46px;
+  column-gap: 1px; width: 100%; flex: 0 0 30px; overflow: hidden;
+}
+& #goa2-m2-summary .m2-summary-identity { max-width: none; width: 100%; }
+& #goa2-m2-summary .m2-summary-current-slot { width: 43px; min-width: 43px; }
+& #goa2-m2-summary .m2-summary-upgrades { width: 46px; justify-self: end; justify-content: flex-end; }
+/* Focus replaces portrait status with a real back control in the same circle. */
+& .m2-focused-hero .m2-hero-portrait { position: relative; margin-bottom: 0; }
+& .m2-focused-hero .m2-hero-portrait :is(.m2-resolution-info, .m2-offboard-label) { display: none !important; }
+& .m2-focused-hero .m2-focus-back {
+  appearance: none; position: absolute; inset: 0; display: grid; place-items: center;
+  width: 100%; height: 100%; padding: 0; margin: 0; z-index: 3;
+  border: 0; border-radius: 50%; background: #10151dcc; color: #fff;
+  font: 800 24px/1 system-ui; cursor: pointer;
+}
+
+& .m2-mini-current.m2-micro-board .m2-symbol,
+& #goa2-m2-summary .m2-mini-current.m2-micro-board .m2-symbol {
+  width: 13px; min-width: 13px; height: 18px; font-size: 10px;
+}
+& .m2-mini-current.m2-micro-board .m2-symbol img,
+& #goa2-m2-summary .m2-mini-current.m2-micro-board .m2-symbol img {
+  width: 13px; height: 18px;
+}
+
+/* Shared hero entry: metadata, commitment/current card, then fixed history slots. */
+& .m2-history-pile { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+& .m2-hero-history { grid-column: 2/-1; grid-row: 2; column-gap: 6px; }
+& .m2-hero-current-mini {
+  grid-column: 1/-1; grid-row: 3; display: flex; align-items: center; gap: 7px;
+  min-width: 0; margin-top: 4px; padding-top: 7px; border-top: 1px solid #ffffff16;
+}
+& .m2-hero-played-label { flex: 0 0 auto; color: #aeb9c8; font: 10px/1.2 system-ui; }
+& .m2-current-card-mini {
+  appearance: none; display: block; flex: 1 1 0; min-width: 0; width: 100%;
+  height: 26px; padding: 0; margin: 0; border: 1px solid #ffffff16;
+  border-radius: 5px; background: #202731; color: #e1e5eb; cursor: pointer;
+}
+& .m2-current-card-mini .m2-list-card { height: 24px; min-height: 24px; }
+& .m2-current-card-mini .m2-list-card > .m2-symbol { flex-basis: 32px; min-width: 32px; }
+& .m2-current-card-mini .m2-symbol img { width: 19px; height: 19px; }
+& .m2-current-card-mini .m2-symbol { font-size: 12px; }
+& .m2-current-card-mini .m2-list-name { font-size: 11px; }
+& .m2-current-card-mini .m2-list-secondary { flex-basis: 42px; min-width: 42px; }
+/* Reserve more space for piles, cards and items; shorten player names first. */
+& #goa2-m2-summary > article {
+  grid-template-columns: 20px minmax(48px, 1fr) 22px 2px 18px 2px 66px 2px 43px 2px 54px;
+  column-gap: 2px;
+}
+& #goa2-m2-summary .m2-summary-identity { grid-template-columns: minmax(0, 1.2fr) 2px minmax(0, .8fr); }
+& #goa2-m2-summary .m2-summary-piles { gap: 4px; }
+& #goa2-m2-summary .m2-summary-current-slot { overflow: hidden; }
+& #goa2-m2-summary .m2-summary-upgrades { width: 54px; gap: 2px; }
+& #goa2-m2-summary.m2-summary-focused { min-height: 0; }
+
+/* Six Board columns: turn, identity, resources, piles, current card, items.
+   Only identity flexes; the stat/card columns keep the same width on every row. */
+& #goa2-m2-summary > article {
+  grid-template-columns: 23px minmax(var(--m2-name-min, 70px), 1fr) 45px var(--m2-piles-width, 48px) 70px 54px;
+  column-gap: 3px;
+}
+& #goa2-m2-summary .m2-summary-identity {
+  display: flex; gap: 3px; min-width: 0; width: 100%;
+}
+& #goa2-m2-summary .m2-summary-identity strong {
+  flex: 0 0 auto; max-width: none; overflow: visible; text-overflow: clip;
+}
+& #goa2-m2-summary .m2-summary-player { flex: 1 1 auto; min-width: 0; }
+& #goa2-m2-summary .m2-summary-resources {
+  display: flex; align-items: center; justify-content: center; gap: 3px;
+  min-width: 0; white-space: nowrap;
+}
+& #goa2-m2-summary .m2-summary-piles { gap: 3px; }
+& #goa2-m2-summary .m2-summary-current-slot { width: 70px; min-width: 70px; }
+& .m2-mini-current.m2-micro-board,
+& #goa2-m2-summary .m2-mini-current.m2-micro-board {
+  width: 70px; min-width: 70px; max-width: 70px;
+  box-sizing: border-box; height: 24px; min-height: 24px;
+  padding: 1px; grid-template-columns: repeat(3, 20px); gap: 3px;
+  justify-content: stretch; justify-items: center;
+}
+& .m2-mini-current.m2-micro-board .m2-symbol,
+& #goa2-m2-summary .m2-mini-current.m2-micro-board .m2-symbol {
+  width: 20px; min-width: 20px; font-size: 12px;
+}
+& .m2-mini-current.m2-micro-board .m2-symbol img,
+& #goa2-m2-summary .m2-mini-current.m2-micro-board .m2-symbol img { width: 20px; }
+
+/* Name and metadata occupy the left of the item column. Items span both lines;
+   a small, consistent dot gap keeps Hand/Played/Discard equally compact. */
+& [data-m2="hero"]:has(> .m2-hero-dashboard) { row-gap: 1px; align-items: start; }
+& [data-m2="hero"]:has(> .m2-hero-dashboard) > [class*="_name_"] {
+  align-self: start; margin: 0; line-height: 15px;
+}
+& .m2-hero-upgrades { grid-row: 1/3; align-self: start; gap: 3px; flex-wrap: nowrap; }
+& .m2-hero-upgrades > .m2-symbol { padding: 0; width: 22px; height: 26px; font-size: 11px; }
+& .m2-hero-upgrades > .m2-symbol img { width: 22px; height: 26px; }
+& .m2-hero-upgrades .m2-upgrade-rest { width: 22px; }
+& .m2-hero-history {
+  grid-column: 2; grid-row: 2; gap: 2px 5px; padding: 0; margin: 0;
+  border: 0; font-size: 10px; line-height: 17px;
+}
+& .m2-hero-resources { display: inline-flex; align-items: center; gap: 2px; }
+& .m2-hero-history .m2-gold-overlay { width: 16px; height: 18px; }
+& .m2-hero-history .m2-gold-overlay svg { width: 16px; height: 18px; }
+& .m2-hero-history .m2-gold-value { font-size: 12px; }
+& .m2-history-pile { gap: 3px; }
+& .m2-hero-history .m2-history-marker { width: 7px; height: 7px; flex: 0 0 7px; }
+& .m2-hero-history .m2-history-slot {
+  min-width: 7px; width: 7px; min-height: 14px; height: 14px;
+  margin: 0; padding: 0; border: 0; gap: 0; position: relative;
+}
+& .m2-hero-history .m2-history-slot img {
+  position: absolute; width: 7px; height: 7px; right: -1px; bottom: 0;
+}
+/* The current Mini/status row uses space, without another dividing line. */
+& .m2-hero-current-mini, & .m2-selection-status {
+  border-top: 0; margin-top: 2px; padding-top: 0;
+}
+& .m2-hero-micro-slots { border-top: 1px solid #ffffff16; margin-top: 4px; padding-top: 2px; align-items: start; }
+& .m2-micro-history-slot { justify-content: center; align-content: center; box-sizing: border-box; }
+& .m2-micro-history-slot.m2-history-empty:not(:last-child) {
+  border: 1px solid #ffffff12; border-radius: 3px; min-height: 24px;
+}
+& .m2-micro-placeholder { width: 100%; text-align: center; font-size: 9px; color: #7f8997; }
+/* Discards share the same 24px row: Nano cards overlay their label, rather than
+   creating a second line. Extra discards scroll within this fixed-width slot. */
+& .m2-micro-history-slot:last-child {
+  position: relative; height: 24px; min-height: 24px; border: 0;
+  flex-wrap: nowrap; justify-content: center; overflow: visible;
+  scrollbar-width: none;
+}
+& .m2-micro-history-slot:last-child::-webkit-scrollbar { display: none; }
+& .m2-micro-history-slot:last-child .m2-micro-placeholder {
+  position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none;
+}
+& .m2-micro-history-slot:last-child:has(.m2-nano-card) .m2-micro-placeholder { opacity: .35; }
+& .m2-micro-history-slot:last-child .m2-micro-button { position: relative; z-index: 1; }
+
+/* Played always reserves one Mini, including hidden/selecting/resolved states. */
+& .m2-hero-current-mini { height: 26px; min-height: 26px; flex-wrap: nowrap; }
+& .m2-current-card-slot {
+  flex: 1 1 0; min-width: 0; height: 26px; box-sizing: border-box;
+  display: flex; align-items: center; justify-content: center;
+  border: 1px solid #ffffff16; border-radius: 5px;
+  background: #202731; color: #9eabbc; font: 10px/1.2 system-ui;
+}
+& .m2-current-card-slot .m2-selection-status {
+  display: inline-flex; align-items: center; justify-content: center;
+  height: 100%; margin: 0; padding: 0; border: 0; line-height: 1.2;
+}
+& .m2-discard-cards {
+  display: flex; align-items: center; justify-content: center;
+  width: 64px; height: 24px; flex: 0 0 64px;
+}
+& .m2-discard-cards > .m2-micro-button + .m2-micro-button { margin-left: var(--m2-discard-gap, 2px); }
+
+/* Retain all pile renderers without duplicating the visible history cards. */
+& .m2-history-pile[hidden] { display: none !important; }
+& #goa2-m2-summary > article { overflow-x: auto; }
+
+/* Summary-specific legacy rules must not replace the shared card color or
+   outer-box sizing, including history cards inside the focused hero. */
+& #goa2-m2-summary .m2-mini-current {
+  box-sizing: border-box; padding: 1px;
+  background: var(--m2-card-fill, #333b48); border-color: var(--card-color, #858c98);
+}
+& #goa2-m2-summary .m2-card-resolved > .m2-mini-current {
+  background: var(--m2-card-muted, #202731); border-color: var(--m2-card-muted, #384459);
+}
+/* Board Micro is exactly three 20px icon slots, two 3px gaps, and 4px of
+   padding/border. Neither the card nor its button expands with the table column.
+   An absent primary/range/movement stat still leaves its fixed cell empty;
+   secondary defense is reserved for the four-cell Hero history variant. */
+& #goa2-m2-summary .m2-summary-current-slot {
+  display: flex; align-items: center; min-width: 0; box-sizing: border-box;
+  overflow: visible;
+}
+& #goa2-m2-summary .m2-summary-current-slot > .m2-micro-button {
+  width: 70px; min-width: 70px; max-width: 70px; box-sizing: border-box;
+  flex: 0 0 auto; height: 24px; overflow: visible;
+}
+& .m2-mini-current.m2-micro-hidden,
+& #goa2-m2-summary .m2-mini-current.m2-micro-hidden {
+  display: flex; align-items: center; justify-content: center;
+}
+/* Focus stays inside the same reserved summary height. Constrain its border box,
+   not only its content, and keep history overflow inside its own slot scroller. */
+&[data-m2-mode="board"] #goa2-m2-summary.m2-summary-focused {
+  overflow-x: hidden; overflow-y: auto; align-items: stretch;
+}
+& #goa2-m2-summary .m2-focused-hero {
+  width: 100%; max-width: 100%; min-width: 0; box-sizing: border-box;
+  align-self: stretch; overflow: hidden;
+}

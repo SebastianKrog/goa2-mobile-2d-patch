@@ -60,6 +60,7 @@ function changeEventGame() {
   seenEvents = new Set(savedEvents.map(eventKey));
   for (const el of document.querySelectorAll('.m2-saved-events')) el.remove();
   expandedHeroIds.clear();
+    focusedHeroId = null;
   clearHeroCard();
   return true;
 }

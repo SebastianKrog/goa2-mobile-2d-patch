@@ -1,6 +1,6 @@
 {
   "name": "goa2-mobile-2d",
-  "version": "0.14.9",
+  "version": "0.15.0",
   "private": true,
   "description": "Mobile 2D userscript for Guards of Atlantis II",
   "engines": {

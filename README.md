@@ -39,11 +39,11 @@ Building alone needs no npm packages: `node scripts/build.mjs` also works before
 
 - `npm run build` combines source files into readable, unminified output in `dist/`.
 - `npm run build:check` checks that committed output matches the source.
-- `npm test` builds and runs all 19 regression test files in isolated Node processes.
+- `npm test` builds and runs all 20 regression test files in isolated Node processes.
 - GitHub Actions checks committed output and runs the tests on pushes and pull requests.
 
 Edit `src/`, then rebuild and commit both source and `dist/`. Do not edit generated
-output directly. For a version change, update `package.json`, the metadata in
+output directly. For a version change, update `package.json` and `package-lock.json`, the metadata in
 `src/userscript-header.txt`, and the public API version near the end of `src/main.js`.
 
 ## Source guide
@@ -74,7 +74,7 @@ in that file. Other UI code calls the painter through its small returned API.
 
 ## Tests and boundaries
 
-The jsdom fixtures cover navigation, card layouts, hero status/expansion, upgrades,
+The jsdom fixtures cover navigation, card layouts, hero status/focus, upgrades,
 rotation/reset, event persistence and game isolation, lifecycle cleanup, and Deck
 redraw behavior. `tests/fixtures/goa2-mobile-2d-v0.14.2.txt` is an intentionally frozen
 baseline used to compare canvas commands for 72 card variants.
@@ -98,10 +98,26 @@ The canvas card painter is adapted from `PedroVIOliv/goa2-frontend-portfolio`.
 Card art, icons, and fonts are loaded from the game website and are not copied into
 this repository. No new license grant is asserted for third-party code or artwork.
 
-## Roadmap
+## Card display system
 
-See [ROADMAP.md](ROADMAP.md).
+| Size | Content and use |
+| --- | --- |
+| Full / Image | Rendered card artwork in Deck. |
+| Large | Complete text card with colored header and rules; selected-card viewers and upgrade choices. |
+| Small | Full-width title and stat icons without rules text; Hand rows. |
+| Mini / Tiny | Slim title/stat row; current or selected card in Hero entries and Compact Deck. |
+| Micro — Board | Three fixed 20px icon slots: primary, range/radius, movement. 70px total width including gaps and border/padding; no secondary defense, title or initiative. |
+| Micro — Hero history | Four fixed icon slots: primary, range/radius, movement, defense. 64px total width. |
+| Nano | One defense icon/value for a discarded card; 20px wide and the same 24px height as Micro. |
+| Dot | Card color only; card-pile summaries. |
 
-## Changelog
+Missing Micro stats keep their cell empty. Known in-play upgrades use purple values;
+Deck uses printed values. Active effects breathe on their Micro/Nano/Dot source.
+Facedown cards do not reveal hidden names or stats.
 
-See [CHANGELOG.md](CHANGELOG.md).
+## Release notes and planned work
+
+See [CHANGELOG.md](CHANGELOG.md) for published releases and [ROADMAP.md](ROADMAP.md)
+for unfinished work. Version 0.15.0 includes the refined Board overview, compact Hero
+entries, fixed card history slots and token/figure bugfixes. Unfolded Hero boards are
+disabled; tapping a Board hero still opens its compact entry with a portrait back button.

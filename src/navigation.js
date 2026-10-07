@@ -65,6 +65,7 @@ function navigate(key) {
   const closing = selected === key;
   setDeckOpen(false);
   panel = '';
+  focusedHeroId = null;
   mode = 'board';
   clearHeroCard();
   dismiss();
@@ -125,20 +126,14 @@ on(
     if (!hero) return;
     e.preventDefault();
     e.stopImmediatePropagation();
-    // Planning shows only the commitment/current card. Hand keeps our board open
-    // in other phases; clicking it must not fight that automatic expansion.
-    const view = componentProp(q('[data-m2="sidebar"]'), 'view');
-    if (isCardSelection(view) || (mode === 'hand' && !box.hasAttribute('data-m2-other'))) return;
-    if (expandedHeroIds.has(hero.id)) expandedHeroIds.delete(hero.id);
-    else expandedHeroIds.add(hero.id);
-    dismissedTip = q('[data-m2="tip"]');
-    dismissedTip?.setAttribute('data-m2-dismissed', '');
-    schedule();
+    // Unfolding is temporarily disabled. Cards remain independently inspectable.
+    return;
   },
   { capture: true },
 );
 on(document, 'keydown', (e) => {
   if (e.key === 'Escape') {
+    focusedHeroId = null;
     panel = '';
     clearHeroCard();
     dismiss();

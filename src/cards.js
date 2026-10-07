@@ -75,15 +75,23 @@ function itemUpgradeSymbols(items = {}, className = '') {
   group.append(rest);
   return group;
 }
+// Explicit translucent fills avoid context-dependent native button colors.
+function setMicroColor(element, card) {
+  const color = cardColors[String(card?.color || '').toUpperCase()] || '#858c98';
+  element.style.setProperty('--card-color', color);
+  element.style.setProperty('--m2-card-fill', color + '55');
+  element.style.setProperty('--m2-card-muted', color + '22');
+}
 // Three fixed cells keep the miniature recognizable without a title or initiative.
 // Facedown cards show only a colored back, never stats read from hidden props.
-function miniatureCard(card, items = {}) {
+function miniatureCard(card, items = {}, includeDefense = false) {
   const mini = document.createElement('span');
-  mini.className = 'm2-mini-current';
+  mini.className = 'm2-mini-current ' + (includeDefense ? 'm2-micro-hero' : 'm2-micro-board');
   mini.title = !card ? 'No current card' : card.is_facedown ? 'Current card (hidden)' : card.name;
   mini.setAttribute('aria-label', mini.title);
-  mini.style.setProperty('--card-color', cardColors[card?.color] || '#858c98');
+  setMicroColor(mini, card);
   if (!card || card.is_facedown) {
+    mini.classList.add('m2-micro-hidden');
     mini.textContent = card ? '?' : '—';
     return mini;
   }
@@ -97,12 +105,56 @@ function miniatureCard(card, items = {}) {
       ? upgradedSymbol(items, 'RADIUS', card.radius_value)
       : document.createElement('span');
   mini.append(primary, range);
-  for (const stat of ['MOVEMENT']) {
+  for (const stat of includeDefense ? ['MOVEMENT', 'DEFENSE'] : ['MOVEMENT']) {
     const value = card.secondary_actions?.[stat];
     mini.append(stat !== card.primary_action && relevantStat(card, stat, value)
       ? upgradedSymbol(items, stat, value) : document.createElement('span'));
   }
   return mini;
+}
+// Discards need only their defense stat. Hidden cards never expose icon values.
+function nanoCard(card, items = {}) {
+  const nano = document.createElement('span');
+  nano.className = 'm2-nano-card';
+  setMicroColor(nano, card);
+  nano.title = card?.is_facedown ? 'Hidden card' : card?.name || 'Discard';
+  if (card?.is_facedown) nano.textContent = '?';
+  else {
+    const value = card?.primary_action === 'DEFENSE'
+      ? card.primary_action_value : card?.secondary_actions?.DEFENSE;
+    if (relevantStat(card || {}, 'DEFENSE', value))
+      nano.append(upgradedSymbol(items, 'DEFENSE', value));
+  }
+  return nano;
+}
+// The deployed renderer's vocabulary uses token_NAME and marker_NAME asset paths.
+// Keep an allowlist: unknown markup stays readable instead of producing broken images.
+const inlineRuleIcons = {
+  life_counter: '/icons/life_counters.png',
+  ...Object.fromEntries(['smoke_bomb', 'grenade', 'blast', 'dud', 'zombie', 'ice',
+    'totem', 'barrier', 'tree', 'glitch', 'illusion', 'magma', 'rock', 'familiar']
+    .map(name => [name + '_token', '/icons/token_' + name + '.png'])),
+  ...Object.fromEntries(['poison', 'bounty']
+    .map(name => [name + '_marker', '/icons/marker_' + name + '.png'])),
+  ...Object.fromEntries(['axe', 'bird', 'anvil', 'horn'].flatMap(name => [
+    ['rune_' + name, '/icons/rune_' + name + '.png'],
+    ['rune_' + name + '_marker', '/cards/sheets/rune_' + name + '_marker.png'],
+  ])),
+};
+function appendRulesText(effect, text, symbol) {
+  for (const part of String(text || '').split(/(:[a-z_]+:)/g)) {
+    const key = /^:([a-z_]+):$/.exec(part)?.[1];
+    if (key && /^(attack|defense|movement|range|radius|initiative)$/.test(key))
+      effect.append(symbol(key.toUpperCase()));
+    else if (inlineRuleIcons[key]) {
+      const img = document.createElement('img');
+      img.className = 'm2-rule-icon';
+      img.src = inlineRuleIcons[key];
+      img.alt = key.replaceAll('_', ' ');
+      img.title = img.alt;
+      effect.append(img);
+    } else effect.append(document.createTextNode(part));
+  }
 }
 // Suppress placeholder zeros, but preserve open-ended values and zeros explicitly
 // mentioned in rules text. This is presentation filtering, not rules evaluation.
@@ -220,12 +272,7 @@ function textCard(card, context, tip) {
     head.append(symbol('RADIUS', card.radius_value));
   const effect = document.createElement('div');
   effect.className = 'm2-card-effect';
-  const parts = String(card.effect_text || '').split(/(:[a-z_]+:)/g);
-  for (const part of parts) {
-    if (/^:(attack|defense|movement|range|radius|initiative):$/.test(part))
-      effect.append(symbol(part.slice(1, -1).toUpperCase()));
-    else effect.append(document.createTextNode(part));
-  }
+  appendRulesText(effect, card.effect_text, symbol);
   main.append(head, effect);
   body.append(side, main);
   const foot = document.createElement('footer');

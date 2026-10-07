@@ -54,6 +54,8 @@ const expandedHeroIds = new Set();
 let frame = 0,
   dead = false;
 let selectedHeroCard = null;
+// Board focus has its own identity and never reparents React-owned hero nodes.
+let focusedHeroId = null;
 const changedAttributes = new Map();
 
 // Remember native attributes so destroy() can restore keyboard and ARIA behavior.

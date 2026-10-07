@@ -1,48 +1,10 @@
 # Roadmap
 
-Planned UI work for the GoA II Mobile 2D patch. This is a working roadmap rather than a fixed release plan.
+Remaining UI work for the GoA II Mobile 2D patch after 0.15.0. This is a working roadmap rather than a fixed release plan. Completed Board/Heroes work and bugfixes are recorded in [CHANGELOG.md](CHANGELOG.md); the current card sizes are documented in [README.md](README.md#card-display-system).
 
 ## Card display system
 
-Standardize card presentation into a small set of reusable sizes:
-
-- **Full / Image** — the rendered card image.
-- **Large** — full text-card view, as used in the Card Viewer in Hand, Heroes and Deck. May vary slightly between upgrade, Deck and in-play contexts. Uses a colored header bar.
-- **Small** — full-width, fixed-height card showing title plus icons/values, but no ability text. Used in Hand.
-- **Mini / Tiny** — similar to Small, but not as tall.
-- **Micro** — fixed-width inline colored card showing only selected icons/numbers, with no text. Uses a breathing highlight while the card has an active ability. Shows the main ability icon and movement/defense.
-- **Extended Micro** — Like micro, but also shows initiative and upgrade icon. These are leftmost and rightmost respectively. Their background is not coulered. Total width: 5 icons.
-- **Nano** — single-icon, fixed-width representation with the same height as Micro.
-- **Dot** — colored dot only. Also breathes for an active card.
-
-## Board
-
-### Minimal hero list
-
-- Rework the list into a more tabular layout with fixed-width columns.
-- Keep the Micro card that was played visible after it has moved to played/has been resolved, but darken/fade it.
-- Tapping a Micro card opens that card in the **Large** Card Viewer at the top.
-- Tapping a hero name replaces the minimal list with that hero's expanded Heroes-list entry.
-- In this focused hero view, show a **<** back button on the hero portrait to return to the minimal list.
-
-## Heroes
-
-Improve the unexpanded hero view:
-
-- Move the current / played / unresolved / just-resolved card to a **Micro** card beneath the upgrades.
-- Replace the old current-card area with five Micro-sized slots:
-  - Turn 1
-  - Turn 2
-  - Turn 3
-  - Turn 4
-  - Discard
-- Use grey placeholder text while a slot is empty.
-- Populate these slots during resolution with Micro cards cards are resolved or discarded.
-- Except for discard slot, where it uses **Nano** cards representations showing the defense icon/value when the card has a defense stat.
-- Do not show active effects separately; the relevant Micro/Nano card should breathe instead.
-- Move turn-order initiative from below the hero portrait to the portrait's lower-left corner.
-- On the portrait, render turn positions as **2nd**, **3rd**, **4th**, etc., with superscript suffixes rather than a trailing period.
-- Keep the existing dotted turn-number style in the minimal Board list.
+- Add **Extended Micro** for the planned tree views: initiative at the left and the granted upgrade icon at the right, on uncolored end caps. Target five icon slots in total.
 
 ## Deck
 
@@ -133,8 +95,3 @@ Create a tablet-specific layout:
 
 Consider carrying the reusable visual improvements from the mobile UI into the desktop interface where they fit cleanly.
 
-## Bugs / fixes
-
-- **Razzle:** currently shown as dead when one figure is still on the board.
-- **Inline token/marker icons:** card rules text that refers to tokens or markers should render the corresponding icon inline instead of plain text.
-  - Example: Emmitt's Silver card has the text :glitch_token:

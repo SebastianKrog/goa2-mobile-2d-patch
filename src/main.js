@@ -139,40 +139,7 @@ function refresh() {
       box.classList.toggle('m2-current-hero', !!entry?.current);
       box.classList.toggle('m2-pending-hero', resolving && !!entry);
       box.classList.toggle('m2-done-hero', done);
-      let info = q('.m2-resolution-info', box);
-      const marker = entry
-        ? entry.current
-          ? 'NOW'
-          : String(entry.order) + '.'
-        : resolving && !offboard
-          ? done
-            ? '✓'
-            : '—'
-          : null;
-      if (marker !== null) {
-        if (!info) {
-          info = document.createElement('div');
-          info.className = 'm2-resolution-info';
-          extras.add(info);
-        }
-        const portrait = q('.m2-hero-portrait', box),
-          host = portrait || box;
-        if (info.parentElement !== host) host.append(info);
-        const key = JSON.stringify([marker, entry?.initiative, entry?.card]);
-        if (info.dataset.key !== key) {
-          info.dataset.key = key;
-          const order = document.createElement('span');
-          order.className = 'm2-turn-number';
-          order.textContent = marker;
-          info.replaceChildren(order);
-          if (entry) info.append(cardSymbol('INITIATIVE', entry.initiative));
-          info.title = entry?.card || (done ? 'Turn completed' : 'No card played this turn');
-          info.setAttribute(
-            'aria-label',
-            entry ? 'Turn ' + marker + ', initiative ' + entry.initiative : info.title,
-          );
-        }
-      } else info?.remove();
+      updateTurnPortrait(box, entry, done, offboard, resolving);
       const cardPiles = hero
         ? ['played_cards', 'discard_pile'].map((field, i) => ({
             label: i ? 'D' : 'P',
@@ -194,9 +161,11 @@ function refresh() {
             cards: Array.from(e.children).map((dot) => ({ color: dot.style.backgroundColor })),
           }));
       return {
+        id: hero?.id,
         level: hero?.level,
         gold: hero?.gold,
-        currentCard: hero ? visibleCurrentCard(box, hero) : null,
+        currentCard: hero ? heroTurnCard(box, hero, publicView) : null,
+        currentActive: hero ? cardIsActive(heroTurnCard(box, hero, publicView), publicView) : false,
         offboard,
         upgrading: /^LEVEL[_ ]UP$/i.test(publicView?.phase || ''),
         upgradeRemaining: remainingUpgrades(upgradeRequest, hero?.id),
@@ -273,10 +242,12 @@ function refresh() {
     card && JSON.stringify(card) !== hiddenCardKey && (!tip || tip !== dismissedTip)
       ? JSON.stringify([card, cardUpgrades(card)])
       : '';
-  if (detailsPanel.dataset.key !== detailKey) {
-    detailsPanel.dataset.key = detailKey;
+  // A read-only hero inspection takes precedence over a retained Hand selection.
+  const visibleDetailKey = selectedHeroCard ? '' : detailKey;
+  if (detailsPanel.dataset.key !== visibleDetailKey) {
+    detailsPanel.dataset.key = visibleDetailKey;
     detailsPanel.replaceChildren();
-    if (detailKey) detailsPanel.append(textCard(card, 'hand', tip));
+    if (visibleDetailKey) detailsPanel.append(textCard(card, 'hand', tip));
   }
   if (tip && card && tip.dataset.m2CardKey !== detailKey) {
     tip.dataset.m2CardKey = detailKey;
@@ -320,7 +291,7 @@ on(media, 'change', schedule);
 
 // Public teardown for console installs and upgrades: release observers, timers, and DOM changes.
 window.GOA2Mobile2D = {
-  version: '0.14.9',
+  version: '0.15.0',
   destroy() {
     flushEventHistory();
     dead = true;

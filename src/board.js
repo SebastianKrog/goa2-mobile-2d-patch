@@ -170,7 +170,63 @@ function updateOwnColors(sidebar) {
 }
 // One overview row contains status, identity, resources, piles, current card, and
 // upgrades. Full labels remain available to assistive technology and on hover.
+// Render a separate focus entry so React retains ownership of its original hero.
+function renderFocusedHero(h) {
+  const source = Array.from(document.querySelectorAll('[data-m2="sidebar"] [data-m2="hero"]'))
+    .find(box => componentProp(box, 'hero')?.id === h.id);
+  const hero = source && componentProp(source, 'hero');
+  if (!hero) { focusedHeroId = null; return false; }
+  let box = q('.m2-focused-hero', summary);
+  if (!box || box.dataset.heroId !== h.id) {
+    summary.replaceChildren();
+    box = document.createElement('section');
+    box.className = 'm2-focused-hero';
+    box.dataset.m2 = 'hero';
+    box.dataset.heroId = h.id;
+    box.toggleAttribute('data-m2-other', source.hasAttribute('data-m2-other'));
+    for (const selector of [c('name'), c('details')]) {
+      const native = q(':scope>' + selector, source);
+      if (native) box.append(native.cloneNode(true));
+    }
+    summary.append(box);
+  }
+  // Native hand dots and player labels can change while this entry stays focused.
+  for (const selector of [c('name'), c('details')]) {
+    const native = q(':scope>' + selector, source), copy = q(':scope>' + selector, box);
+    if (native && copy && native.innerHTML !== copy.innerHTML) copy.innerHTML = native.innerHTML;
+  }
+  const view = componentProp(q('[data-m2="sidebar"]'), 'view');
+  updateHeroDashboard(box, view, hero);
+  box.classList.toggle('m2-current-hero', !!h.resolution?.current);
+  box.classList.toggle('m2-pending-hero', !!h.resolution);
+  box.classList.toggle('m2-done-hero', h.done);
+  updateTurnPortrait(box, h.resolution, h.done, h.offboard, /^RESOLUTION$/i.test(view?.phase));
+  const portrait = q('.m2-hero-portrait', box);
+  if (portrait && !q('.m2-focus-back', portrait)) {
+    const back = document.createElement('button');
+    back.type = 'button';
+    back.className = 'm2-focus-back';
+    back.textContent = '<';
+    back.setAttribute('aria-label', 'Back to hero summaries');
+    back.onclick = () => { focusedHeroId = null; delete summary.dataset.key; refresh(); };
+    portrait.append(back);
+  }
+  return true;
+}
 function renderSummary(heroes) {
+  if (summary.classList.contains('m2-summary-focused') !== !!focusedHeroId) {
+    summary.classList.toggle('m2-summary-focused', !!focusedHeroId);
+    // Do not carry a previous scrolled overview into the replacement hero entry.
+    summary.scrollLeft = 0;
+    summary.scrollTop = 0;
+  }
+  if (focusedHeroId) {
+    const h = heroes.find(hero => hero.id === focusedHeroId);
+    if (h && renderFocusedHero(h)) { delete summary.dataset.key; return; }
+    focusedHeroId = null;
+    summary.classList.remove('m2-summary-focused');
+    root.style.setProperty('--m2-summary-h', heroes.length * 32 + 12 + 'px');
+  }
   const key = JSON.stringify(heroes);
   if (summary.dataset.key === key) return;
   summary.dataset.key = key;
@@ -214,6 +270,14 @@ function renderSummary(heroes) {
 
     const identity = document.createElement('span');
     identity.className = 'm2-summary-identity';
+    identity.setAttribute('role', 'button');
+    identity.tabIndex = 0;
+    identity.setAttribute('aria-label', 'Open ' + h.name);
+    const focus = () => { if (h.id) { focusedHeroId = h.id; clearHeroCard(); refresh(); } };
+    identity.onclick = focus;
+    identity.onkeydown = event => {
+      if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); focus(); }
+    };
     identity.title = h.name;
     const [heroName, ...playerParts] = h.name.split(/[·•]/);
     const name = document.createElement('strong');
@@ -248,19 +312,48 @@ function renderSummary(heroes) {
       if (!cards.length) group.append(document.createTextNode('–'));
       piles.append(group);
     };
-    add('P', h.cardPiles.find(p => p.label === 'P')?.cards || []);
     add('H', h.dots.map(color => ({ color })));
+    add('P', h.cardPiles.find(p => p.label === 'P')?.cards || []);
     add('D', h.cardPiles.find(p => p.label === 'D')?.cards || []);
-    row.append(turn, identity, level, separator(), gold, separator(), piles);
-    // Resolved heroes have no current microcard, even if stale props retain one.
-    // Queue membership wins for heroes with another action still pending.
+    const resources = document.createElement('span');
+    resources.className = 'm2-summary-resources';
+    resources.append(level, separator(), gold);
+    row.append(turn, identity, resources, piles);
+    // Keep a just-resolved card in its fixed column, with a subdued appearance.
     const currentSlot = document.createElement('span');
     currentSlot.className = 'm2-summary-current-slot';
-    if (h.currentCard && (!h.done || h.resolution))
-      currentSlot.append(miniatureCard(h.currentCard, h.upgrades));
-    row.append(separator(), currentSlot, separator(), itemUpgradeSymbols(h.upgrades, 'm2-summary-upgrades'));
+    if (h.currentCard) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'm2-micro-button';
+      button.disabled = !!h.currentCard.is_facedown;
+      button.setAttribute('aria-label', h.currentCard.is_facedown ? 'Hidden card' : h.currentCard.name);
+      button.classList.toggle('m2-card-resolved', h.done && !h.resolution);
+      if (h.currentActive) {
+        button.classList.add('m2-effect-active');
+        button.style.setProperty('--effect-color', cardColors[h.currentCard.color] || '#888');
+      }
+      button.append(miniatureCard(h.currentCard, h.upgrades));
+      button.onclick = () => { inspectHeroCard(h.id, h.currentCard); refresh(); };
+      currentSlot.append(button);
+    }
+    row.append(currentSlot, itemUpgradeSymbols(h.upgrades, 'm2-summary-upgrades'));
     summary.append(row);
   }
+  // Share one compact pile width across every row. Reserve only what the largest
+  // H/P/D group needs, rather than leaving a fixed gap after sparse piles.
+  const pileWidth = Math.max(26, ...heroes.map(h => {
+    const counts = [h.dots.length, ...['P', 'D'].map(label =>
+      h.cardPiles.find(pile => pile.label === label)?.cards.length || 0)];
+    return Math.ceil(18 + counts.reduce((width, count) => width + (count ? count * 5.5 : 3.5), 0));
+  }));
+  summary.style.setProperty('--m2-piles-width', pileWidth + 'px');
+  // Hero names never ellipsize. Player names surrender space first; at very narrow
+  // widths the row can scroll rather than cropping the hero name or overlapping stats.
+  const names = Array.from(summary.querySelectorAll('.m2-summary-identity strong'));
+  const nameWidth = Math.max(0, ...names.map(name =>
+    name.getBoundingClientRect().width || name.textContent.length * 6.2));
+  summary.style.setProperty('--m2-name-min', Math.ceil(nameWidth + 8) + 'px');
 }
 // Keep rotation inside the native screen-space pan/zoom transform.
 let boardRotation = null;

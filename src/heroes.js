@@ -46,33 +46,80 @@ function heroDisplayName(name) {
   copy.querySelectorAll(c('items')).forEach((e) => e.remove());
   return copy.textContent.trim();
 }
-// Recognize the own-player committed UI while public hero props catch up.
+// Read the own selection from the native CardList/Sidebar props as well as the
+// highlighted row. Hidden panels can stop painting selection classes, but React
+// still owns the selected ID. Never apply this fallback to an opponent.
+function ownSelectedCard(box, hero) {
+  if (box.hasAttribute('data-m2-other')) return null;
+  const sidebar = q('[data-m2="sidebar"]');
+  if (!isCardSelection(componentProp(sidebar, 'view')) && !hero?.current_turn_card) return null;
+  const hand = q('[data-m2="hand-list"]');
+  const row = hand && q(c('row') + c('selected'), hand);
+  const selectedId = componentProp(hand, 'selectedId') || componentProp(sidebar, 'selectedCardId');
+  const card = selectedId
+    ? (hero?.hand || []).find(card => card.id === selectedId) ||
+      Array.from(hand?.querySelectorAll(c('row')) || []).map(renderedCard).find(card => card?.id === selectedId)
+    : row && renderedCard(row);
+  return card && !card.is_facedown ? card : null;
+}
 function hasLocalSelection(box) {
-  return (
-    !box.hasAttribute('data-m2-other') && !!q('[data-m2="hand-list"] ' + c('row') + c('selected'))
+  return !box.hasAttribute('data-m2-other') && (
+    !!ownSelectedCard(box, componentProp(box, 'hero')) ||
+    !!q('[data-m2="hand-list"] ' + c('row') + c('selected'))
   );
 }
-// Only the own hero may fall back to the locally selected hand row. Opponents'
-// facedown commitments never reveal their underlying card details.
+// A facedown flag also describes the own player's committed card state. The
+// native client clears selectedCardId on commit, so the hand-row fallback alone
+// cannot recover it. Use details actually supplied to our player, or an exact ID
+// match in their own known deck. Opponent facedown cards remain untouched.
 function visibleCurrentCard(box, hero) {
-  if (hero.current_turn_card) return hero.current_turn_card;
-  if (box.hasAttribute('data-m2-other')) return null;
-  const row = q('[data-m2="hand-list"] ' + c('row') + c('selected'));
-  return row ? renderedCard(row) : null;
+  const current = hero.current_turn_card;
+  if (current && !current.is_facedown) return current;
+  if (box.hasAttribute('data-m2-other')) return current || null;
+  if (current) {
+    if (current.color && current.primary_action && current.name)
+      return { ...current, is_facedown: false };
+    const known = [
+      ...(Array.isArray(hero.deck) ? hero.deck : []),
+      ...(hero.hand || []),
+    ].find(card => card.id === current.id && !card.is_facedown);
+    if (known) return { ...known, state: current.state, is_facedown: false };
+  }
+  return ownSelectedCard(box, hero) || current || null;
 }
 function isCardSelection(view) {
   return /^PLANNING$/i.test(view?.phase || q('[data-m2="header"] ' + c('phase'))?.textContent || '');
 }
-// Build portrait, piles, status, upgrades, effects, and optional expanded rows.
+// Multi-figure heroes are alive while any owned figure has a board location.
+// Use explicit ownership supplied by the game rather than guessing from ID prefixes.
+function heroOffboard(hero, view) {
+  const locations = view?.board?.entity_locations;
+  if (!locations || typeof locations !== 'object') return null;
+  if (Object.hasOwn(locations, hero.id)) return false;
+  return !Object.entries(view?.hero_pieces || {}).some(([id, piece]) =>
+    piece.owner_hero_id === hero.id && Object.hasOwn(locations, piece.id || id));
+}
+function cardIsActive(card, view) {
+  return !!card && !card.is_facedown && (card.is_active ||
+    (view?.effects || []).some(effect => effect.is_active && effect.source_card_id === card.id));
+}
+// The played slot is authoritative for a just-resolved card in this turn.
+function heroTurnCard(box, hero, view) {
+  return visibleCurrentCard(box, hero) || hero.played_cards?.[Number(view?.turn) - 1] || null;
+}
+function inspectHeroCard(heroId, card) {
+  if (!card || card.is_facedown) return;
+  selectedHeroCard = { heroId, cardId: card.id };
+  updateHeroCardDisplay();
+}
+// Build the shared portrait, metadata, current Mini card and fixed history slots.
 // The serialized render key prevents replacing buttons and animations on every refresh.
-function updateHeroDashboard(box, view) {
-  const hero = componentProp(box, 'hero');
+function updateHeroDashboard(box, view, suppliedHero = null) {
+  const hero = suppliedHero || componentProp(box, 'hero');
   if (!hero || !Array.isArray(hero.played_cards)) return;
   // An absent location means off board only when a location map is actually available.
   // Missing board data alone must not be treated as a death/off-board signal.
-  const locations = view?.board?.entity_locations;
-  const offboard =
-    locations && typeof locations === 'object' ? !Object.hasOwn(locations, hero.id) : null;
+  const offboard = heroOffboard(hero, view);
   const effects = view?.effects || [];
   const cards = [
     ...hero.played_cards,
@@ -97,16 +144,16 @@ function updateHeroDashboard(box, view) {
     (dot) => ({ color: dot.style.backgroundColor, label: dot.title }),
   );
   const locallySelected = hasLocalSelection(box);
-  const own = !box.hasAttribute('data-m2-other');
   const planning = isCardSelection(view);
   const currentCard = visibleCurrentCard(box, hero);
-  const expanded = !planning && ((mode === 'hand' && own) || expandedHeroIds.has(hero.id));
-  box.classList.toggle('m2-hero-expanded', expanded);
+  // One compact entry is shared by Heroes, Hand and Board focus in every phase.
+  const expanded = false;
+  box.classList.remove('m2-hero-expanded');
   const heading = q(':scope>' + c('name'), box);
   if (heading) {
     managedAttribute(heading, 'role', 'button');
-    managedAttribute(heading, 'tabindex', planning || (mode === 'hand' && own) ? '-1' : '0');
-    managedAttribute(heading, 'aria-disabled', String(planning || (mode === 'hand' && own)));
+    managedAttribute(heading, 'tabindex', '-1');
+    managedAttribute(heading, 'aria-disabled', 'true');
     managedAttribute(heading, 'aria-expanded', String(expanded));
   }
   const key = JSON.stringify([
@@ -143,8 +190,7 @@ function updateHeroDashboard(box, view) {
   // Store identities instead of a card snapshot: the separate display re-resolves
   // the latest visible card and its upgrades on every refresh.
   function inspect(card) {
-    selectedHeroCard = { heroId: hero.id, cardId: card.id };
-    updateHeroCardDisplay();
+    inspectHeroCard(hero.id, card);
   }
 
   const portrait = document.createElement('span');
@@ -169,25 +215,31 @@ function updateHeroDashboard(box, view) {
   }
   const history = document.createElement('div');
   history.className = 'm2-hero-history';
-  history.setAttribute('aria-label', 'Level, gold, hand, played and discarded cards');
+  history.setAttribute('aria-label', 'Level, gold and hand cards');
   const stats = document.createElement('span');
+  stats.className = 'm2-hero-resources';
+  const gold = goldSymbol(hero.gold);
+  gold.classList.add('m2-gold-overlay');
   stats.append(
     document.createTextNode('Lv ' + hero.level + ' • '),
-    goldSymbol(hero.gold),
-    document.createTextNode(' • Hand:'),
+    gold,
   );
   history.append(stats);
+  const handGroup = document.createElement('span');
+  handGroup.className = 'm2-history-pile';
+  handGroup.append(document.createTextNode('Hand:'));
+  history.append(handGroup);
   for (const dot of handDots) {
     const marker = document.createElement('span');
     marker.className = 'm2-history-marker';
     marker.style.setProperty('--effect-color', dot.color);
     marker.title = dot.label || 'Hand card';
-    history.append(marker);
+    handGroup.append(marker);
   }
-  if (!handDots.length) history.append(document.createTextNode('—'));
+  if (!handDots.length) handGroup.append(document.createTextNode('—'));
   // Each pile dot can inspect a known card. Facedown cards remain non-interactive;
   // active source cards receive the breathing class, and rune markers remain attached.
-  function slot(card, label, rune) {
+  function slot(card, label, rune, group) {
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'm2-history-slot';
@@ -208,134 +260,166 @@ function updateHeroDashboard(box, view) {
       img.alt = 'Rune ' + rune;
       button.append(img);
     }
-    history.append(button);
+    group.append(button);
   }
-  const playedLabel = document.createElement('span');
-  playedLabel.textContent = 'Played:';
-  history.append(playedLabel);
+  // Keep the complete dot renderers for reuse, but hide duplicate Played/Discard
+  // metadata now that the fixed history slots carry this information.
+  const playedGroup = document.createElement('span');
+  playedGroup.className = 'm2-history-pile m2-history-played';
+  playedGroup.hidden = true;
+  playedGroup.append(document.createTextNode('Played:'));
   hero.played_cards.forEach((card, i) => {
-    if (card) slot(card, 'Turn ' + (i + 1), hero.rune_slots?.[String(i + 1)]);
+    if (card) slot(card, 'Turn ' + (i + 1), hero.rune_slots?.[String(i + 1)], playedGroup);
   });
-  if (!hero.played_cards.some(Boolean)) history.append(document.createTextNode('—'));
-  const discardLabel = document.createElement('span');
-  discardLabel.textContent = 'Discard:';
-  history.append(discardLabel);
-  if (!hero.discard_pile?.length) history.append(document.createTextNode('—'));
-  (hero.discard_pile || []).forEach((card, i) => slot(card, 'D' + (i + 1)));
+  if (!hero.played_cards.some(Boolean)) playedGroup.append(document.createTextNode('—'));
+  const discardGroup = document.createElement('span');
+  discardGroup.className = 'm2-history-pile m2-history-discard';
+  discardGroup.hidden = true;
+  discardGroup.append(document.createTextNode('Discard:'));
+  if (!hero.discard_pile?.length) discardGroup.append(document.createTextNode('—'));
+  (hero.discard_pile || []).forEach((card, i) => slot(card, 'D' + (i + 1), null, discardGroup));
+  history.append(playedGroup, discardGroup);
   dashboard.append(history);
-  if (
-    planning &&
-    !locallySelected &&
-    !(hero.current_turn_card && !box.hasAttribute('data-m2-other'))
-  ) {
-    const status = document.createElement('span');
-    status.className = 'm2-selection-status';
-    const selected = !!hero.current_turn_card;
-    status.textContent = selected
-      ? hero.can_commit_second_card
-        ? 'Selected · choosing second'
-        : '✓ Selected'
-      : 'Selecting…';
-    if (!selected) {
-      status.textContent = 'Selecting';
-      status.setAttribute('aria-label', 'Selecting');
-      const dots = document.createElement('span');
-      dots.className = 'm2-selecting-dots';
-      dots.textContent = '...';
-      dots.setAttribute('aria-hidden', 'true');
-      status.append(dots);
-    }
-    status.title = selected ? 'A card has been committed' : 'Waiting for a card to be committed';
-    dashboard.append(status);
-  }
-
   dashboard.append(itemUpgradeSymbols(hero.items, 'm2-hero-upgrades'));
-  const badges = document.createElement('div');
-  badges.className = 'm2-hero-effects';
-  if (hero.spellbook != null) {
-    const count = document.createElement('span');
-    count.textContent = 'Cast ' + (hero.cast_spells?.length || 0);
-    badges.append(count);
+  // The header card and five history slots replace separate active-effect badges.
+  // Only the source card glows, including defense-only discard Nano cards.
+  function smallCard(card, nano = false, resolved = false) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'm2-micro-button';
+    button.disabled = !!card.is_facedown;
+    button.title = card.is_facedown ? 'Hidden card' : card.name;
+    button.setAttribute('aria-label', button.title);
+    button.append(nano ? nanoCard(card, hero.items) : miniatureCard(card, hero.items, true));
+    button.classList.toggle('m2-card-resolved', resolved);
+    if (active.some(a => a.id === card.id)) {
+      button.classList.add('m2-effect-active');
+      button.style.setProperty('--effect-color', cardColors[card.color] || '#bbab73');
+    }
+    button.onclick = () => inspect(card);
+    return button;
   }
-  for (const card of active) {
-    const badge = document.createElement('button');
-    badge.type = 'button';
-    badge.className = 'm2-effect-active';
-    badge.style.setProperty('--effect-color', cardColors[card.color] || '#bbab73');
-    badge.textContent = card.name;
-    badge.title = 'Active effect: ' + (card.effect_text || card.name);
-    badge.setAttribute('aria-label', card.name + ' · active effect');
-    badge.onclick = () => inspect(card);
-    badges.append(badge);
+  // Reserve the same Mini height for every hero, regardless of commitment or
+  // visibility. Selection status occupies that slot rather than a separate row.
+  const current = document.createElement('div');
+  current.className = 'm2-hero-current-mini';
+  const label = document.createElement('span');
+  label.className = 'm2-hero-played-label';
+  label.textContent = 'Played:';
+  current.append(label);
+  if (currentCard && !currentCard.is_facedown) {
+    const card = document.createElement('button');
+    card.type = 'button';
+    card.className = 'm2-current-card-mini';
+    card.setAttribute('aria-label', currentCard.name);
+    updateCardRow(card, currentCard, hero.items || {});
+    if (cardIsActive(currentCard, view)) {
+      card.classList.add('m2-effect-active');
+      card.style.setProperty('--effect-color', cardColors[currentCard.color] || '#888');
+    }
+    card.onclick = () => inspect(currentCard);
+    current.append(card);
+  } else {
+    const slot = document.createElement('div');
+    slot.className = 'm2-current-card-slot';
+    const status = document.createElement('span');
+    if (planning) {
+      status.className = 'm2-selection-status';
+      const selected = !!hero.current_turn_card || locallySelected;
+      status.textContent = selected
+        ? hero.can_commit_second_card ? 'Selected · choosing second' : 'Selected'
+        : 'Selecting';
+      status.setAttribute('aria-label', status.textContent);
+      if (!selected) {
+        const dots = document.createElement('span');
+        dots.className = 'm2-selecting-dots';
+        dots.textContent = '...';
+        dots.setAttribute('aria-hidden', 'true');
+        status.append(dots);
+      }
+    } else {
+      status.textContent = '—';
+      slot.setAttribute('aria-label', 'No unresolved card');
+    }
+    slot.append(status);
+    current.append(slot);
   }
-  if (badges.children.length) dashboard.append(badges);
-  // Expansion stays inside the hero list. Only clicking an individual card opens
-  // the larger display; opponents’ hands remain represented by their public dots.
-  if (expanded || (currentCard && !currentCard.is_facedown)) {
-    const board = document.createElement('div');
-    board.className = 'm2-expanded-board';
-    function cardRow(card, label) {
-      const line = document.createElement('div');
-      line.className = 'm2-hero-slot';
-      if (label) {
-        const title = document.createElement('span');
-        title.className = 'm2-slot-label';
-        title.textContent = label;
-        line.append(title);
+  dashboard.append(current);
+  // History slots remain present during planning and in the Hand view too.
+  {
+    const slots = document.createElement('div');
+    slots.className = 'm2-hero-micro-slots';
+    for (let i = 0; i < 5; i++) {
+      const slot = document.createElement('div');
+      slot.className = 'm2-micro-history-slot';
+      const label = i < 4 ? 'Turn ' + (i + 1) : 'Discard';
+      slot.setAttribute('aria-label', label);
+      const cards = i < 4 ? [hero.played_cards[i]].filter(Boolean) : hero.discard_pile || [];
+      slot.classList.toggle('m2-history-empty', !cards.length);
+      if (i === 4 && cards.length) {
+        // Center one/two discards; fit larger piles symmetrically by overlapping
+        // the Nano cards just enough to stay inside their fixed 64px column.
+        const pile = document.createElement('span');
+        pile.className = 'm2-discard-cards';
+        const gap = cards.length > 1 ? Math.min(2, (64 - cards.length * 20) / (cards.length - 1)) : 0;
+        pile.style.setProperty('--m2-discard-gap', gap + 'px');
+        for (const card of cards) pile.append(smallCard(card, true));
+        slot.append(pile);
+      } else for (const card of cards) slot.append(smallCard(card));
+      // Nano cards overlay the centered Discard label in one fixed-height slot.
+      // Empty turn slots keep a subtle outline around their centered label.
+      if (!cards.length || i === 4) {
+        const placeholder = document.createElement('span');
+        placeholder.className = 'm2-micro-placeholder';
+        placeholder.textContent = label;
+        slot.append(placeholder);
       }
-      if (!card) {
-        const empty = document.createElement('span');
-        empty.className = 'm2-slot-empty';
-        empty.textContent = '—';
-        line.append(empty);
-      } else if (card.is_facedown) {
-        const hidden = document.createElement('span');
-        hidden.className = 'm2-slot-hidden';
-        hidden.textContent = 'Hidden card';
-        line.append(hidden);
-      } else {
-        const row = document.createElement('button');
-        row.type = 'button';
-        row.className = 'm2-expanded-card';
-        row.setAttribute('aria-label', card.name);
-        updateCardRow(row, card, hero.items || {});
-        if (active.some((a) => a.id === card.id)) {
-          row.classList.add('m2-effect-active');
-          row.style.setProperty('--effect-color', cardColors[card.color] || '#bbab73');
-        }
-        row.onclick = () => inspect(card);
-        line.append(row);
-      }
-      return line;
+      slots.append(slot);
     }
-    function section(title) {
-      const el = document.createElement('section'),
-        heading = document.createElement('h4');
-      heading.textContent = title;
-      el.append(heading);
-      board.append(el);
-      return el;
-    }
-    if (currentCard && !currentCard.is_facedown) section('').append(cardRow(currentCard));
-    if (expanded) {
-      const played = section('');
-      // Future turns add blank noise. Reveal slots only as the round reaches them.
-      const turn = Math.max(1, Math.min(4, Number(view?.turn) || 1));
-      for (let i = 0; i < turn; i++)
-        played.append(cardRow(hero.played_cards[i], 'Turn ' + (i + 1) + ':'));
-    }
-    if (expanded && hero.discard_pile?.length) {
-      const discard = section('Discard:');
-      hero.discard_pile.forEach((card) => discard.append(cardRow(card)));
-    }
-    dashboard.append(board);
+    dashboard.append(slots);
   }
 }
 
+// Only full hero portraits use ordinal suffixes; Board summary order stays dotted.
+function ordinalTurn(order) {
+  const number = document.createElement('span');
+  const n = Number(order), last = n % 10, teen = n % 100;
+  number.append(document.createTextNode(String(order)));
+  const suffix = document.createElement('sup');
+  suffix.textContent = teen >= 11 && teen <= 13 ? 'th'
+    : last === 1 ? 'st' : last === 2 ? 'nd' : last === 3 ? 'rd' : 'th';
+  number.append(suffix);
+  return number;
+}
+function updateTurnPortrait(box, entry, done, offboard, resolving) {
+  let info = q('.m2-resolution-info', box);
+  const marker = entry ? entry.current ? 'NOW' : String(entry.order)
+    : resolving && !offboard ? done ? '✓' : '—' : null;
+  if (marker === null) { info?.remove(); return; }
+  if (!info) {
+    info = document.createElement('div');
+    info.className = 'm2-resolution-info';
+    extras.add(info);
+  }
+  const portrait = q('.m2-hero-portrait', box), host = portrait || box;
+  if (info.parentElement !== host) host.append(info);
+  const key = JSON.stringify([marker, entry?.initiative, entry?.card]);
+  if (info.dataset.key === key) return;
+  info.dataset.key = key;
+  const order = document.createElement('span');
+  order.className = 'm2-turn-number';
+  if (entry && !entry.current) order.append(ordinalTurn(entry.order));
+  else order.textContent = marker;
+  info.replaceChildren(order);
+  if (entry) info.append(cardSymbol('INITIATIVE', entry.initiative));
+  info.title = entry?.card || (done ? 'Turn completed' : 'No card played this turn');
+  info.setAttribute('aria-label', entry
+    ? 'Turn ' + marker + ', initiative ' + entry.initiative : info.title);
+}
 // Resolve the selected card by identity each refresh so upgrades and visibility stay current.
 function updateHeroCardDisplay() {
   if (!selectedHeroCard) return;
-  const box = Array.from(document.querySelectorAll('[data-m2="hero"]')).find(
+  const box = Array.from(document.querySelectorAll('[data-m2="sidebar"] [data-m2="hero"]')).find(
     (box) => componentProp(box, 'hero')?.id === selectedHeroCard.heroId,
   );
   const hero = box && componentProp(box, 'hero');
