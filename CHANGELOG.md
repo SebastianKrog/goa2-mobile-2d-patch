@@ -2,6 +2,33 @@
 
 Published releases, newest first. Each entry groups user-visible changes and fixes. Local previews 0.14.10–0.14.18 are included in 0.15.0; 0.15.1–0.15.11 are included in 0.16.0; 0.16.1–0.16.9 are included in 0.17.0; 0.17.1–0.17.2 are included in 0.18.0; 0.18.1–0.18.6 are included in 0.19.0.
 
+## 0.19.2
+
+### Added
+
+- Add info icons beside every appearance/game setting, with tappable explanations and label/icon hover help. Keep help separate from the switches so reading an explanation never changes a preference; allow one explanation at a time and Escape to close it.
+- Explain defaults, font-step multipliers, immediate changes, saved preferences and Apply & reload requirements.
+- Include the 0.19.1 preview: footer Log with server decision history and refined Settings with artwork, typography, sound, cursors and fullscreen controls.
+
+### Validation
+
+- Cover help accessibility, opening/closing, unchanged preferences, retained help during refresh and hidden unsupported fullscreen help.
+- Settings, resolution and CSS regressions pass (12 checks); formatting and generated-file checks pass.
+
+## 0.19.1 (local preview, included in 0.19.2)
+
+### Added
+
+- Move Log into the footer before Settings. Separate locally received events from server decision history, with earlier choices and undone decisions retrieved through the player-scoped REST API. Preserve hidden-card masking, support conditional requests, and cancel stale requests when closing, changing links or tearing down.
+- Replace the rough Settings panel with grouped Appearance/Game/Tools controls. Add default-on card artwork, a centered font-size slider with 0.95/1.1 step multipliers and a Default reset, native sound/volume preferences, and supported fullscreen controls.
+- Keep appearance preferences immediate and persistent. Native sound/cursor preferences use Apply & reload; tool actions remain native proxies with availability checks.
+
+### Validation
+
+- Add regressions for footer order, server history, authorization scope, conditional requests, rewinds, failed responses, stale-request cancellation, preferences, typography/geometry, artwork toggling, tool proxies, fullscreen and teardown.
+- All 34 regression files and formatting checks pass; generated userscript/TXT match source. Live private-game history and device sound/fullscreen remain manual checks.
+- Full event-delta backfill remains unavailable: the API exposes decision history, not historical combat events.
+
 ## 0.19.0
 
 ### Changed

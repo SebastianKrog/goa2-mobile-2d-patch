@@ -47,6 +47,7 @@ function changeEventGame() {
   if (eventHistoryKey) blockedLogArrays = new WeakSet(lastLogArrays);
   lastLogArrays = new Set();
   eventHistoryKey = key;
+  resetDecisionHistory();
   savedEvents = [];
   seenEvents.clear();
   historyDirty = false;
@@ -201,6 +202,7 @@ function updateEventHistory() {
     }
   }
   flushEventHistory();
+  updateLogPanel();
 }
 on(window, 'pagehide', updateEventHistory);
 // Periodic collection also runs when no relevant DOM mutation occurs; pagehide

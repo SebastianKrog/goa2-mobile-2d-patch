@@ -48,7 +48,7 @@ assert.equal(hb.querySelector('.m2-turn-number').textContent, 'NOW');
 assert.equal(hb.querySelector('.m2-resolution-info .m2-symbol-value').textContent, '9');
 assert(hb.querySelector('.m2-resolution-info').textContent.includes('NOW9'));
 assert(doc.querySelector('[data-m2="resolution-queue"]'));
-assert(doc.querySelector('.m2-cursors'));
+assert(doc.querySelector('#goa2-m2-settings [data-setting="cursors"]'));
 assert.equal(doc.querySelectorAll('.m2-hud-bottom>div').length, 2);
 assert.equal(doc.querySelector('#goa2-m2-details .m2-card-top b').textContent, 'Test card');
 assert.equal(doc.querySelectorAll('#goa2-m2-details aside .m2-symbol').length, 2);

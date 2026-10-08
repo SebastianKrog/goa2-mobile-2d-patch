@@ -26,11 +26,16 @@ Behavior:
 This should let players plan later upgrade choices without confusing planned selections with actual game state.
 
 ## Log
-- Move **Log** into the bottom menu immediately before **Settings**.
-- Replace the current log approach if possible.
-- Preferred solution: a REST-style implementation that retrieves log deltas from the server.
-- If possible, this could be retrieved from a replay REST-ful access that might already be available.
-- Other possible fallback: derive history from the replay list. This is incomplete and should be treated as a temporary compromise.
+
+Implemented in 0.19.1: **Log** sits immediately before **Settings** in the footer.
+The panel shows the local received-event archive and a separate **Decisions** tab
+backfilled from the player-scoped `GET /api/games/{game_id}/overrides/history` API.
+That endpoint applies hidden-card masking and works without the admin replay API.
+Requests run only while Log is open; unchanged history uses ETags when supported.
+
+Remaining: a full server event log with delta retrieval. The current API has no
+event-delta route. Decision history recovers earlier choices, not their complete
+combat/event output, so it is a temporary supplement to locally received events.
 
 ## Horizontal phone layout
 

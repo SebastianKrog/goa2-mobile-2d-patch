@@ -45,7 +45,7 @@ assert.deepEqual(
   [...doc.querySelectorAll('#goa2-m2-nav button')]
     .filter((b) => !b.hidden)
     .map((b) => b.dataset.mode),
-  ['heroes', 'hand', 'deck', 'tools'],
+  ['heroes', 'hand', 'deck', 'log', 'tools'],
 );
 assert(!doc.querySelector('.m2-summary-controls'));
 assert(doc.querySelector('.m2-summary-piles'));

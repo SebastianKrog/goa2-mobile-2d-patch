@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GoA II — Mobile 2D
 // @namespace    goa2-mobile-local
-// @version      0.19.0
+// @version      0.19.2
 // @description  Compact 2D HUD, Board/Hand modes, contained setup and utility panels.
 // @match        https://goa2.frontend.pedroliv.dev/game/*
 // @grant        none
@@ -12,5 +12,6 @@
    Remove: GOA2Mobile2D.destroy(). Reload also removes a console-installed patch.
    Loads card artwork from this site; no automatic moves. Stores display preferences and up to 2,000 received events per game locally.
    Live markup inspected 2026-10-02. Desktop layout is preserved.
+   Player-scoped decision-history API and shared settings verified 2026-10-08.
    Validation: DOM lifecycle/navigation tests; phone visual testing still needed.
 */

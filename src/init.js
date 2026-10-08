@@ -9,7 +9,7 @@
 //   6. Deck browser and canvas synchronization
 //   7. Header, settings, compact Board summaries, and gestures
 //   8. Public component props and hero dashboards
-//   9. Received-event history
+//   9. Received-event history, footer Log and appearance/game settings
 //   10. DOM reconciliation and teardown
 //
 // Data flows from rendered DOM/component props into presentation helpers, then back
@@ -86,7 +86,6 @@ style.id = 'goa2-m2-style';
 // Component definitions are grouped in styles.css. Edit the owning block instead
 // of appending overrides; shared card geometry must remain independent of its pane.
 /* BUILD:STYLES */
-style.textContent =
-  'html:not([data-m2-active]) :is(#goa2-m2-nav,#goa2-m2-close,#goa2-m2-summary,#goa2-m2-details,#goa2-m2-hero-display,.m2-list-card,.m2-text-card,.m2-hero-dashboard,.m2-resolution-info,.m2-hud,.m2-hud-bottom,.m2-planning-actions,.m2-deck-browser,.m2-deck-zoom,.m2-own-colors,.m2-cursors,.m2-saved-events){display:none!important}' +
-  css.replaceAll('&', 'html[data-m2-active]');
+const inactiveCss = 'html:not([data-m2-active]) :is(#goa2-m2-nav,#goa2-m2-close,#goa2-m2-summary,#goa2-m2-details,#goa2-m2-hero-display,#goa2-m2-settings,#goa2-m2-log,.m2-list-card,.m2-text-card,.m2-hero-dashboard,.m2-resolution-info,.m2-hud,.m2-hud-bottom,.m2-planning-actions,.m2-deck-browser,.m2-deck-zoom,.m2-own-colors,.m2-saved-events){display:none!important}';
+style.textContent = inactiveCss + css.replaceAll('&', 'html[data-m2-active]');
 document.head.append(style);

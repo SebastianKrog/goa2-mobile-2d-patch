@@ -8,6 +8,7 @@ for (const [key, label] of [
   ['hand', 'Hand'],
   ['deck', 'Deck'],
   ['setup', 'Setup'],
+  ['log', 'Log'],
   ['tools', 'Settings'],
 ]) {
   const b = document.createElement('button');
@@ -33,9 +34,18 @@ detailsPanel.id = 'goa2-m2-details';
 const extras = new Set();
 const heroPanel = document.createElement('section');
 heroPanel.id = 'goa2-m2-hero-display';
+const settingsPanel = document.createElement('section');
+settingsPanel.id = 'goa2-m2-settings';
+settingsPanel.className = 'm2-utility-panel';
+settingsPanel.setAttribute('aria-label', 'Settings');
+const logPanel = document.createElement('section');
+logPanel.id = 'goa2-m2-log';
+logPanel.className = 'm2-utility-panel';
+logPanel.setAttribute('aria-label', 'Match log');
+document.body.append(settingsPanel, logPanel);
 // Keep weak ownership markers after removal, so queued mutation records can
 // distinguish generated UI from native changes without retaining detached DOM.
-const generatedRoots = new WeakSet([nav, close, summary, detailsPanel, heroPanel]);
+const generatedRoots = new WeakSet([nav, close, summary, detailsPanel, heroPanel, settingsPanel, logPanel]);
 function addExtra(element) {
   extras.add(element);
   generatedRoots.add(element);
@@ -82,7 +92,7 @@ function navigate(key) {
       setDeckOpen(true);
       if (!q('[data-m2="deck"]'))
         q('[data-m2="hero"]:not([data-m2-other]) ' + c('viewDeckBtn'))?.click();
-    } else if (key === 'setup' || key === 'tools') panel = key;
+    } else if (key === 'setup' || key === 'tools' || key === 'log') panel = key;
     else if (key === 'hand' || key === 'heroes') mode = key;
   }
   refresh();
@@ -92,7 +102,7 @@ function syncNavigation() {
   const setupButton = q('[data-mode="setup"]', nav);
   const setupAvailable = !!q('[aria-label="Starting position"]');
   setupButton.hidden = !setupAvailable;
-  nav.style.gridTemplateColumns = 'repeat(' + (setupAvailable ? 5 : 4) + ',minmax(0,1fr))';
+  nav.style.gridTemplateColumns = 'repeat(' + (setupAvailable ? 6 : 5) + ',minmax(0,1fr))';
   if (!setupAvailable && panel === 'setup') {
     panel = '';
     root.dataset.m2Panel = '';

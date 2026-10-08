@@ -39,7 +39,7 @@ Building alone needs no npm packages: `node scripts/build.mjs` also works before
 
 - `npm run build` combines source files into readable, unminified output in `dist/`.
 - `npm run build:check` checks that committed output matches the source.
-- `npm test` builds and runs all 32 regression test files in isolated Node processes.
+- `npm test` builds and runs all 34 regression test files in isolated Node processes.
 - `npm run test:format` formats test JavaScript; `npm run test:format:check` checks it.
 - `npm run css:format` formats the stylesheet; `npm run css:format:check` checks it.
 - GitHub Actions checks test/CSS formatting, committed output and regressions on pushes and pull requests.
@@ -61,9 +61,11 @@ output directly. For a version change, update `package.json` and `package-lock.j
 | `src/cards.js` | Shared text cards, compact rows' stat helpers, upgrade values |
 | `src/deck.js` | Deck preferences, browser, canvas copy synchronization |
 | `src/deck-tree.js` | Upgrade paths, tentative builds, observed game choices and per-game/hero persistence |
-| `src/board.js` | Header, settings, compact summaries, rotation, planning controls |
+| `src/board.js` | Header, compact summaries, rotation, planning controls |
 | `src/heroes.js` | Rendered component props, hero dashboards, card inspection, upgrades |
 | `src/history.js` | Per-game local archive of received events |
+| `src/log.js` | Footer Log, player-scoped server decision history, cancellation and conditional requests |
+| `src/settings.js` | Appearance preferences, typography scaling, native sound/cursor preferences, fullscreen and tool proxies |
 | `src/main.js` | DOM reconciliation, observers, initialization, teardown |
 
 These JavaScript files are **ordered source fragments sharing one private closure**,
@@ -97,6 +99,39 @@ changes can require selector/prop updates even when these local tests pass.
 Display preferences and up to 2,000 received events per game are stored in the site's
 localStorage. The event archive cannot recover events missed while the browser was
 closed or offline. Deck shows printed stats; Hand and hero details apply known upgrades.
+
+## Log and Settings
+
+The footer offers **Heroes**, **Hand**, **Deck**, **Log**, **Settings**, with contextual
+Setup during starting-position selection. Log replaces the floating native trigger.
+**Events** shows up to 2,000 events received on this device. **Decisions** retrieves
+earlier match choices from the player-scoped decision-history API, including undone
+choices. The server masks hidden card identities for the current player or spectator.
+The two timelines remain separate because decisions do not contain the full combat
+event output. If server history is unavailable, local events remain accessible.
+
+Log reads the same `GET /api/games/{game_id}/overrides/history` endpoint as the
+native rewind picker, using the current game link's token. It refreshes at most once
+every 10 seconds while open, supports conditional ETag requests, and cancels on
+closing, changing game/player link or teardown. It does not use the omniscient admin
+replay endpoints. API compatibility was checked against the live frontend bundle
+and [OpenAPI schema](https://goa2.frontend.pedroliv.dev/api/openapi.json) on 2026-10-08;
+fixture tests simulate requests and do not exercise a live private game.
+
+Settings groups **Appearance**, **Game** and the website's available **Tools**.
+Each setting has an **i** button: tap to open or close its explanation, or hover
+over the icon/label. Help explains defaults, persistence and reload requirements.
+Card artwork defaults on; disabling it removes the background from existing Large
+and Small cards immediately. Font size defaults to the center slider position:
+each smaller step multiplies by 0.95, each larger step by 1.1, over four steps each
+way. **Default** restores the exact original typography. These two preferences
+persist locally and apply without reload; the board and touch targets retain their size.
+
+The relevant shared native controls are player cursors, sound/volume and fullscreen
+when supported. Sound/cursor changes use the website's saved preference keys and
+**Apply & reload**, because the frontend initializes them on load. Game actions such
+as Report bug, Fix game state, Share links and Request pause remain native button
+proxies. Table layout, lighting and hero-model controls are specific to 3D and omitted.
 
 ## Attribution
 

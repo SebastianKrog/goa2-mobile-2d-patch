@@ -8,5 +8,7 @@
   "board.js",
   "heroes.js",
   "history.js",
+  "log.js",
+  "settings.js",
   "main.js"
 ]

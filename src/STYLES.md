@@ -14,14 +14,14 @@ may have their own selectors.
 | Section | Ownership |
 | --- | --- |
 | 1. Layout and native panes | Shared variables, native sidebar/Deck/tool adaptation, pane visibility, card inspection positioning |
-| 2. Navigation | Footer buttons, pressed/hidden states, viewport offset |
+| 2. Navigation | Footer buttons, pressed/hidden states, viewport offset; Settings/Log utility panels live with native pane layout |
 | 3. Header and connection strip | Icon/value overlays, phase/action strip, disconnect text and dot |
 | 4. Shared cards and stats | Large card shell/artwork, Small/Mini rows, Micro/Nano geometry, tier edges, printed/upgraded values |
 | 5. Deck browser | Grouped layouts, sort switch, canvas copies, zoom, List/Tree preview, paths and build stat totals |
 | 6. Hero entries and portraits | Shared heading, metadata, Played/history slots, upgrades, portrait/status overlays |
 | 7. Board summaries and focus | Six overview columns, turn states, floating row/focus surfaces and portrait navigation |
 | 8. Board gestures and controls | SVG rotation, reset, planning proxies and choice launchers |
-| 9. Saved event log | Archived log rows and raw event details |
+| 9. Event log | Floating-trigger suppression, Events/Decisions tabs, history rows and raw details |
 | Motion and media rules | Keyframes, reduced motion, narrow-screen counters and short-screen preview height |
 
 ## Cascade rules
@@ -52,6 +52,11 @@ may have their own selectors.
   places its left-aligned label, centered stat icons and Reset button in one row.
 - Change complete font shorthands when consolidating text rules, rather than
   retaining a stale font size beside a second size declaration.
+- Font scaling materializes pixel font sizes and line heights from the canonical
+  stylesheet. It replaces that sheet rather than adding overrides; the center step
+  restores its exact original text. Board dimensions and touch targets are not scaled.
+- The root's `data-m2-no-card-art` state hides existing artwork layers and disables
+  their bar blur, leaving card structure, stats and loaded assets intact.
 
 ## Checks
 

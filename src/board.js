@@ -108,38 +108,6 @@ function updateMobileHeader(header) {
   if (height > 4 && root.style.getPropertyValue('--m2-head') !== height + 'px')
     root.style.setProperty('--m2-head', height + 'px');
 }
-let cursorsVisible = true;
-try {
-  cursorsVisible = localStorage.getItem('goa2:remote-pointers-visible') !== 'hidden';
-} catch {}
-// Expose cursor visibility in the mobile settings and remember it on this device.
-function updateCursorSetting() {
-  root.toggleAttribute('data-m2-hide-cursors', !cursorsVisible);
-  const menu = q('[data-m2="tools"]');
-  if (menu && !q('.m2-cursors', menu)) {
-    const b = document.createElement('button');
-    b.className = 'm2-cursors';
-    b.type = 'button';
-    b.setAttribute('role', 'switch');
-    const sync = () => {
-      b.textContent = 'Player cursors: ' + (cursorsVisible ? 'On' : 'Off');
-      b.setAttribute('aria-checked', String(cursorsVisible));
-    };
-    on(b, 'click', () => {
-      cursorsVisible = !cursorsVisible;
-      try {
-        localStorage.setItem('goa2:remote-pointers-visible', cursorsVisible ? 'shown' : 'hidden');
-      } catch {}
-      sync();
-      updateCursorSetting();
-      location.reload();
-    });
-    b.title = 'Changing this setting reloads the game view';
-    sync();
-    menu.append(b);
-    addExtra(b);
-  }
-}
 // Shared slim/normal row structure: initiative, colored primary/name/range band,
 // then secondary stats. Adapt the contents while preserving native row click handlers.
 function updateCardRow(row, card, knownItems) {

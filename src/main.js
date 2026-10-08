@@ -103,7 +103,7 @@ function refresh() {
   deckPaint();
   tag(q('[aria-label="Starting position"]'), 'setup');
   tag(q(c('gameToolsRow')), 'tools');
-  updateCursorSetting();
+  updateSettings();
   updateBoardRotation();
   updateUpgradeCards();
   updateChoiceLaunchers();
@@ -318,7 +318,7 @@ on(media, 'change', schedule);
 
 // Public teardown for console installs and upgrades: release observers, timers, and DOM changes.
 window.GOA2Mobile2D = {
-  version: '0.19.0',
+  version: '0.19.2',
   destroy() {
     flushEventHistory();
     dead = true;
@@ -358,6 +358,9 @@ window.GOA2Mobile2D = {
     summary.remove();
     detailsPanel.remove();
     heroPanel.remove();
+    settingsPanel.remove();
+    logPanel.remove();
+    cancelDecisionHistory();
     clearInterval(eventHistoryTimer);
     for (const e of extras) e.remove();
     for (const e of tagged) {
@@ -377,6 +380,7 @@ window.GOA2Mobile2D = {
     }
     for (const n of [
       'data-m2-hide-cursors',
+      'data-m2-no-card-art',
       'data-m2-deck-open',
       'data-m2-active',
       'data-m2-mode',
