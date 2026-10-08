@@ -7,6 +7,16 @@ function deckCardIdentity(card) {
 function deckTreeTier(card) {
   return { I: 1, II: 2, III: 3, 1: 1, 2: 2, 3: 3 }[String(card?.tier).toUpperCase()] || 0;
 }
+// Artwork IDs encode the printed A/B variant across heroes. Never infer paths
+// from names, abilities, item types, or the order a hero happens to list cards.
+function deckTreeVariant(card) {
+  const artwork = String(card?.image_id || '').match(/(?:II|III)([AB])$/i),
+    identity = String(card?.id || '').match(/(?:[-_]|\d)([ab])$/i);
+  return (artwork?.[1] || identity?.[1] || 'A').toUpperCase() === 'B' ? 1 : 0;
+}
+function compareDeckTreeCards(a, b) {
+  return deckTreeVariant(a) - deckTreeVariant(b);
+}
 function deckTreeGroup(card) {
   return String(card.color).toUpperCase() + ':' + deckTreeTier(card);
 }
@@ -103,6 +113,33 @@ function rememberDeckTreeChoices(hero, cards = hero?.deck || []) {
   }
   saveDeckTreeBuild(build);
 }
+function deckTreeItemTotals(actual, future) {
+  const totals = itemUpgradeSymbols(actual, 'm2-tree-build-stats');
+  for (const icon of totals.querySelectorAll('[data-stat]')) {
+    const stat = icon.dataset.stat;
+    const current = Number(actual[stat] ?? (stat === 'RADIUS' ? actual.AREA : 0)) || 0;
+    const planned = future[stat] || 0,
+      total = current + planned;
+    icon.dataset.current = String(current);
+    icon.dataset.planned = String(planned);
+    icon.dataset.total = String(total);
+    icon.classList.toggle('m2-upgrade-empty', total === 0);
+    icon.classList.toggle('m2-build-current', current > 0 && planned === 0);
+    icon.classList.toggle('m2-build-future', planned > 0);
+    if (['ATTACK', 'DEFENSE', 'INITIATIVE'].includes(stat) && total > 0) {
+      let value = icon.querySelector('.m2-symbol-value');
+      if (!value) {
+        value = document.createElement('span');
+        value.className = 'm2-symbol-value';
+        icon.append(value);
+      }
+      value.textContent = '+' + total;
+    }
+    icon.title = `${stat.toLowerCase()}: +${total} total (${current} acquired, ${planned} planned)`;
+    icon.setAttribute('aria-label', icon.title);
+  }
+  return totals;
+}
 function renderDeckTree(host, entries, hero, selectCard) {
   const cards = entries.map((entry) => entry.card);
   const build = deckTreeBuild(hero, cards);
@@ -171,7 +208,8 @@ function renderDeckTree(host, entries, hero, selectCard) {
     path.style.gridTemplateRows = `repeat(${rows}, 28px)`;
     for (const [tier, choices] of tiers) {
       choices.sort(
-        (a, b) => (order.get(deckCardIdentity(a)) ?? 999) - (order.get(deckCardIdentity(b)) ?? 999),
+        (a, b) => compareDeckTreeCards(a, b) ||
+          (order.get(deckCardIdentity(a)) ?? 999) - (order.get(deckCardIdentity(b)) ?? 999),
       );
       choices.forEach((card, index) => {
         const button = makeButton(card);
@@ -301,31 +339,7 @@ function renderDeckTree(host, entries, hero, selectCard) {
       const stat = item === 'AREA' ? 'RADIUS' : item;
       if (stat) future[stat] = (future[stat] || 0) + 1;
     }
-    const totals = itemUpgradeSymbols(actual, 'm2-tree-build-stats');
-    for (const icon of totals.querySelectorAll('[data-stat]')) {
-      const stat = icon.dataset.stat;
-      const current = Number(actual[stat] ?? (stat === 'RADIUS' ? actual.AREA : 0)) || 0;
-      const planned = future[stat] || 0,
-        total = current + planned;
-      icon.dataset.current = String(current);
-      icon.dataset.planned = String(planned);
-      icon.dataset.total = String(total);
-      icon.classList.toggle('m2-upgrade-empty', total === 0);
-      icon.classList.toggle('m2-build-current', current > 0 && planned === 0);
-      icon.classList.toggle('m2-build-future', planned > 0);
-      if (['ATTACK', 'DEFENSE', 'INITIATIVE'].includes(stat) && total > 0) {
-        let value = icon.querySelector('.m2-symbol-value');
-        if (!value) {
-          value = document.createElement('span');
-          value.className = 'm2-symbol-value';
-          icon.append(value);
-        }
-        value.textContent = '+' + total;
-      }
-      icon.title = `${stat.toLowerCase()}: +${total} total (${current} acquired, ${planned} planned)`;
-      icon.setAttribute('aria-label', icon.title);
-    }
-    choices.replaceChildren(totals);
+    choices.replaceChildren(deckTreeItemTotals(actual, future));
   }
   updateBuild();
 }

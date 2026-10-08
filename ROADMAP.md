@@ -2,28 +2,19 @@
 
 Remaining UI work for the GoA II Mobile 2D patch after 0.15.0. This is a working roadmap rather than a fixed release plan. Completed Board/Heroes work and bugfixes are recorded in [CHANGELOG.md](CHANGELOG.md); the current card sizes are documented in [README.md](README.md#card-display-system).
 
-The Extended Micro cards and Deck tree are implemented in 0.18.2. Their behavior is documented in [README.md](README.md#deck-tree). The tree-based upgrade-selection menu below remains outstanding.
+The Extended Micro cards and Deck tree are implemented in 0.18.2. The level-up tree is released in 0.20.0. Their behavior is documented in [README.md](README.md#deck-tree).
 
 ## Upgrade menu
 
-Provide an alternative upgrade-selection interface based on the same Deck tree.
+Released in 0.20.0: the level-up menu uses Extended Micro trees without basic or
+Ultimate cards. Separate Tier 2/3 counters show all required selections. Tier 3
+unlocks only after the remaining Tier 2 choices are staged; editing Tier 2 clears
+dependent Tier 3 choices. Standard/alternate rows use the shared artwork A/B markers.
 
-The tree should clearly distinguish:
-
-- cards already in the deck;
-- cards currently eligible to be selected;
-- cards that are no longer selectable.
-
-Behavior:
-
-- Selecting an eligible card updates a **Confirm / Choose this** control at the bottom.
-- Selecting an ineligible card only opens its **Large** Card view.
-- If an ineligible card represents a relevant future choice:
-  - highlight it in purple;
-  - slightly darken the opposite future choice;
-  - update the projected stats at the bottom in purple.
-
-This should let players plan later upgrade choices without confusing planned selections with actual game state.
+Preview is a separate toggle. Its purple plans/stat totals never become game
+selections. Commit requires every upgrade selected with Preview off/cleared and
+submits through the native picker callback, waiting for each acknowledgement and
+checking current server eligibility. Missing data retains the native menu.
 
 ## Log
 

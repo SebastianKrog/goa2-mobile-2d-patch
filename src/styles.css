@@ -2008,6 +2008,150 @@
 }
 /* 6. Hero entries and portraits
    One compact entry is shared by Heroes, Hand and Board focus. */
+/* Level-up uses the same card tree and typography, with a separate local batch. */
+& [class*="_overlayUpgrade_"]:has([data-m2-upgrade-tree]) {
+  position: fixed !important;
+  inset: 0 !important;
+  transform: none !important;
+  padding: 0 !important;
+  z-index: 601 !important;
+}
+& [data-m2-upgrade-tree] {
+  position: fixed !important;
+  inset: 0 0 calc(var(--m2-nav) + var(--m2-offset, 0px)) !important;
+  box-sizing: border-box;
+  display: flex !important;
+  flex-direction: column;
+  width: 100% !important;
+  max-width: none !important;
+  height: auto !important;
+  max-height: none !important;
+  transform: none !important;
+  padding: 6px 8px !important;
+  border-radius: 0 !important;
+  background: #111722 !important;
+  overflow: hidden !important;
+}
+& [data-m2-upgrade-tree] > :not(.m2-upgrade-browser):not([class*="_titleRow_"]) {
+  display: none !important;
+}
+& [data-m2-upgrade-tree] > [class*="_titleRow_"] {
+  position: absolute;
+  top: 6px;
+  left: 8px;
+  margin: 0 !important;
+  z-index: 4;
+}
+& [data-m2-upgrade-tree] > [class*="_titleRow_"] [class*="_title_"] {
+  display: none;
+}
+& .m2-upgrade-browser {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1 1 0;
+  gap: 6px;
+  color: #dce5ef;
+  font: 12px/1.4 system-ui;
+}
+& .m2-upgrade-heading {
+  display: grid;
+  place-items: center;
+  height: var(--m2-head);
+  flex: 0 0 var(--m2-head);
+  margin: 0;
+  text-align: center;
+  font-size: 14px;
+}
+& .m2-upgrade-controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 6px;
+  border-top: 1px solid #48515c80;
+  padding-top: 5px;
+  flex: 0 0 auto;
+}
+& .m2-upgrade-preview-toggle {
+  justify-self: start;
+}
+& .m2-upgrade-reset {
+  justify-self: end;
+}
+& .m2-upgrade-actions {
+  display: grid;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+& :is(.m2-upgrade-controls, .m2-upgrade-actions) button {
+  min-height: 36px;
+  padding: 5px 8px;
+  border: 1px solid #536179;
+  border-radius: 7px;
+  background: #233046;
+  color: inherit;
+  font: 600 12px system-ui;
+  touch-action: manipulation;
+}
+& .m2-upgrade-preview-toggle[aria-checked="true"] {
+  color: #b799de;
+  border-color: #b799de;
+}
+& .m2-upgrade-browser button:disabled {
+  opacity: 0.45;
+}
+& .m2-upgrade-browser button:focus-visible {
+  outline: 2px solid #dfc484;
+  outline-offset: 2px;
+}
+& .m2-upgrade-details {
+  margin: 0;
+}
+& .m2-upgrade-content {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0;
+  min-height: 0;
+  overflow: hidden;
+  gap: 6px;
+}
+& .m2-upgrade-content > .m2-deck-row-list {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+& .m2-upgrade-status {
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  text-align: center;
+  margin: 0;
+  color: #aabbd1;
+  font-size: 11px;
+  flex: 0 0 auto;
+}
+& .m2-upgrade-totals {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+}
+& .m2-upgrade-actions .m2-upgrade-commit {
+  width: 100%;
+  min-height: 44px;
+  color: #ffe09c;
+}
+& .m2-tree-card.m2-upgrade-selected {
+  border-color: #e7cc83;
+  box-shadow: 0 0 0 1px #e7cc83;
+}
+& .m2-upgrade-browser[data-preview="false"] .m2-build-future,
+& .m2-upgrade-selected .m2-micro-grant .m2-symbol-value {
+  color: #e7cc83;
+}
+& .m2-upgrade-browser[data-preview="false"] .m2-build-future img {
+  filter: grayscale(1) sepia(1) saturate(2);
+}
 & [data-m2="hero"] [class*="_viewDeckBtn_"] {
   margin-top: 4px;
   padding: 5px 10px;

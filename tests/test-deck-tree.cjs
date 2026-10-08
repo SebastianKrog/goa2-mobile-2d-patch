@@ -141,6 +141,19 @@ test('Tree uses five printed slots, correct card grants, and standard/alternate 
   assert(!hidden.outerHTML.includes('SECRET'));
 });
 
+test('A/B artwork markers keep standard and alternate rows aligned even when the deck order is reversed', (t) => {
+  const f = setup(t);
+  for (const card of f.cards.filter((card) => ['II', 'III'].includes(card.tier)))
+    card.image_id = card.color.toLowerCase() + card.tier + (card.id.endsWith('-b') ? 'B' : 'A');
+  f.hero.deck.reverse();
+  f.w.testUI.refresh();
+  for (const color of ['RED', 'BLUE', 'GREEN'])
+    for (const tier of ['II', 'III']) {
+      assert.equal(f.node(`${color}-${tier}-a`).style.gridRow, '1');
+      assert.equal(f.node(`${color}-${tier}-b`).style.gridRow, '2');
+    }
+});
+
 test('tentative choices highlight, dim the alternative, and preview printed values plus the awarded item', (t) => {
   const { w, d, hero, node } = setup(t);
   const before = JSON.stringify(hero);

@@ -1,6 +1,65 @@
 # Changelog
 
-Published releases, newest first. Each entry groups user-visible changes and fixes. Local previews 0.14.10–0.14.18 are included in 0.15.0; 0.15.1–0.15.11 are included in 0.16.0; 0.16.1–0.16.9 are included in 0.17.0; 0.17.1–0.17.2 are included in 0.18.0; 0.18.1–0.18.6 are included in 0.19.0.
+Published releases, newest first. Each entry groups user-visible changes and fixes. Local previews 0.14.10–0.14.18 are included in 0.15.0; 0.15.1–0.15.11 are included in 0.16.0; 0.16.1–0.16.9 are included in 0.17.0; 0.17.1–0.17.2 are included in 0.18.0; 0.18.1–0.18.6 are included in 0.19.0; 0.19.3–0.19.5 are included in 0.20.0.
+
+## 0.20.0
+
+### Added
+
+- Add the Deck-style level-up tree with separate Tier 2/3 selection counts, lower-tier prerequisites and complete-only Commit. Keep Preview isolated from staged upgrades and submit through refreshed native callbacks, waiting for each acknowledgement.
+- Retain the native menu when integration data is insufficient, pause interrupted or uncertain batches without automatic retries, and clear local staging on game/player/round changes.
+
+### Changed
+
+- Fill the view like Deck, center the Upgrades heading and reserve the shared Card Viewer space. Keep the tree scrollable with centered help above bottom Preview/Reset controls and a full-width Commit button.
+- Use gold borders and changed totals for staged upgrades; use purple for isolated preview plans. Turning Preview off clears those plans and preserves staged selections.
+- Include previews 0.19.3–0.19.5.
+
+### Fixed
+
+- Restore printed stats, initiative and paired item grants for known own cards carrying face-down deck flags, without mutating native cards or exposing unknown hidden cards.
+- Align standard/alternate cards across tree tiers using shared artwork markers, without hero-specific adaptations.
+
+### Validation
+
+- All 35 regression files, formatting checks, generated-file checks and whitespace checks pass. Phone layout and live multiplayer upgrade flows remain manual checks.
+
+## 0.19.5 (local preview, included in 0.20.0)
+
+### Changed
+
+- Remove the redundant Clear preview button. Turning Preview off clears preview plans and preserves staged upgrades.
+- Center help/status text immediately above the bottom Preview/Reset and Commit controls.
+
+## 0.19.4 (local preview, included in 0.20.0)
+
+### Fixed
+
+- Show printed stats, initiative and paired item grants for known own upgrade cards even when their deck-zone flag is face down. Keep native objects and hidden-card protections unchanged.
+- Fill the available view like Deck, center the Upgrades heading and reserve the shared Card Viewer height while empty. Scroll the tree independently of the viewer and bottom controls.
+- Move Preview and Reset to a compact bottom row with totals, and make Commit full width. Use gold for staged upgrade borders and changed totals outside Preview; isolated preview plans remain purple.
+
+### Validation
+
+- Add realistic face-down deck fixtures and regressions for printed stats/grants, unchanged native flags, reserved viewer geometry, bottom controls, native Board handlers and gold/purple totals.
+- All 35 regression files, formatting checks, generated-file checks and whitespace checks pass. Device layout and live multiplayer upgrades remain manual checks.
+
+## 0.19.3 (local preview, included in 0.20.0)
+
+### Added
+
+- Replace level-up choices with Extended Micro trees, omitting basics and Ultimate and showing separate required Tier 2/3 selection counts. Gate Tier 3 on the complete lower-tier selection and clear dependent selections when Tier 2 changes.
+- Keep Preview as an isolated toggle with projected item totals. Commit requires Preview off/cleared and a complete legal batch; submit through the native callback once per acknowledged, newly eligible choice.
+- Pause uncertain submissions without retries, clear local staging on game/player/round or menu changes, and retain the native picker when integration data is insufficient.
+
+### Fixed
+
+- Align standard and alternate cards on consistent rows in both Deck and level-up trees using shared A/B artwork markers, without hero-specific card adaptations.
+
+### Validation
+
+- Cover mixed-tier batches, native callback/acknowledgement boundaries, Preview isolation, paired grants, selection editing, external changes, timeout, teardown and reversed source ordering.
+- All 35 regression files pass; additional upgrade/Deck checks cover ambiguous pools, interrupted batches and retained item history. Formatting and generated-file checks pass. Live multiplayer level-up and phone layout remain manual checks.
 
 ## 0.19.2
 

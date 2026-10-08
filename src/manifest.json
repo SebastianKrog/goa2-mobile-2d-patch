@@ -7,6 +7,7 @@
   "deck.js",
   "board.js",
   "heroes.js",
+  "upgrade-tree.js",
   "history.js",
   "log.js",
   "settings.js",

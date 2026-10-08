@@ -1,7 +1,7 @@
 # Regression coverage
 
 Run `npm ci` once, then `npm test`. The command rebuilds the userscript and runs
-all 34 `test-*.cjs` files in separate Node processes, each with a 30-second timeout.
+all 35 `test-*.cjs` files in separate Node processes, each with a 30-second timeout.
 Failures retain their assertion stacks; the runner lists failed filenames at the end.
 
 To investigate one file, build first and run it directly:
@@ -45,6 +45,7 @@ copy, and canvas/image/font APIs are simulated where needed.
 | `cards.js`: card presentation | [unified](test-unified.cjs), [mobile-rows](test-mobile-rows.cjs), [compact-overview](test-compact-overview.cjs), [large-artwork](test-large-artwork.cjs) | Shared text-card controls, printed/upgraded values, compact stat order and empty slots, hidden-card privacy, artwork ownership/path guards, load/error fallback and tier edges |
 | `heroes.js`: dashboards and selection | [hero-dashboard](test-hero-dashboard.cjs), [expanded-hero](test-expanded-hero.cjs), [portrait-status](test-portrait-status.cjs), [selection-status](test-selection-status.cjs), [roadmap-lists](test-roadmap-lists.cjs) | Off-board transitions, image-only grayscale, active effects, history/discard slots, own selection/commit versus opponent secrecy, selection animation, completion status, Razzle figure ownership and inline rule icons |
 | `heroes.js`: upgrades and choices | [upgrade-layout](test-upgrade-layout.cjs), [choice-status](test-choice-status.cjs), [review-fixes](test-review-fixes.cjs) | Paired upgrade item, printed choice stats, native selection handlers, choice status/proxy stability, live inspection updates, Escape cleanup |
+| `upgrade-tree.js`: level-up selection | [upgrade-tree](test-upgrade-tree.cjs) | Known face-down deck stats/grants without native mutation, reserved Card Viewer and full-screen/bottom controls, gold/purple totals, basic omission, A/B ordering, tier quotas/prerequisites, edit/deselect/reset, isolated Preview, native paired-item totals, complete-only Commit, fresh callbacks/options per acknowledgement, timeout and external changes, mobile/game lifecycle and native restoration |
 | `board.js`: summaries, focus and header | [floating-hud](test-floating-hud.cjs), [roadmap-lists](test-roadmap-lists.cjs), [compact-overview](test-compact-overview.cjs) | Disconnect/reconnect strip and stable dot, coin casing, surviving minions, focused hero switching/back, ordered highlighted portraits, summary/status columns |
 | `board.js`: planning and resolution | [planning-layout](test-planning-layout.cjs), [resolution](test-resolution.cjs) | Status text, take-back placement/native click, resolution queue and stat presentation |
 | `board.js`: gestures | [rotation](test-rotation.cjs) | Two-touch rotation, fit transform composition, pointer-up/cancel, native reset, native transform change and cleanup |

@@ -13,7 +13,8 @@
 //   10. DOM reconciliation and teardown
 //
 // Data flows from rendered DOM/component props into presentation helpers, then back
-// into generated DOM. Native buttons are clicked for actions; no game commands are sent.
+// into generated DOM. Actions use native buttons or the supplied upgrade callback;
+// the adapter does not implement its own game-input API.
 // `data-m2-*` attributes mark adapted website elements; `.m2-*` classes mark our UI.
 // Render keys avoid rebuilding unchanged content. schedule() batches DOM changes.
 //
@@ -86,6 +87,6 @@ style.id = 'goa2-m2-style';
 // Component definitions are grouped in styles.css. Edit the owning block instead
 // of appending overrides; shared card geometry must remain independent of its pane.
 /* BUILD:STYLES */
-const inactiveCss = 'html:not([data-m2-active]) :is(#goa2-m2-nav,#goa2-m2-close,#goa2-m2-summary,#goa2-m2-details,#goa2-m2-hero-display,#goa2-m2-settings,#goa2-m2-log,.m2-list-card,.m2-text-card,.m2-hero-dashboard,.m2-resolution-info,.m2-hud,.m2-hud-bottom,.m2-planning-actions,.m2-deck-browser,.m2-deck-zoom,.m2-own-colors,.m2-saved-events){display:none!important}';
+const inactiveCss = 'html:not([data-m2-active]) :is(#goa2-m2-nav,#goa2-m2-close,#goa2-m2-summary,#goa2-m2-details,#goa2-m2-hero-display,#goa2-m2-settings,#goa2-m2-log,.m2-list-card,.m2-text-card,.m2-hero-dashboard,.m2-resolution-info,.m2-hud,.m2-hud-bottom,.m2-planning-actions,.m2-deck-browser,.m2-deck-zoom,.m2-upgrade-browser,.m2-own-colors,.m2-saved-events){display:none!important}';
 style.textContent = inactiveCss + css.replaceAll('&', 'html[data-m2-active]');
 document.head.append(style);

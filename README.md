@@ -39,7 +39,7 @@ Building alone needs no npm packages: `node scripts/build.mjs` also works before
 
 - `npm run build` combines source files into readable, unminified output in `dist/`.
 - `npm run build:check` checks that committed output matches the source.
-- `npm test` builds and runs all 34 regression test files in isolated Node processes.
+- `npm test` builds and runs all 35 regression test files in isolated Node processes.
 - `npm run test:format` formats test JavaScript; `npm run test:format:check` checks it.
 - `npm run css:format` formats the stylesheet; `npm run css:format:check` checks it.
 - GitHub Actions checks test/CSS formatting, committed output and regressions on pushes and pull requests.
@@ -63,6 +63,7 @@ output directly. For a version change, update `package.json` and `package-lock.j
 | `src/deck-tree.js` | Upgrade paths, tentative builds, observed game choices and per-game/hero persistence |
 | `src/board.js` | Header, compact summaries, rotation, planning controls |
 | `src/heroes.js` | Rendered component props, hero dashboards, card inspection, upgrades |
+| `src/upgrade-tree.js` | Level-up batch staging, preview isolation, eligibility and sequential native submission |
 | `src/history.js` | Per-game local archive of received events |
 | `src/log.js` | Footer Log, player-scoped server decision history, cancellation and conditional requests |
 | `src/settings.js` | Appearance preferences, typography scaling, native sound/cursor preferences, fullscreen and tool proxies |
@@ -215,7 +216,36 @@ Plans and observed choices persist separately for each game and hero. Observatio
 come from native owned-card data, including while Deck is closed, and survive later
 tier replacement. The script cannot reconstruct older choices that were replaced
 before it observed them. Native eligibility and a lower level release observations
-after an undo. The separate tree-based upgrade-selection menu remains on the roadmap.
+after an undo. A/B artwork IDs keep standard/alternate rows aligned independently
+of source array order; there are no hero-specific card adjustments.
+
+### Level-up tree
+
+Level-up uses the same Extended Micro paths, omitting Gold, Silver and Ultimate.
+Tier 1 remains visible as context. Tier 2 and Tier 3 headings show separate
+selected/required counts. Only allowed upgrades can be selected; an unavailable
+card opens its printed Large details. Select all remaining Tier 2 upgrades before
+choosing Tier 3. Changing a Tier 2 selection clears dependent Tier 3 selections.
+The full-screen menu reserves the shared Card Viewer height even when no card is
+open; the tree scrolls independently beneath it. Preview and Reset sit beside item
+totals at the bottom, above the full-width Commit button. Known own deck cards
+show their printed stats and paired grants regardless of the deck-zone face-down
+flag; native cards and truly hidden cards are not changed.
+Tapping a selected card deselects it; Reset clears the local batch. Staged upgrade
+cards have gold borders, and changed totals are gold while Preview is off.
+
+**Preview** is a separate switch for later choices and item totals. Purple preview
+plans never alter staged game selections. Turning it off removes those plans and restores the staged choices.
+Centered help text sits immediately above the bottom Preview/Reset and Commit controls. Commit stays
+disabled while Preview is on, while a choice is pending, or until every required
+upgrade is validly selected. Selected grants add to native acquired item totals.
+
+**Commit** uses the website's own upgrade-selection callback, one choice at a time,
+rechecking the fresh server options after each acknowledged selection. It sends no
+independent API requests. A timeout or hidden page pauses the batch without retry;
+after acknowledgement, the remaining choices require another Commit. Closing the
+menu, changing game/player/round or leaving mobile mode discards local staging and
+cancels unsent work. Insufficient props/catalog data retains the native picker.
 
 ## Release notes and planned work
 
