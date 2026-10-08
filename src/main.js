@@ -87,14 +87,33 @@ function refresh() {
   // Use the visual viewport so browser chrome/keyboard changes do not push the
   // bottom controls off screen. Write only changed values to avoid needless layout work.
   const vh = Math.round(window.visualViewport?.height || innerHeight);
+  const viewportTop = Math.max(0, Math.round(window.visualViewport?.offsetTop || 0));
   const offset = Math.max(
     0,
-    Math.round(innerHeight - vh - (window.visualViewport?.offsetTop || 0)),
+    Math.round(innerHeight - vh - viewportTop),
   );
   if (root.style.getPropertyValue('--m2-vh') !== vh + 'px')
     root.style.setProperty('--m2-vh', vh + 'px');
   if (root.style.getPropertyValue('--m2-offset') !== offset + 'px')
     root.style.setProperty('--m2-offset', offset + 'px');
+  if (root.style.getPropertyValue('--m2-viewport-top') !== viewportTop + 'px')
+    root.style.setProperty('--m2-viewport-top', viewportTop + 'px');
+  // Retain the native report form and handlers, including its success screen.
+  // Only this utility dialog uses visible-viewport bounds; Deck has its own layout.
+  for (const modal of document.querySelectorAll(c('modal'))) {
+    if (q(c('heading'), modal)?.textContent.trim().toLowerCase() !== 'report a bug')
+      continue;
+    const backdrop = modal.parentElement;
+    if (!backdrop?.matches(c('backdrop'))) continue;
+    tag(modal, 'report-dialog');
+    tag(backdrop, 'report-backdrop');
+  }
+  for (const dialog of document.querySelectorAll('[role="dialog"][aria-label="Fix game state"]')) {
+    const backdrop = dialog.parentElement;
+    if (!backdrop?.matches(c('backdrop'))) continue;
+    tag(dialog, 'fix-dialog');
+    tag(backdrop, 'fix-backdrop');
+  }
   const nativeDeck = q(c('modal') + ':has(' + c('cardGrid') + ')');
   tag(nativeDeck, 'deck');
   // Native X, backdrop, and Escape can unmount Deck independently of our toggle.
@@ -320,7 +339,7 @@ on(media, 'change', schedule);
 
 // Public teardown for console installs and upgrades: release observers, timers, and DOM changes.
 window.GOA2Mobile2D = {
-  version: '0.21.0',
+  version: '0.22.0',
   destroy() {
     flushEventHistory();
     dead = true;
@@ -395,6 +414,7 @@ window.GOA2Mobile2D = {
     root.style.removeProperty('--m2-summary-h');
     root.style.removeProperty('--m2-vh');
     root.style.removeProperty('--m2-offset');
+    root.style.removeProperty('--m2-viewport-top');
     delete window.GOA2Mobile2D;
   },
 };

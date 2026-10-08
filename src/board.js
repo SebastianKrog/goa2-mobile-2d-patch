@@ -104,7 +104,8 @@ function updateMobileHeader(header) {
   const statusHeight = Math.ceil(mobileStatusStrip.getBoundingClientRect().height);
   if (statusHeight > 0 && root.style.getPropertyValue('--m2-status-h') !== statusHeight + 'px')
     root.style.setProperty('--m2-status-h', statusHeight + 'px');
-  const height = Math.ceil(header.getBoundingClientRect().height);
+  // Keep fractional CSS pixels so the strip meets the header without a seam.
+  const height = header.getBoundingClientRect().height;
   if (height > 4 && root.style.getPropertyValue('--m2-head') !== height + 'px')
     root.style.setProperty('--m2-head', height + 'px');
 }
@@ -685,10 +686,13 @@ let planningActions = null;
 function updatePlanningActions() {
   const sources = Array.from(
     document.querySelectorAll(c('takeBackBtn') + ',' + c('finishPlanningBtn')),
-  );
+  ).filter(source => mode !== 'board' || !source.matches(c('takeBackBtn')));
   const host = mode === 'board' ? q('[data-m2="board"]') : q('[data-m2="hand-list"]');
   if (!sources.length || !host) {
-    planningActions?.element.remove();
+    if (planningActions) {
+      planningActions.element.remove();
+      extras.delete(planningActions.element);
+    }
     planningActions = null;
     return;
   }

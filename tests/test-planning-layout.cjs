@@ -19,14 +19,21 @@ assert.equal(
   doc.querySelector('.m2-status').textContent,
   'Card locked in · Waiting for Garrus, Cutter',
 );
-assert(doc.querySelector('[data-m2="board"]>.m2-planning-actions'));
+assert(!doc.querySelector('[data-m2="board"]>.m2-planning-actions'));
+assert.equal(w.getComputedStyle(doc.querySelector('._takeBackBtn_x')).display, 'none');
+doc.querySelector('[data-mode="hand"]').click();
+assert(doc.querySelector('[data-m2="hand-list"]>.m2-planning-actions'));
 doc.querySelector('.m2-planning-actions button').click();
 assert.equal(taken, 1);
 doc.querySelector('[data-mode="hand"]').click();
-assert(doc.querySelector('[data-m2="hand-list"]>.m2-planning-actions'));
+assert.equal(doc.documentElement.dataset.m2Mode, 'board');
+assert(!doc.querySelector('.m2-planning-actions'));
+doc.querySelector('[data-mode="hand"]').click();
+doc.querySelector('.m2-planning-actions button').click();
+assert.equal(taken, 2);
 w.GOA2Mobile2D.destroy();
 assert(!doc.querySelector('.m2-planning-actions'));
 w.close();
 console.log(
-  'PASS: status omits card name; take-back action follows view and preserves native handler.',
+  'PASS: status omits card name; take-back is absent on Board and retained in Hand with its native handler.',
 );

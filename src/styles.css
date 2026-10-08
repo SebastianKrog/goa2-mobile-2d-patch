@@ -16,6 +16,64 @@
 & body {
   overscroll-behavior: none;
 }
+/* Bound native utility dialogs to the visible viewport, including keyboard panning.
+   Scroll long content while preserving the website's controls and handlers. */
+& :is([data-m2="report-backdrop"], [data-m2="fix-backdrop"]) {
+  inset: auto 0 auto 0 !important;
+  top: var(--m2-viewport-top, 0px) !important;
+  height: var(--m2-vh, 100dvh);
+  box-sizing: border-box;
+  padding: 8px;
+  padding-top: max(8px, env(safe-area-inset-top, 0px));
+  padding-bottom: max(8px, env(safe-area-inset-bottom, 0px));
+  z-index: 10003 !important;
+}
+& :is([data-m2="report-dialog"], [data-m2="fix-dialog"]) {
+  box-sizing: border-box;
+  max-width: 100%;
+  min-height: 0;
+  max-height: 100%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+& [data-m2="report-dialog"] {
+  width: min(100%, 440px) !important;
+}
+& [data-m2="report-dialog"] > * {
+  flex-shrink: 0;
+}
+& [data-m2="fix-dialog"] {
+  width: min(100%, 640px) !important;
+  padding: 12px;
+  overflow-wrap: anywhere;
+}
+& [data-m2="fix-dialog"] * {
+  box-sizing: border-box;
+  max-width: 100%;
+}
+& [data-m2="fix-dialog"] [role="tablist"] {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+}
+& [data-m2="fix-dialog"] [role="tab"] {
+  min-width: 0;
+  min-height: 36px;
+  padding: 7px 4px;
+}
+& [data-m2="fix-dialog"] button {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+& [data-m2="fix-dialog"] :is([class*="_placeControls_"], [class*="_confirmActions_"]) {
+  flex-wrap: wrap;
+}
+& [data-m2="fix-dialog"] :is(input, select, textarea) {
+  min-width: 0;
+}
+& [data-m2="fix-dialog"] [class*="_formRow_"] :is(select, textarea, input:not([type="number"])) {
+  width: 100%;
+}
 & [data-m2="main"] {
   flex: 1 1 0 !important;
   min-height: 0;
@@ -658,6 +716,7 @@
    Native header children stay mounted as data sources. Only generated HUD elements are displayed. */
 & [data-m2="header"] {
   box-sizing: border-box;
+  border-bottom: 0 !important;
   z-index: 80;
   grid-template-rows: 24px 18px 28px;
   overflow: hidden;

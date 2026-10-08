@@ -1,6 +1,23 @@
 # Changelog
 
-Published releases, newest first. Each entry groups user-visible changes and fixes. Local previews 0.14.10–0.14.18 are included in 0.15.0; 0.15.1–0.15.11 are included in 0.16.0; 0.16.1–0.16.9 are included in 0.17.0; 0.17.1–0.17.2 are included in 0.18.0; 0.18.1–0.18.6 are included in 0.19.0; 0.19.3–0.19.5 are included in 0.20.0; 0.20.1–0.20.9 are included in 0.21.0.
+Published releases, newest first. Each entry groups user-visible changes and fixes. Local previews 0.14.10–0.14.18 are included in 0.15.0; 0.15.1–0.15.11 are included in 0.16.0; 0.16.1–0.16.9 are included in 0.17.0; 0.17.1–0.17.2 are included in 0.18.0; 0.18.1–0.18.6 are included in 0.19.0; 0.19.3–0.19.5 are included in 0.20.0; 0.20.1–0.20.9 are included in 0.21.0; 0.21.1–0.21.4 are included in 0.22.0.
+
+## 0.22.0
+
+### Fixed
+
+- Remove the native header bottom border and retain fractional header measurements so the phase/action strip meets it without a pixel seam.
+- Fit Fix game state within the visible phone viewport. Show all six tabs in two rows, scroll long content and wrap controls, preserving native correction and confirmation actions.
+- Keep Report a bug within the visible viewport above the keyboard, including viewport panning. Scroll long forms and keep the native fields, actions and success screen above the footer.
+- Hide the Take back card popup in Board view while retaining its Hand control and native click handler. Preserve other planning controls and release removed proxies when switching views.
+
+### Changed
+
+- Replace completed-feature history in the roadmap with the remaining tablet, server-log, device-refinement and optional desktop work.
+
+### Validation
+
+- Cover keyboard viewport bounds, report and correction dialogs, native control preservation, planning controls and header/status-strip geometry.
 
 ## 0.21.0
 
