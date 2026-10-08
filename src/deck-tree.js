@@ -280,7 +280,9 @@ function renderDeckTree(host, entries, hero, selectCard) {
       const alternatives = cards.filter(
         (card) => deckTreeGroup(card) === group && deckCardIdentity(card) !== id,
       );
-      if (alternatives.length === 1 && alternatives[0].item)
+      // A current choice locks its same-tier alternative. Item-history styling
+      // applies after the playable choice has left the current card pool.
+      if (!pool.has(id) && alternatives.length === 1 && alternatives[0].item)
         itemCards.add(deckCardIdentity(alternatives[0]));
     }
     for (const { card, button } of buttons) {

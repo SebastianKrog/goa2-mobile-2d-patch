@@ -30,14 +30,27 @@ combat/event output, so it is a temporary supplement to locally received events.
 
 ## Horizontal phone layout
 
-Create a dedicated landscape-phone layout:
+Released in 0.21.0 (including the 0.20.1–0.20.9 previews):
 
-- Board / Card Viewer on the left.
-- Lists on the right.
-- Menu buttons at the far right.
-- Rework the top menu for landscape, either:
-  - on a leftmost left-side vertical bar
-  - split between the two corners with a small central status area.
+- Full-width Board beneath floating summaries and focused Heroes; Card Viewer
+  on the left and scrolling lists on the right. View changes preserve map geometry.
+- Default map center in the clear left area, including after Reset, without
+  shrinking the board or changing native pan/zoom.
+- Navigation buttons at the far right, with minimum touch targets and scrolling
+  on short screens.
+- Lives/minions paired at the corners, with Round/Turn and push counter next to
+  the centered landscape coin; phase/action strip below the 27px header at the top
+  of the map. Reset/Fullscreen stack on the left, with temporary choice/upgrade
+  buttons below.
+- Deck Tree/List and level-up use left viewers with right-side card lists and
+  controls; Grid enlarges card images in the left pane.
+- Settings, Log and starting-position controls occupy the right pane.
+- Phone activation extends to short, coarse-pointer landscape viewports up to
+  1200 pixels wide. Portrait and native tablet/desktop activation stay separate.
+
+Remaining: device validation and refinement of column balance, long card text,
+large hero rosters and browser chrome/keyboard behavior. A dedicated tablet layout
+remains separate work.
 
 ## Tablet layout
 

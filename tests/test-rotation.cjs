@@ -23,7 +23,8 @@ doc.querySelector('button').onclick = () => {
 };
 w.eval(fs.readFileSync('dist/goa2-mobile-2d.user.js', 'utf8'));
 const buttons = doc.querySelectorAll('.m2-board-controls button');
-assert.equal(buttons.length, 1);
+assert.equal(buttons.length, 2);
+assert(buttons[1].hidden, 'fullscreen is hidden when the browser API is unavailable');
 const pointer = (type, id, x, y) => {
   const e = new w.Event(type, { bubbles: true });
   Object.assign(e, { pointerType: 'touch', pointerId: id, clientX: x, clientY: y });

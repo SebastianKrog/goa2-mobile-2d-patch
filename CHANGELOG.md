@@ -1,6 +1,33 @@
 # Changelog
 
-Published releases, newest first. Each entry groups user-visible changes and fixes. Local previews 0.14.10–0.14.18 are included in 0.15.0; 0.15.1–0.15.11 are included in 0.16.0; 0.16.1–0.16.9 are included in 0.17.0; 0.17.1–0.17.2 are included in 0.18.0; 0.18.1–0.18.6 are included in 0.19.0; 0.19.3–0.19.5 are included in 0.20.0.
+Published releases, newest first. Each entry groups user-visible changes and fixes. Local previews 0.14.10–0.14.18 are included in 0.15.0; 0.15.1–0.15.11 are included in 0.16.0; 0.16.1–0.16.9 are included in 0.17.0; 0.17.1–0.17.2 are included in 0.18.0; 0.18.1–0.18.6 are included in 0.19.0; 0.19.3–0.19.5 are included in 0.20.0; 0.20.1–0.20.9 are included in 0.21.0.
+
+## 0.21.0
+
+### Added
+
+- Add a phone landscape layout with a full-width board, floating lists on the right, a Card Viewer on the left and navigation at the far-right edge. Keep the map centered in the clear left area across view changes and Reset.
+- Adapt Deck, level-up, Settings, Log and starting-position controls to landscape panes, respecting safe areas and viewport offsets.
+- Add a supported-browser Fullscreen toggle below Reset, synchronized with Settings and external fullscreen exits.
+- Center the map on a hero at 250% using portrait clicks in Heroes or double-clicks in focused Board entries, retaining current rotation and Heroes mode.
+
+### Changed
+
+- Use a slim 27px landscape header, with icon/label pairs shifted down 5px and painting above the phase/action strip. Place Round/Turn and push counters beside the centered coin; pair minions with lives in both orientations.
+- Move the landscape phase/action/disconnect strip to the top of the map. Stack Reset, Fullscreen and temporary choice/upgrade buttons on the left.
+- Keep card dots plain, with active-effect glow and known-card inspection.
+- Include local previews 0.20.1–0.20.9.
+
+### Fixed
+
+- Darken locked same-tier alternatives of current upgrades in Deck and level-up trees. Preserve older item history, native item totals and future-tier choices.
+- Keep native map geometry, zoom and pan stable when switching landscape views; restore portrait layout on rotation.
+
+### Validation
+
+- Cover landscape geometry, orientation changes, native control preservation, fullscreen lifecycle, hero centering, plain-dot privacy/effects, header stacking and locked upgrade alternatives.
+- All 38 regression files, test/CSS formatting, generated-file and whitespace checks pass.
+- Real phone rendering, browser chrome and touch gestures remain device checks.
 
 ## 0.20.0
 

@@ -678,7 +678,7 @@
 }
 & .m2-hud-top {
   display: grid;
-  grid-template-columns: minmax(34px, 1fr) 32px 44px 56px 44px 32px minmax(34px, 1fr);
+  grid-template-columns: 34px 32px minmax(44px, 1fr) 56px minmax(44px, 1fr) 32px 34px;
   position: relative;
   align-items: center;
   gap: 4px;
@@ -726,16 +726,12 @@
   justify-self: center;
 }
 & .m2-minions.red {
-  position: absolute;
-  top: 1px;
-  transform: translateX(-50%);
-  left: calc(25% - 8px);
+  position: static;
+  grid-column: 2;
 }
 & .m2-minions.blue {
-  position: absolute;
-  top: 1px;
-  transform: translateX(-50%);
-  left: calc(75% + 8px);
+  position: static;
+  grid-column: 6;
 }
 & .m2-minions img {
   width: 28px;
@@ -2435,6 +2431,20 @@
   object-fit: cover;
   border-radius: 50%;
 }
+& .m2-hero-center {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+}
+& .m2-hero-center:focus-visible {
+  outline: 2px solid #ffe09c;
+  outline-offset: 3px;
+}
 & .m2-hero-portrait:has(.m2-resolution-info) img {
   opacity: 0.45;
 }
@@ -3207,7 +3217,8 @@
   touch-action: none;
 }
 & svg[data-m2-rotate] {
-  transform: var(--m2-native-transform) rotate(var(--m2-angle)) scale(var(--m2-rotation-fit)) !important;
+  transform: translate(var(--m2-center-x, 0px), var(--m2-center-y, 0px)) var(--m2-native-transform)
+    rotate(var(--m2-angle)) scale(var(--m2-rotation-fit)) !important;
   transform-origin: 50% 50%;
 }
 & [data-m2-rotation-host] > [class*="_zoomReset_"] {
@@ -3221,11 +3232,14 @@
   top: calc(var(--m2-status-h, 22px) + 6px);
   right: 8px;
   display: flex;
+  flex-direction: column;
+  align-items: stretch;
   gap: 4px;
   z-index: 60;
   touch-action: manipulation;
 }
 & .m2-board-controls button {
+  box-sizing: border-box;
   height: 34px;
   min-width: 34px;
   padding: 4px 8px;
@@ -3234,6 +3248,13 @@
   background: #10151ee8;
   color: #e0e6ed;
   font: 600 12px system-ui;
+}
+& .m2-board-fullscreen[hidden] {
+  display: none;
+}
+& .m2-board-fullscreen[aria-pressed="true"] {
+  border-color: #dfc484;
+  color: #ffe09c;
 }
 & .m2-planning-actions {
   display: flex;
@@ -3357,14 +3378,6 @@ html:not([data-m2-active]) .m2-choice-launchers {
   overflow-wrap: anywhere;
   font-size: 10px;
 }
-@media (max-width: 360px) {
-  & .m2-minions.red {
-    left: calc(25% - 12px);
-  }
-  & .m2-minions.blue {
-    left: calc(75% + 12px);
-  }
-}
 @keyframes m2-breathe {
   0%,
   100% {
@@ -3432,5 +3445,268 @@ html:not([data-m2-active]) .m2-choice-launchers {
 @media (max-height: 500px) {
   & {
     --m2-card-display-height: 164.8px;
+  }
+}
+/* Phone landscape: full board beneath left viewer/right lists, navigation rail.
+   Native nodes keep their parents and handlers; only generated layout changes. */
+@media (orientation: landscape) and (min-width: 600px) and (max-width: 1200px) and (max-height: 600px) {
+  & {
+    --m2-head: 27px;
+    --m2-nav: 0px;
+    --m2-nav-width: calc(64px + env(safe-area-inset-right, 0px));
+    --m2-list-width: clamp(320px, 44vw, 400px);
+    --m2-card-display-height: calc(var(--m2-vh, 100dvh) - var(--m2-head) - 12px);
+    --m2-control-stack-h: 0px;
+  }
+  &:has(.m2-board-controls) {
+    --m2-control-stack-h: 40px;
+  }
+  &:has(.m2-board-fullscreen:not([hidden])) {
+    --m2-control-stack-h: 78px;
+  }
+  & [data-m2="header"] {
+    padding: 1px 8px !important;
+    overflow: visible;
+    /* Protruding icon/label pairs paint above the sibling status strip. */
+    z-index: 82;
+  }
+  & [data-m2="layout"] {
+    padding-bottom: 0;
+    padding-right: var(--m2-nav-width);
+    padding-left: env(safe-area-inset-left, 0px);
+  }
+  & [data-m2="main"] {
+    flex-direction: row !important;
+    position: relative;
+  }
+  & [data-m2="board"],
+  &:is(
+      [data-m2-mode="board"],
+      [data-m2-mode="hand"],
+      [data-m2-mode="heroes"],
+      [data-m2-panel="tools"],
+      [data-m2-panel="log"]
+    )
+    [data-m2="board"] {
+    flex: 0 0 100% !important;
+    width: 100%;
+    height: 100%;
+    min-width: 0;
+  }
+  & [data-m2="sidebar"] {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: var(--m2-list-width) !important;
+    flex: 0 0 var(--m2-list-width) !important;
+    border-left: 1px solid #3f4c61;
+  }
+  &[data-m2-deck-open] [data-m2="board"] {
+    display: block !important;
+  }
+  & svg[data-m2-rotate] {
+    /* Center in the clear left area without changing the native board size.
+       Screen-space translation stays independent of native pan/zoom/rotation. */
+    translate: calc(var(--m2-list-width) / -2) 0;
+  }
+  & #goa2-m2-nav {
+    top: 0;
+    left: auto;
+    width: var(--m2-nav-width);
+    height: auto;
+    padding: 4px env(safe-area-inset-right, 0px) 4px 4px;
+    border-top: 0;
+    border-left: 1px solid #3f4c61;
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-auto-rows: minmax(44px, 1fr);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  & .m2-hud-top {
+    height: 25px;
+    grid-template-rows: 25px;
+  }
+  & .m2-hud-top > :is(.m2-life, .m2-minions, .m2-coin, .m2-waves) {
+    transform: translateY(5px);
+  }
+  & .m2-round {
+    justify-self: end;
+    line-height: 13px;
+  }
+  & .m2-waves {
+    justify-self: start;
+  }
+  & .m2-hud-bottom {
+    top: var(--m2-head);
+    left: calc(env(safe-area-inset-left, 0px) + 8px);
+    right: calc(var(--m2-nav-width) + var(--m2-list-width) + 8px);
+  }
+  &[data-m2-mode="board"] #goa2-m2-summary,
+  &[data-m2-mode="board"] #goa2-m2-summary.m2-summary-focused {
+    top: var(--m2-head);
+    left: auto;
+    right: var(--m2-nav-width);
+    bottom: var(--m2-offset, 0px);
+    width: var(--m2-list-width);
+    height: auto;
+    max-height: none;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    justify-content: flex-start;
+  }
+  & #goa2-m2-summary > article {
+    --m2-name-min: 42px;
+    --m2-piles-width: 36px;
+  }
+  &[data-m2-mode="hand"] #goa2-m2-details:not(:empty),
+  &:is([data-m2-mode="board"], [data-m2-mode="heroes"], [data-m2-mode="hand"])
+    #goa2-m2-hero-display:not(:empty) {
+    inset: 6px calc(var(--m2-list-width) + 6px) auto 6px !important;
+    max-height: calc(100% - 12px);
+  }
+  & [data-m2="tip"] {
+    left: calc(env(safe-area-inset-left, 0px) + 6px) !important;
+    right: calc(var(--m2-nav-width) + var(--m2-list-width) + 6px) !important;
+    top: calc(var(--m2-head) + 6px) !important;
+    max-height: var(--m2-card-display-height) !important;
+  }
+  & .m2-choice-launchers:not([hidden]) {
+    top: calc(var(--m2-status-h, 22px) + 6px + var(--m2-control-stack-h));
+    left: 8px;
+    flex-direction: column;
+    align-items: flex-start;
+    max-width: calc(100% - var(--m2-list-width) - 16px);
+  }
+  & .m2-board-controls {
+    top: calc(var(--m2-status-h, 22px) + 6px);
+    left: 8px;
+    right: auto;
+    align-items: flex-start;
+  }
+  & .m2-utility-panel {
+    top: var(--m2-head);
+    left: auto;
+    right: var(--m2-nav-width);
+    width: var(--m2-list-width);
+    border-radius: 8px 0 0 8px;
+    padding: 10px;
+    gap: 8px;
+  }
+  &[data-m2-panel="setup"] [data-m2="setup"] {
+    top: var(--m2-head) !important;
+    left: auto !important;
+    right: var(--m2-nav-width) !important;
+    bottom: var(--m2-offset, 0px) !important;
+    width: var(--m2-list-width) !important;
+    max-height: none !important;
+  }
+  & [data-m2="deck"],
+  & [data-m2-upgrade-tree] {
+    inset: var(--m2-head) var(--m2-nav-width) var(--m2-offset, 0px) env(safe-area-inset-left, 0px) !important;
+    width: auto !important;
+    padding: 6px !important;
+  }
+  & [class*="_backdrop_"]:has([data-m2="deck"]),
+  & [class*="_overlayUpgrade_"]:has([data-m2-upgrade-tree]) {
+    top: var(--m2-head) !important;
+    right: var(--m2-nav-width) !important;
+    bottom: var(--m2-offset, 0px) !important;
+  }
+  & [data-m2="deck"][data-m2-deck-ready] {
+    display: flex !important;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  & .m2-deck-browser,
+  & .m2-deck-browser:is([data-view="compact"], [data-view="tree"]) {
+    display: grid;
+    flex: 1 1 0;
+    min-height: 0;
+    grid-template-columns: minmax(0, 1fr) var(--m2-list-width);
+    grid-template-rows: var(--m2-head) minmax(0, 1fr) auto;
+    gap: 6px;
+  }
+  & .m2-deck-controls {
+    grid-column: 2;
+    grid-row: 1;
+    margin: 0;
+    position: static;
+  }
+  & .m2-deck-preview {
+    grid-column: 1;
+    grid-row: 1 / -1;
+    min-width: 0;
+    margin: 0;
+  }
+  & .m2-deck-row-list {
+    grid-column: 2;
+    grid-row: 2;
+    min-width: 0;
+    overscroll-behavior: contain;
+  }
+  & .m2-tree-build {
+    grid-column: 2;
+    grid-row: 3;
+    max-height: none;
+  }
+  & .m2-deck-browser[data-view="grid"]:before {
+    content: "Select a card to view details";
+    grid-column: 1;
+    grid-row: 1 / -1;
+    display: grid;
+    place-items: center;
+    min-width: 0;
+    background: #090c11;
+    border-radius: 8px;
+    color: #97a2b3;
+    font: 13px system-ui;
+    text-align: center;
+  }
+  & .m2-deck-zoom:not([hidden]) {
+    inset: calc(var(--m2-head) + 6px) calc(var(--m2-nav-width) + var(--m2-list-width) + 18px)
+      calc(var(--m2-offset, 0px) + 6px) calc(env(safe-area-inset-left, 0px) + 6px);
+    padding: 6px;
+    min-width: 0;
+  }
+  & .m2-deck-zoom canvas {
+    width: auto !important;
+    height: calc(100% - 44px) !important;
+    max-width: 100%;
+    min-height: 0;
+    object-fit: contain;
+  }
+  & .m2-upgrade-browser {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) var(--m2-list-width);
+    grid-template-rows: var(--m2-head) minmax(0, 1fr) auto auto auto;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  & .m2-upgrade-heading {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  & [data-m2-upgrade-tree] > [class*="_titleRow_"] {
+    left: calc(100% - var(--m2-list-width));
+  }
+  & .m2-upgrade-content {
+    display: contents;
+  }
+  & .m2-upgrade-content > .m2-deck-row-list {
+    grid-column: 2;
+    grid-row: 2;
+  }
+  & .m2-upgrade-status {
+    grid-column: 2;
+    grid-row: 3;
+  }
+  & .m2-upgrade-controls {
+    grid-column: 2;
+    grid-row: 4;
+  }
+  & .m2-upgrade-actions {
+    grid-column: 2;
+    grid-row: 5;
   }
 }

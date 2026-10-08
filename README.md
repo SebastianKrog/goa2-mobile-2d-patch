@@ -2,7 +2,8 @@
 
 A mobile userscript for the existing Guards of Atlantis II frontend at
 `https://goa2.frontend.pedroliv.dev/game/*`, with `3d=0` in the query string.
-It activates at widths of 900 CSS pixels or less. The website retains responsibility
+It activates at widths of 900 CSS pixels or less, plus short landscape phones up
+to 1200 pixels wide with a coarse pointer. The website retains responsibility
 for game rules and actions; the script adapts presentation and proxies native controls.
 
 ## Install
@@ -39,7 +40,7 @@ Building alone needs no npm packages: `node scripts/build.mjs` also works before
 
 - `npm run build` combines source files into readable, unminified output in `dist/`.
 - `npm run build:check` checks that committed output matches the source.
-- `npm test` builds and runs all 35 regression test files in isolated Node processes.
+- `npm test` builds and runs all 38 regression test files in isolated Node processes.
 - `npm run test:format` formats test JavaScript; `npm run test:format:check` checks it.
 - `npm run css:format` formats the stylesheet; `npm run css:format:check` checks it.
 - GitHub Actions checks test/CSS formatting, committed output and regressions on pushes and pull requests.
@@ -140,6 +141,33 @@ The canvas card painter is adapted from `PedroVIOliv/goa2-frontend-portfolio`.
 Card art, icons, and fonts are loaded from the game website and are not copied into
 this repository. No new license grant is asserted for third-party code or artwork.
 
+## Horizontal phone layout
+
+The first landscape layout activates between 600 and 1200 CSS pixels wide, at a
+maximum height of 600 pixels. Wider-than-900 activation additionally requires a
+coarse pointer; larger tablets and desktops keep their existing layout.
+
+- Board fills the available width beneath floating summaries/focus. Opening
+  other views overlays the board without resizing it or changing its pan/zoom.
+  Its default center sits in the clear left area; Reset returns to that center.
+  Card Viewer occupies the left pane; Heroes and Hand scroll in the right pane.
+- Navigation forms a far-right rail. Buttons keep 44px minimum height and scroll
+  when the browser leaves too little vertical space.
+- Lives and minions form adjacent pairs at each corner in both orientations.
+  Landscape places Round/Turn just left of the centered coin and the push counter
+  just right. The phase/action strip attaches below the header at the top of the
+  map; disconnect keeps the same dot and layout. The landscape header has a 27px
+  background with icon/label pairs shifted down 5px to protrude. Reset and supported Fullscreen stack
+  on the left, with temporary choice/upgrade buttons below them.
+- Deck Tree/List and level-up reserve a tall viewer on the left, with card lists
+  and preview/commit controls on the right. Deck Grid enlarges images on the left.
+- Settings, Log and starting-position tools use the right pane. Safe-area insets
+  and visual viewport offsets reserve space for browser chrome and keyboards.
+
+Rotation changes presentation without moving native game nodes, changing the
+selected card or submitting actions. Portrait returns to its existing layout.
+Device checks are still needed for text fit, browser chrome and touch gestures.
+
 ## Card display system
 
 | Size | Content and use |
@@ -152,7 +180,7 @@ this repository. No new license grant is asserted for third-party code or artwor
 | Micro — Hero history | Four fixed icon slots: primary, range/radius, movement, defense. 64px total width. |
 | Extended Micro | Five slots for Deck trees: initiative, three colored Micro cells (primary, range/radius, movement), and the granted item from its paired alternative with an overlaid plus. Clear end caps; 110px wide and 24px high. |
 | Nano | One defense icon/value for a discarded card; 20px wide and the same 24px height as Micro. |
-| Dot | Card color only; card-pile summaries. |
+| Dot | Plain card color, with a breathing glow for active effects. |
 
 Large cards use one CSS-cropped original artwork layer across the title, body and
 footer. The artwork itself fades from fully transparent at the top left to 40%
@@ -175,6 +203,7 @@ Tier III has three solid colored edge pixels. Resolved edges remain muted.
 
 Missing Micro stats keep their cell empty. Known in-play upgrades use purple values;
 Deck uses printed values. Active effects breathe on their Micro/Nano/Dot source.
+Hand dots, hidden cards and Gold/Silver/Ultimate dots retain their plain color.
 Facedown cards do not reveal hidden names or stats. Small/Mini and Extended Micro
 Ultimate cards retain the empty initiative slot, keeping their content aligned.
 Hero upgrade rows reserve a grey Nano **U** before their item icons, and compact
@@ -201,9 +230,10 @@ Tree end cap and native upgrade picker; T1/basic/Ultimate cards grant no item.
 
 T2/T3 taps mark tentative choices in purple and darken the rejected alternative.
 Cards in the current hand/discard/played pool have white borders, including basic
-cards and the unlocked Ultimate. Alternatives that actually became items have light
-grey borders; replaced playable cards (including Tier 1) and rejected choices are
-dark grey. Other unselected cards remain grey. Inspecting a committed choice or its
+cards and the unlocked Ultimate. The same-tier alternative of a current upgrade
+is dark grey because that choice is locked. Older alternatives that became items
+have light grey borders after their paired playable card leaves the current pool;
+replaced playable cards (including Tier 1) and rejected choices are dark grey. Other unselected cards remain grey. Inspecting a committed choice or its
 item alternative does not change the build. The compact bottom bar places **Preview**
 on the left, upgrade totals in the center and **Reset** on the right. It shows totals
 using the Hero entry icons: grey for none, white for acquired bonuses, and purple
@@ -260,3 +290,10 @@ text while preserving its pulsing dot. Board summaries and focused Hero entries 
 over the board with blurred surfaces; focused entries have a turn-ordered portrait
 selector and a gray return triangle. Portrait initiative badges have transparent
 backgrounds in both Heroes and Board. Unfolded Hero boards remain disabled.
+
+Click a Heroes portrait to center the map on that hero at 250%, retaining the
+current rotation and open view. Double-click the focused Board entry (outside
+its card/back buttons), or its selected floating portrait, to center it too.
+Off-board heroes have no camera action. Owned figures are resolved from the
+game's public ownership data. Reset clears centering along with native pan/zoom
+and rotation; landscape returns to its default left-area map center.

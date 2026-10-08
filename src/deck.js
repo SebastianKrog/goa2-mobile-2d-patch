@@ -227,11 +227,11 @@ function deckUpdate() {
       row.setAttribute('aria-pressed', String(row.dataset.cardKey === JSON.stringify(card)));
   }
 
-  const listHost = hasPreview ? document.createElement('div') : state.host;
-  if (listHost !== state.host) {
-    listHost.className = 'm2-deck-row-list';
-    state.host.append(listHost);
-  }
+  // All modes have an independently scrollable card area. Landscape places it
+  // beside the viewer, including Grid's existing enlarged image surface.
+  const listHost = document.createElement('div');
+  listHost.className = 'm2-deck-row-list';
+  state.host.append(listHost);
   if (deckView === 'tree') {
     renderDeckTree(listHost, entries, hero, selectPreview);
     const selected = entries.find(e => state.selectedCard &&

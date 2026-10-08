@@ -205,6 +205,16 @@ function updateHeroDashboard(box, view, suppliedHero = null) {
   portraitImage.alt = hero.name || hero.id;
   if (offboard) portraitImage.style.filter = 'grayscale(1)';
   portrait.append(portraitImage);
+  if (box.closest('[data-m2="sidebar"]')) {
+    const center = document.createElement('button');
+    center.type = 'button';
+    center.className = 'm2-hero-center';
+    center.title = 'Center ' + (hero.name || hero.id) + ' on Board at 250%';
+    center.setAttribute('aria-label', center.title);
+    center.disabled = offboard === true;
+    center.onclick = event => { event.stopPropagation(); centerBoardHero(hero.id); };
+    portrait.append(center);
+  }
   dashboard.append(portrait);
   if (offboard) {
     const label = document.createElement('span');

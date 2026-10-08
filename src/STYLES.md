@@ -20,9 +20,9 @@ may have their own selectors.
 | 5. Deck browser | Grouped layouts, sort switch, canvas copies, zoom, List/Tree preview, shared paths/build totals and level-up staging/commit surfaces |
 | 6. Hero entries and portraits | Shared heading, metadata, Played/history slots, upgrades, portrait/status overlays |
 | 7. Board summaries and focus | Six overview columns, turn states, floating row/focus surfaces and portrait navigation |
-| 8. Board gestures and controls | SVG rotation, reset, planning proxies and choice launchers |
+| 8. Board gestures and controls | SVG rotation/centering, reset, planning proxies and choice launchers |
 | 9. Event log | Floating-trigger suppression, Events/Decisions tabs, history rows and raw details |
-| Motion and media rules | Keyframes, reduced motion, narrow-screen counters and short-screen preview height |
+| Motion and media rules | Keyframes, reduced motion, narrow-screen counters and short-screen preview height and phone landscape panes/rail |
 
 ## Cascade rules
 
@@ -58,6 +58,47 @@ may have their own selectors.
 - The root's `data-m2-no-card-art` state hides existing artwork layers and disables
   their bar blur, leaving card structure, stats and loaded assets intact.
 
+## Phone landscape
+
+The final landscape media block owns the orientation-specific geometry. It uses
+`--m2-nav-width` for the right navigation rail and `--m2-list-width` for the right
+pane; `--m2-nav` becomes zero because there is no bottom footer. Keep browser
+viewport offsets and safe-area insets in fixed panel bounds.
+
+The board stays full width and height across landscape modes. The native sidebar
+is positioned over its right edge; floating Board summaries have no permanent
+panel background. Deck also keeps the board rendered behind its overlay so its
+geometry does not collapse. The message strip attaches to the map below the
+27px landscape header. Its icon/label pairs translate down 5px without affecting
+header measurement or Round/Turn positioning. The landscape header paints above
+the sibling status strip, so protruding icons remain visible; card viewers keep
+higher overlay priority. Reset/Fullscreen stack
+at the left below the strip; temporary choice launchers follow beneath them.
+`--m2-control-stack-h` reserves only the controls present, including the gap after
+the stack. Portrait keeps its existing header height and control positions.
+Lives/minions use adjacent outer grid columns in both orientations; flexible
+columns flank the coin. Landscape aligns Round/Turn and the push counter toward
+the coin within those columns.
+The SVG's landscape-only `translate` shifts it left by half the reserved list
+width: the full board's midpoint then coincides with the clear left area's
+midpoint. This screen-space offset stays separate from native pan/zoom and
+rotation, remains constant across modes and Reset, and disappears in portrait.
+Hero centering uses native wheel/pan state with a final screen-space translation
+in the SVG transform when the pan clamp stops short. `--m2-center-x/y` belong
+to the rotation host and clear with Reset or teardown. Card dots remain plain
+circles in their `--effect-color`; active effects retain their breathing glow.
+
+Generated Deck/upgrade
+roots use grids to put the shared viewer on the left and controls/lists on the
+right. Upgrade content uses `display: contents` so its two children join the host
+grid; no native nodes are reparented. Grid Deck cards also have a scrolling list
+container, and their image zoom is confined to the left pane.
+
+The media query is limited to landscape widths 600–1200px and heights up to 600px.
+The extra activation beyond the existing 900px limit requires a coarse pointer.
+Portrait component definitions remain the base; do not mix rail widths into their
+footer-height calculations.
+
 ## Checks
 
 ```sh
@@ -70,7 +111,10 @@ npm run build:check
 `test-css-cascade.cjs` checks header typography, strip/dot stability, shared card
 gutters and state colors, floating focus sizing, footer geometry, and selected
 short/narrow/reduced-motion media branches. It selects media branches explicitly
-because jsdom does not evaluate screen media queries.
+because jsdom does not evaluate screen media queries. `test-landscape.cjs` and
+the level-up fixture select the landscape branch through `helpers/screen-media.cjs`
+and cover pane/rail geometry, unchanged landscape map dimensions and native
+transforms across modes, shared fullscreen state, viewport offsets and rotation lifecycle.
 
 These checks complement the existing layout/artwork fixtures. Real blur, font
 rendering, touch behavior and platform safe-area values still need a device check.

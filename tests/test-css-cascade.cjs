@@ -113,8 +113,20 @@ test('header overlays stay bold white, with smaller coin labels and an unchanged
     assert(style.textShadow.includes('#000'));
   }
   const strip = d.querySelector('.m2-hud-bottom');
-  assert.equal(w.getComputedStyle(d.querySelector('.m2-minions.red')).left, 'calc(25% - 8px)');
-  assert.equal(w.getComputedStyle(d.querySelector('.m2-minions.blue')).left, 'calc(75% + 8px)');
+  for (const [selector, column] of [
+    ['.m2-life.red', '1'],
+    ['.m2-minions.red', '2'],
+    ['.m2-minions.blue', '6'],
+    ['.m2-life.blue', '7'],
+  ]) {
+    const style = w.getComputedStyle(d.querySelector(selector));
+    assert.equal(style.gridColumn, column);
+    assert.equal(style.position, 'static');
+  }
+  assert.equal(
+    w.getComputedStyle(d.querySelector('.m2-hud-top')).gridTemplateColumns,
+    '34px 32px minmax(44px, 1fr) 56px minmax(44px, 1fr) 32px 34px',
+  );
   const columns = w.getComputedStyle(strip).gridTemplateColumns;
   const dotColor = w.getComputedStyle(strip.querySelector('.m2-action-dot')).color;
   const warning = d.createElement('div');
@@ -211,8 +223,8 @@ test('short/narrow and reduced-motion rules preserve overlay geometry and shared
     w.getComputedStyle(d.documentElement).getPropertyValue('--m2-card-display-height'),
     '164.8px',
   );
-  assert.equal(w.getComputedStyle(d.querySelector('.m2-minions.red')).left, 'calc(25% - 12px)');
-  assert.equal(w.getComputedStyle(d.querySelector('.m2-minions.blue')).left, 'calc(75% + 12px)');
+  assert.equal(w.getComputedStyle(d.querySelector('.m2-minions.red')).gridColumn, '2');
+  assert.equal(w.getComputedStyle(d.querySelector('.m2-minions.blue')).gridColumn, '6');
   const effect = d.querySelector('.m2-micro-button');
   effect.classList.add('m2-effect-active');
   const dots = d.createElement('span');

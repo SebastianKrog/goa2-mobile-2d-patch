@@ -195,8 +195,8 @@ test('game-chosen upgrades stay highlighted when either choice is inspected or t
   const { w, d, node, hero } = setup(t, ['RED-II-a']);
   const before = JSON.stringify(hero);
   assert(node('RED-II-a').classList.contains('m2-tree-chosen'));
-  assert.equal(w.getComputedStyle(node('RED-II-b')).opacity, '0.75');
-  assert.equal(node('RED-II-b').dataset.state, 'item');
+  assert.equal(w.getComputedStyle(node('RED-II-b')).opacity, '0.3');
+  assert.equal(node('RED-II-b').dataset.state, 'unavailable');
   node('RED-II-b').click();
   assert.equal(d.querySelector('.m2-deck-preview .m2-card-top b').textContent, 'RED II b');
   assert(node('RED-II-a').classList.contains('m2-tree-chosen'));
@@ -207,6 +207,11 @@ test('game-chosen upgrades stay highlighted when either choice is inspected or t
   assert.equal(d.querySelectorAll('.m2-tree-card.m2-tree-planned').length, 0);
   assert.equal(d.querySelectorAll('.m2-tree-build-stats .m2-build-future').length, 0);
   assert.equal(d.querySelector('.m2-tree-build-stats [data-stat="INITIATIVE"]').dataset.total, '2');
+  assert.equal(
+    node('RED-II-b').dataset.state,
+    'unavailable',
+    'Reset keeps committed alternatives dark',
+  );
   assert.equal(JSON.stringify(hero), before);
 });
 
@@ -292,7 +297,7 @@ test('plans survive view changes and source updates; a real choice supersedes a 
   hero.hand = [cards.find((card) => card.id === 'RED-II-a')];
   w.testUI.refresh();
   assert(node('RED-II-a').classList.contains('m2-tree-chosen'));
-  assert(node('RED-II-b').classList.contains('m2-tree-item'));
+  assert(node('RED-II-b').classList.contains('m2-tree-unavailable'));
   assert.equal(d.querySelectorAll('.m2-tree-build-stats .m2-build-future').length, 0);
   const tree = d.querySelector('.m2-deck-tree');
   w.testUI.refresh();
@@ -333,7 +338,7 @@ test('five card states distinguish current pools, actual item alternatives and r
   hero.hand = [card('RED-II-a'), card('GOLD')];
   w.testUI.refresh();
   assert.equal(node('RED-II-a').dataset.state, 'current');
-  assert.equal(node('RED-II-b').dataset.state, 'item');
+  assert.equal(node('RED-II-b').dataset.state, 'unavailable');
   assert.equal(node('RED-I-a').dataset.state, 'unavailable');
   node('GREEN-II-a').click();
   assert.equal(node('GREEN-II-a').dataset.state, 'planned');
@@ -347,7 +352,7 @@ test('five card states distinguish current pools, actual item alternatives and r
   w.testUI.refresh();
   assert.equal(node('RED-II-a').dataset.state, 'unavailable');
   assert.equal(node('RED-II-b').dataset.state, 'item');
-  assert.equal(node('RED-III-a').dataset.state, 'item');
+  assert.equal(node('RED-III-a').dataset.state, 'unavailable');
   assert.equal(node('RED-III-b').dataset.state, 'current');
   node('RED-II-b').click();
   assert.equal(

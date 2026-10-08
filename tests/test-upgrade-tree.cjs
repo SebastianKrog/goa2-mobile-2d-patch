@@ -1,6 +1,7 @@
 const assert = require('node:assert/strict');
 const { test } = require('node:test');
 const { browserFixture } = require('./helpers/browser.cjs');
+const { selectScreenMedia, landscapeQuery } = require('./helpers/screen-media.cjs');
 
 function setup(t, tiers = { RED: 1, BLUE: 1, GREEN: 1 }, remaining = 1) {
   const fixture = browserFixture({
@@ -235,6 +236,42 @@ test('staged choices and changed totals are gold while isolated Preview totals r
   assert(stat('DEFENSE').classList.contains('m2-upgrade-empty'));
 });
 
+test('landscape level-up keeps the reserved viewer left and gates Commit in the right control pane', (t) => {
+  const { w, d, node, control, calls } = setup(t);
+  Object.defineProperties(w, {
+    innerWidth: { value: 844 },
+    innerHeight: { value: 360 },
+  });
+  selectScreenMedia(
+    d.getElementById('goa2-m2-style'),
+    new Set([landscapeQuery, '(max-height: 500px)']),
+  );
+  w.testUI.refresh();
+  const css = (selector) => w.getComputedStyle(d.querySelector(selector));
+  assert.equal(css('.m2-upgrade-browser').display, 'grid');
+  assert.equal(css('.m2-upgrade-browser').overflowY, 'auto');
+  assert.equal(css('.m2-upgrade-content').display, 'contents');
+  assert.equal(css('.m2-upgrade-details').gridColumn, '1');
+  assert.equal(css('.m2-upgrade-details').gridRow, '1 / -1');
+  for (const selector of [
+    '.m2-upgrade-heading',
+    '.m2-upgrade-status',
+    '.m2-upgrade-controls',
+    '.m2-upgrade-actions',
+    '.m2-upgrade-content > .m2-deck-row-list',
+  ])
+    assert.equal(css(selector).gridColumn, '2');
+  assert.equal(css('.m2-upgrade-actions').gridRow, '5');
+  assert.equal(css('.m2-upgrade-commit').width, '100%');
+  assert.equal(d.documentElement.style.getPropertyValue('--m2-vh'), '360px');
+  assert(control('m2-upgrade-commit').disabled);
+  node('RED:2:A').click();
+  assert(!control('m2-upgrade-commit').disabled);
+  control('m2-upgrade-preview-toggle').click();
+  assert(control('m2-upgrade-commit').disabled);
+  assert.equal(calls.length, 0, 'layout changes and preview never submit an upgrade');
+});
+
 test('one-upgrade staging uses paired items and never invokes native selection before Commit', (t) => {
   const { d, node, control, calls, nativeClicks } = setup(t);
   node('RED:2:A').click();
@@ -318,6 +355,29 @@ test('batch Commit waits for each acknowledgement, uses refreshed native callbac
   assert.equal(f.calls.length, 2);
   assert(!f.d.querySelector('.m2-upgrade-browser'));
   assert.equal(f.timers.size, 0);
+});
+
+test('committed same-tier alternatives stay dark and cannot be staged or previewed', (t) => {
+  const f = setup(t, { RED: 2, BLUE: 1, GREEN: 1 });
+  assert.equal(f.node('RED:2:A').dataset.state, 'current');
+  const alternative = f.node('RED:2:B');
+  assert.equal(alternative.dataset.state, 'unavailable');
+  assert.equal(f.w.getComputedStyle(alternative).opacity, '0.3');
+  alternative.click();
+  assert.equal(f.d.querySelectorAll('.m2-upgrade-selected').length, 0);
+  assert(f.control('m2-upgrade-commit').disabled);
+  assert.equal(f.calls.length, 0);
+  f.control('m2-upgrade-preview-toggle').click();
+  alternative.click();
+  assert.equal(f.d.querySelectorAll('.m2-upgrade-browser .m2-tree-planned').length, 0);
+  assert.equal(alternative.dataset.state, 'unavailable');
+  assert.equal(
+    f.node('RED:3:A').dataset.state,
+    'standard',
+    'future tier choices remain previewable',
+  );
+  assert.equal(f.node('RED:3:B').dataset.state, 'standard');
+  assert.equal(f.calls.length, 0);
 });
 
 test('acknowledged lower-tier item alternatives retain item status when that playable card is replaced', (t) => {

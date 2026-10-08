@@ -30,7 +30,9 @@ window.GOA2Mobile?.destroy();
 const root = document.documentElement,
   ac = new AbortController(),
   tagged = new Set();
-const media = matchMedia('(max-width:900px)');
+// Wider phones remain adapted when rotated. Coarse-pointer/short-height bounds
+// keep full-size desktop and tablet layouts outside this additional activation.
+const media = matchMedia('(max-width:900px), (orientation:landscape) and (max-width:1200px) and (max-height:600px) and (pointer:coarse)');
 
 // Match the stable portion of the website’s generated CSS-module class names.
 const c = (n) => `[class*="_${n}_"]`,

@@ -51,6 +51,29 @@ const settingHelpText = {
   volume: 'Adjust game sound from 0% to 150%; 100% is the default. Choosing a volume above zero also enables Sounds. Changes take effect after Apply & reload.',
   fullscreen: 'Expand the game to fill the screen. Available only when your browser supports fullscreen. Changes apply immediately.',
 };
+let fullscreenPending = false;
+function fullscreenAvailable() {
+  return !!document.fullscreenElement ||
+    (!!document.fullscreenEnabled && typeof root.requestFullscreen === 'function');
+}
+// Board and Settings share one browser action and reflect external exits too.
+async function toggleFullscreen() {
+  if (dead || !root.hasAttribute('data-m2-active') || fullscreenPending || !fullscreenAvailable()) return;
+  fullscreenPending = true;
+  updateSettings();
+  boardRotation?.sync();
+  try {
+    if (document.fullscreenElement) await document.exitFullscreen();
+    else await root.requestFullscreen();
+  } catch {} finally {
+    fullscreenPending = false;
+    if (!dead) {
+      updateSettings();
+      boardRotation?.sync();
+      schedule();
+    }
+  }
+}
 function closeSettingHelp() {
   for (const button of settingsPanel.querySelectorAll('[data-setting-info]')) {
     button.setAttribute('aria-expanded', 'false');
@@ -174,13 +197,7 @@ function buildSettings() {
   note.className = 'm2-settings-note';
   note.textContent = 'Sound and cursor changes apply after reload.';
   game.append(note, apply);
-  const fullscreen = settingSwitch('Fullscreen', 'fullscreen', async () => {
-    try {
-      if (document.fullscreenElement) await document.exitFullscreen();
-      else await root.requestFullscreen();
-    } catch {}
-    updateSettings();
-  });
+  const fullscreen = settingSwitch('Fullscreen', 'fullscreen', toggleFullscreen);
   game.append(fullscreen);
   on(settingsPanel, 'keydown', event => {
     if (event.key === 'Escape') closeSettingHelp();
@@ -203,7 +220,8 @@ function updateSettings() {
   }
   q('.m2-settings-apply', settingsPanel).hidden = !gameSettingsDirty;
   const fullscreen = q('[data-setting="fullscreen"]', settingsPanel);
-  fullscreen.parentElement.hidden = fullscreen.hidden = !document.fullscreenEnabled && !document.fullscreenElement;
+  fullscreen.parentElement.hidden = fullscreen.hidden = !fullscreenAvailable();
+  fullscreen.disabled = fullscreenPending;
   // Preserve React ownership and route actions through the live native controls.
   const sources = Array.from(q('[data-m2="tools"]')?.querySelectorAll('button') || [])
     .filter(button => !isGeneratedNode(button));
@@ -230,4 +248,10 @@ function updateSettings() {
   });
   q('.m2-settings-tools', settingsPanel).hidden = sources.length === 0;
 }
-on(document, 'fullscreenchange', () => { if (!dead) updateSettings(); });
+on(document, 'fullscreenchange', () => {
+  if (!dead) {
+    updateSettings();
+    boardRotation?.sync();
+    schedule();
+  }
+});

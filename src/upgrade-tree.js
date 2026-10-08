@@ -268,7 +268,7 @@ function renderUpgradeTreeState(state) {
   for (const { card, button } of state.buttons) {
     const group = deckTreeGroup(card), picked = state.selected.get(group), planned = state.preview.get(group),
       selected = picked === card.id || planned === card.id, eligible = upgradeSelectable(state, card),
-      pair = state.acquired.get(group), isItem = pair && pair !== card.id && !!card.item;
+      pair = state.acquired.get(group), isItem = pair && pair !== card.id && !pool.has(pair) && !!card.item;
     const unavailable = !selected && !pool.has(card.id) && !isItem &&
       (!!picked || !!planned || !!pair || deckTreeTier(card) < source.tiers[card.color] ||
         (!state.previewMode && !eligible));

@@ -104,7 +104,7 @@ function updateMobileHeader(header) {
   const statusHeight = Math.ceil(mobileStatusStrip.getBoundingClientRect().height);
   if (statusHeight > 0 && root.style.getPropertyValue('--m2-status-h') !== statusHeight + 'px')
     root.style.setProperty('--m2-status-h', statusHeight + 'px');
-  const height = Math.ceil(hud.getBoundingClientRect().height) + 4;
+  const height = Math.ceil(header.getBoundingClientRect().height);
   if (height > 4 && root.style.getPropertyValue('--m2-head') !== height + 'px')
     root.style.setProperty('--m2-head', height + 'px');
 }
@@ -242,6 +242,9 @@ function renderFocusedHero(h) {
   }
   const view = componentProp(q('[data-m2="sidebar"]'), 'view');
   updateHeroDashboard(box, view, hero);
+  box.ondblclick = event => {
+    if (!event.target.closest('button')) { event.preventDefault(); centerBoardHero(h.id); }
+  };
   box.classList.toggle('m2-current-hero', !!h.resolution?.current);
   box.classList.toggle('m2-pending-hero', !!h.resolution);
   box.classList.toggle('m2-done-hero', h.done);
@@ -290,14 +293,17 @@ function renderFocusPortraits(heroes) {
     button.classList.toggle('m2-done-hero', h.done);
     button.setAttribute('aria-label', 'Show ' + h.name);
     button.setAttribute('aria-pressed', String(h.id === focusedHeroId));
-    button.title = h.name;
-    button.append(portrait.cloneNode(true));
+    button.title = h.name + ' · Double-click to center on Board at 250%';
+    const copy = portrait.cloneNode(true);
+    copy.querySelectorAll('.m2-hero-center').forEach(node => node.remove());
+    button.append(copy);
     button.onclick = () => {
       focusedHeroId = h.id;
       clearHeroCard();
       delete summary.dataset.key;
       refresh();
     };
+    button.ondblclick = event => { event.preventDefault(); centerBoardHero(h.id); };
     strip.append(button);
   }
   strip.scrollLeft = scroll;
@@ -448,6 +454,94 @@ function renderSummary(heroes) {
 }
 // Keep rotation inside the native screen-space pan/zoom transform.
 let boardRotation = null;
+// Locate an on-board figure from public ownership and rendered HexTile props.
+// No hero-name rules or board-coordinate constants are needed.
+function boardHeroPoint(svg, heroId) {
+  const view = componentProp(svg, 'view') || componentProp(q('[data-m2="sidebar"]'), 'view');
+  const locations = view?.board?.entity_locations;
+  if (!locations) return null;
+  const ids = [heroId, ...Object.entries(view.hero_pieces || {})
+    .filter(([, piece]) => piece.owner_hero_id === heroId).map(([id, piece]) => piece.id || id)]
+    .filter(id => Object.hasOwn(locations, id) && locations[id] != null);
+  for (const id of ids) {
+    for (const tile of svg.querySelectorAll('g')) {
+      if (componentProp(tile, 'occupantId') !== id) continue;
+      const x = componentProp(tile, 'cx'), y = componentProp(tile, 'cy');
+      if (typeof x === 'number' && typeof y === 'number' && Number.isFinite(x) && Number.isFinite(y)) return { x, y };
+    }
+  }
+  return null;
+}
+function boardScreenPoint(svg, point) {
+  const matrix = svg.getScreenCTM?.();
+  if (!matrix || !point) return null;
+  const x = matrix.a * point.x + matrix.c * point.y + matrix.e,
+    y = matrix.b * point.x + matrix.d * point.y + matrix.f;
+  return Number.isFinite(x) && Number.isFinite(y) ? { x, y } : null;
+}
+const boardFrame = () => new Promise(resolve => requestAnimationFrame(resolve));
+function nativeBoardZoom(svg) {
+  const transform = svg.style.transform;
+  if (!transform) return 1;
+  const scale = transform.match(/scale\(\s*([\d.]+)\s*\)/);
+  return scale ? Number(scale[1]) : null;
+}
+// Use native wheel/pan handlers so dragging, zoom labels and Reset retain their
+// camera state. A small screen-space remainder allows exact centering at edges
+// where the native pan clamp would otherwise stop short, including when rotated.
+async function centerBoardHero(heroId) {
+  const state = boardRotation;
+  if (!state || dead || !root.hasAttribute('data-m2-active') || document.hidden) return;
+  state.centerTarget = heroId;
+  if (state.centerPending) return;
+  const live = () => !dead && boardRotation === state && state.centerTarget &&
+    root.hasAttribute('data-m2-active') && !document.hidden;
+  const handlers = () => Object.fromEntries(['onPointerDown', 'onPointerMove', 'onPointerUp', 'onClickCapture']
+    .map(key => [key, componentProp(state.host, key)]));
+  const available = props => ['onPointerDown', 'onPointerMove', 'onPointerUp'].every(key => typeof props[key] === 'function');
+  if (!available(handlers()) || !boardHeroPoint(state.svg, heroId)) { state.centerTarget = null; return; }
+  const rect = state.host.getBoundingClientRect(), zoom = nativeBoardZoom(state.svg);
+  if (!rect.width || !rect.height || !zoom) { state.centerTarget = null; return; }
+  state.centerPending = true;
+  state.host.style.removeProperty('--m2-center-x');
+  state.host.style.removeProperty('--m2-center-y');
+  try {
+    const midpoint = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+    // The native wheel camera uses exp(-deltaY * .002), with a 1x–6x range.
+    if (Math.abs(zoom - 2.5) > .0001) {
+      state.host.dispatchEvent(new WheelEvent('wheel', { bubbles: true, cancelable: true,
+        clientX: midpoint.x, clientY: midpoint.y, deltaY: -Math.log(2.5 / zoom) / .002 }));
+      for (let frames = 0; frames < 6 && live() && Math.abs((nativeBoardZoom(state.svg) || 0) - 2.5) > .0001; frames++) await boardFrame();
+    }
+    if (!live() || Math.abs((nativeBoardZoom(state.svg) || 0) - 2.5) > .0001) return;
+    const translate = getComputedStyle(state.svg).translate.split(/\s+/).map(parseFloat);
+    const destination = { x: midpoint.x + (translate[0] || 0), y: midpoint.y + (translate[1] || 0) };
+    const point = boardScreenPoint(state.svg, boardHeroPoint(state.svg, state.centerTarget));
+    const props = handlers();
+    if (!point || !available(props)) return;
+    const pointer = { pointerId: -250, pointerType: 'mouse', buttons: 1, currentTarget: state.host,
+      clientX: midpoint.x, clientY: midpoint.y, stopPropagation() {}, preventDefault() {} };
+    props.onPointerDown(pointer);
+    try {
+      props.onPointerMove({ ...pointer, clientX: midpoint.x + destination.x - point.x,
+        clientY: midpoint.y + destination.y - point.y });
+    } finally {
+      props.onPointerUp(pointer);
+      // Clear the native drag-click suppression without invoking any tile action.
+      props.onClickCapture?.(pointer);
+    }
+    await boardFrame();
+    if (!live()) return;
+    const centered = boardScreenPoint(state.svg, boardHeroPoint(state.svg, state.centerTarget));
+    if (!centered) return;
+    state.host.style.setProperty('--m2-center-x', (destination.x - centered.x) + 'px');
+    state.host.style.setProperty('--m2-center-y', (destination.y - centered.y) + 'px');
+    state.sync();
+  } catch {} finally {
+    state.centerPending = false;
+    state.centerTarget = null;
+  }
+}
 // Detach gesture listeners and restore the board’s native inline transform.
 function clearBoardRotation() {
   if (!boardRotation) return;
@@ -458,7 +552,7 @@ function clearBoardRotation() {
   state.controls.remove();
   state.svg.removeAttribute('data-m2-rotate');
   state.host.removeAttribute('data-m2-rotation-host');
-  for (const key of ['--m2-native-transform', '--m2-angle', '--m2-rotation-fit'])
+  for (const key of ['--m2-native-transform', '--m2-angle', '--m2-rotation-fit', '--m2-center-x', '--m2-center-y'])
     state.host.style.removeProperty(key);
   boardRotation = null;
 }
@@ -498,6 +592,9 @@ function updateBoardRotation() {
   const reset = document.createElement('button');
   reset.type = 'button';
   reset.setAttribute('aria-label', 'Reset board zoom, pan and rotation');
+  const fullscreen = document.createElement('button');
+  fullscreen.type = 'button';
+  fullscreen.className = 'm2-board-fullscreen';
   state.sync = () => {
     const native = svg.style.transform || 'translate(0px,0px) scale(1)';
     put('--m2-native-transform', native);
@@ -508,6 +605,12 @@ function updateBoardRotation() {
       zoom = nativeReset?.textContent.match(/\d+%/)?.[0] || '100%';
     const label = zoom + ' · Reset';
     if (reset.textContent !== label) reset.textContent = label;
+    const active = !!document.fullscreenElement;
+    fullscreen.hidden = !fullscreenAvailable();
+    fullscreen.disabled = fullscreenPending;
+    fullscreen.setAttribute('aria-pressed', String(active));
+    fullscreen.setAttribute('aria-label', active ? 'Exit fullscreen' : 'Enter fullscreen');
+    fullscreen.textContent = active ? 'Exit fullscreen' : 'Fullscreen';
   };
   // Native pan/zoom uses Pointer Events too. Observe without consuming its events.
   const touches = new Map();
@@ -546,13 +649,17 @@ function updateBoardRotation() {
   };
   for (const event of ['pointerup', 'pointercancel', 'lostpointercapture']) listen(event, end);
   on(reset, 'click', () => {
+    state.centerTarget = null;
+    state.host.style.removeProperty('--m2-center-x');
+    state.host.style.removeProperty('--m2-center-y');
     touches.clear();
     previousAngle = null;
     state.angle = 0;
     q(c('zoomReset'), host)?.click();
     state.sync();
   });
-  controls.append(reset);
+  on(fullscreen, 'click', toggleFullscreen);
+  controls.append(reset, fullscreen);
   for (const event of [
     'pointerdown',
     'pointermove',

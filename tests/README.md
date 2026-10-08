@@ -1,7 +1,7 @@
 # Regression coverage
 
 Run `npm ci` once, then `npm test`. The command rebuilds the userscript and runs
-all 35 `test-*.cjs` files in separate Node processes, each with a 30-second timeout.
+all 38 `test-*.cjs` files in separate Node processes, each with a 30-second timeout.
 Failures retain their assertion stacks; the runner lists failed filenames at the end.
 
 To investigate one file, build first and run it directly:
@@ -49,6 +49,8 @@ copy, and canvas/image/font APIs are simulated where needed.
 | `board.js`: summaries, focus and header | [floating-hud](test-floating-hud.cjs), [roadmap-lists](test-roadmap-lists.cjs), [compact-overview](test-compact-overview.cjs) | Disconnect/reconnect strip and stable dot, coin casing, surviving minions, focused hero switching/back, ordered highlighted portraits, summary/status columns |
 | `board.js`: planning and resolution | [planning-layout](test-planning-layout.cjs), [resolution](test-resolution.cjs) | Status text, take-back placement/native click, resolution queue and stat presentation |
 | `board.js`: gestures | [rotation](test-rotation.cjs) | Two-touch rotation, fit transform composition, pointer-up/cancel, native reset, native transform change and cleanup |
+| Hero camera shortcuts | [hero-centering](test-hero-centering.cjs) | Portrait clicks retain Heroes mode; focused entry/portrait double-click, 250% native zoom from different starting scales, current rotation, native clamp correction, owned figures, absent/off-board data, no tile actions or swallowed clicks, pending Reset/teardown cancellation |
+| Card dots | [card-dots](test-card-dots.cjs) | Plain colored circles across tiers and piles, unchanged sizes, retained active glow and card inspection, hidden-card privacy and effect reconciliation |
 | `deck.js`: browser and preferences | [deck](test-deck.cjs), [deck-preferences](test-deck-preferences.cjs) | Tier/color grouping, Tree/List/Grid and previews, printed stats, native canvas retention, all saved view/sort combinations, legacy migration, corrupt/unavailable storage and persistence across installations |
 | `deck-tree.js`: upgrade paths and planning | [deck-tree](test-deck-tree.cjs) | Five-slot Extended Micro cards, printed values and paired-alternative grants, tier/alternate placement, Large Gives footers, acquired/planned stat totals, one-row controls, preview and tentative selection, locked game choices, rebuild/reopen/reload, hero/game isolation, rollback/native eligibility, malformed or failed storage and shared viewer heights, five card states and basic-card wrapping |
 | Ultimate presentation | [ultimate-indicators](test-ultimate-indicators.cjs) | Reserved Small/Mini/Extended Micro initiative cells; centered Nano U and compact dot; level 8 unlock/relock, retained item slots and reduced-motion glow |
@@ -56,6 +58,7 @@ copy, and canvas/image/font APIs are simulated where needed.
 | `history.js`: persistence and boundaries | [saved-log](test-saved-log.cjs), [history-recovery](test-history-recovery.cjs), [history-boundaries](test-history-boundaries.cjs), [review-fixes](test-review-fixes.cjs) | Pagehide capture, duplicate polling, reload/ID restart, per-game isolation and stale-array quarantine, queued writes across navigation/read failure, native empty-log restoration, 2,000-event cap without idle churn and malformed stored/live data |
 | `log.js`: footer/server history | [log-panel](test-log-panel.cjs) | Footer order, archive/live deduplication, masked server labels, player token scope, request coalescing/cooldown, ETags, rewinds, error fallback, link/game isolation and stale-request cancellation |
 | `settings.js`: appearance/game preferences | [settings](test-settings.cjs) | Grouped controls, default-on art, center font scaling/reset, unchanged board/touch geometry, restored/corrupt/unavailable storage, native cursor/sound keys, live tool availability/replacement, supported fullscreen, tappable/hover help with unchanged preferences and teardown |
+| Phone landscape: panes and lifecycle | [landscape](test-landscape.cjs), [upgrade-tree](test-upgrade-tree.cjs) | Explicit landscape media branches, full Board with floating summaries, left viewer/right lists, scrolling navigation rail, centered coin/map disconnect strip, stable map geometry and native transforms across modes, shared fullscreen state/failure handling, Settings/Log/setup bounds, Tree/List/Grid placement, gated upgrade controls, rotation with unchanged native nodes/selection/actions, wide-phone versus tablet/desktop activation and visual viewport offsets |
 | `styles.css`: asserted layout rules | [css-cascade](test-css-cascade.cjs), [large-artwork](test-large-artwork.cjs), [roadmap-lists](test-roadmap-lists.cjs), [floating-hud](test-floating-hud.cjs), [board-toggles](test-board-toggles.cjs) | Unique nonempty definitions, bold white overlays, gutters, state colors and card sizing across containers, explicit narrow/short/reduced-motion branches, footer touch-target geometry, opacity/blur, tier stripes, pane visibility and transparent portrait badges |
 
 ## Remaining boundaries
