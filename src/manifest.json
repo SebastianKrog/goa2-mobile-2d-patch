@@ -3,6 +3,7 @@
   "navigation.js",
   "painter.js",
   "cards.js",
+  "deck-tree.js",
   "deck.js",
   "board.js",
   "heroes.js",

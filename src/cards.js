@@ -36,6 +36,13 @@ function cardSymbol(key, value) {
   }
   return el;
 }
+// Empty slots retain icon geometry without painting or announcing a fake stat.
+function cardSymbolPlaceholder() {
+  const slot = document.createElement('span');
+  slot.className = 'm2-symbol m2-symbol-placeholder';
+  slot.setAttribute('aria-hidden', 'true');
+  return slot;
+}
 // Use the same coin drawing in full hero dashboards and compact Board summaries.
 function goldSymbol(value) {
   const el = document.createElement('span');
@@ -59,6 +66,7 @@ function itemUpgradeSymbols(items = {}, className = '') {
   for (const stat of ['ATTACK', 'DEFENSE', 'INITIATIVE']) {
     const value = Number(items?.[stat]) || 0;
     const icon = cardSymbol(stat, value > 0 ? '+' + value : undefined);
+    icon.dataset.stat = stat;
     icon.classList.toggle('m2-upgrade-empty', value <= 0);
     icon.title = stat.toLowerCase() + (value > 0 ? ' +' + value : ': no upgrade');
     group.append(icon);
@@ -68,12 +76,24 @@ function itemUpgradeSymbols(items = {}, className = '') {
   for (const stat of ['MOVEMENT', 'RANGE', 'RADIUS']) {
     const value = Number(items?.[stat] ?? (stat === 'RADIUS' ? items?.AREA : 0)) || 0;
     const icon = cardSymbol(stat);
+    icon.dataset.stat = stat;
     icon.classList.toggle('m2-upgrade-empty', value <= 0);
     icon.title = stat.toLowerCase() + (value > 0 ? ' +1' : ': no upgrade');
     rest.append(icon);
   }
   group.append(rest);
   return group;
+}
+function ultimateIndicator(hero, dot = false) {
+  const unlocked = Number(hero?.level) >= 8;
+  const marker = document.createElement('span');
+  marker.className = 'm2-ultimate-indicator ' + (dot ? 'm2-ultimate-dot' : 'm2-nano-card');
+  marker.classList.toggle('m2-ultimate-unlocked', unlocked);
+  marker.title = unlocked ? 'Ultimate unlocked' : 'Ultimate unlocks at level 8';
+  marker.setAttribute('aria-label', marker.title);
+  marker.style.setProperty('--effect-color', cardColors.PURPLE);
+  if (!dot) marker.textContent = 'U';
+  return marker;
 }
 // Keep all tier cues consistent. Facedown/unknown cards use the basic edge so
 // these decorative marks cannot reveal a tier from hidden component props.
@@ -118,6 +138,41 @@ function miniatureCard(card, items = {}, includeDefense = false) {
       ? upgradedSymbol(items, stat, value) : document.createElement('span'));
   }
   return mini;
+}
+// Choosing a T2/T3 card earns the item printed on its same-color, same-tier
+// alternative. Missing or ambiguous pairs must not invent an awarded item.
+function cardGrantedItem(card, cards = []) {
+  const tier = String(card?.tier).toUpperCase();
+  if (card?.is_facedown || !['II', 'III', '2', '3'].includes(tier)) return null;
+  const pair = cards.filter(candidate =>
+    String(candidate.color).toUpperCase() === String(card.color).toUpperCase() &&
+    String(candidate.tier).toUpperCase() === tier);
+  const same = candidate => candidate === card ||
+    (card.id != null && candidate.id === card.id);
+  if (pair.length !== 2 || !pair.some(same)) return null;
+  const alternative = pair.find(candidate => !same(candidate));
+  return alternative && !alternative.is_facedown ? alternative.item || null : null;
+}
+// Five printed-stat slots: clear initiative/granted-item caps around Board Micro.
+function extendedMicroCard(card, grantedItem) {
+  const extended = document.createElement('span');
+  extended.className = 'm2-micro-extended';
+  const visible = card && !card.is_facedown;
+  extended.title = visible ? card.name : 'Hidden card';
+  const initiative = document.createElement('span');
+  initiative.className = 'm2-micro-cap';
+  if (visible && card.color !== 'PURPLE' && card.tier !== 'IV' && card.initiative != null)
+    initiative.append(cardSymbol('INITIATIVE', card.initiative));
+  const upgrade = document.createElement('span');
+  upgrade.className = 'm2-micro-cap m2-micro-grant';
+  if (visible && grantedItem) {
+    const stat = grantedItem === 'AREA' ? 'RADIUS' : grantedItem;
+    upgrade.append(cardSymbol(stat, '+'));
+    upgrade.title = 'Gives ' + stat.toLowerCase() + ' +1';
+    upgrade.setAttribute('aria-label', upgrade.title);
+  }
+  extended.append(initiative, miniatureCard(card), upgrade);
+  return extended;
 }
 // Discards need only their defense stat. Hidden cards never expose icon values.
 function nanoCard(card, items = {}) {
@@ -330,7 +385,7 @@ function syncHandActions(foot, card, tip, items) {
 
 // Shared readable card renderer. Deck shows printed values; Hand and Heroes apply known upgrades.
 // Hand actions proxy native controls so the website remains responsible for game rules.
-function textCard(card, context, tip, heroId) {
+function textCard(card, context, tip, heroId, grantedItem) {
   const items = context === 'deck' ? {} : cardUpgrades(card);
   const symbol = (key, value) => upgradedSymbol(items, key, value);
   const ultimate = card.tier === 'IV' || card.color === 'PURPLE';
@@ -345,7 +400,7 @@ function textCard(card, context, tip, heroId) {
   const tier = document.createElement('span');
   tier.textContent = ['I', 'II', 'III', 'IV'].includes(card.tier) ? card.tier : '';
   top.append(
-    ultimate ? document.createElement('span') : symbol('INITIATIVE', card.initiative),
+    ultimate ? cardSymbolPlaceholder() : symbol('INITIATIVE', card.initiative),
     name,
     tier,
   );
@@ -389,8 +444,20 @@ function textCard(card, context, tip, heroId) {
   const foot = document.createElement('footer');
   foot.className = 'm2-card-foot';
   if (context === 'deck' || context === 'hero') {
-    if (card.item) {
-      foot.append(symbol(card.item === 'AREA' ? 'RADIUS' : card.item));
+    foot.append(card.item
+      ? symbol(card.item === 'AREA' ? 'RADIUS' : card.item)
+      : cardSymbolPlaceholder());
+    if (grantedItem === undefined)
+      grantedItem = cardGrantedItem(card, cardHero(card, tip)?.deck || []);
+    if (grantedItem && !card.is_facedown) {
+      foot.classList.add('m2-upgrade-footer');
+      const gain = document.createElement('span');
+      gain.className = 'm2-upgrade-gain';
+      gain.append(document.createTextNode('Gives '),
+        cardSymbol(grantedItem === 'AREA' ? 'RADIUS' : grantedItem, '+'));
+      foot.append(gain);
+      foot.title = 'Choosing this gains ' + grantedItem.toLowerCase() + ' +1';
+      foot.setAttribute('aria-label', foot.title);
     }
   } else syncHandActions(foot, card, tip, items);
   box.append(top, body, foot);

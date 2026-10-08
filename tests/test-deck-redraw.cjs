@@ -38,6 +38,9 @@ w.eval(
     .replace(/window\.GOA2Mobile2D\s*=\s*\{/, ' window.__deck=()=>deckState;window.GOA2Mobile2D={'),
 );
 doc.querySelector('[data-mode="deck"]').click();
+[...doc.querySelectorAll('.m2-deck-controls button')]
+  .find((button) => button.textContent === 'Grid')
+  .click();
 const wait = () => new Promise((r) => setTimeout(r, 100));
 (async () => {
   try {

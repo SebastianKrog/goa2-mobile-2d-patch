@@ -1,6 +1,98 @@
 # Changelog
 
-Published releases, newest first. Each entry groups user-visible changes and fixes. Local previews 0.14.10–0.14.18 are included in 0.15.0; 0.15.1–0.15.11 are included in 0.16.0; 0.16.1–0.16.9 are included in 0.17.0; 0.17.1–0.17.2 are included in 0.18.0.
+Published releases, newest first. Each entry groups user-visible changes and fixes. Local previews 0.14.10–0.14.18 are included in 0.15.0; 0.15.1–0.15.11 are included in 0.16.0; 0.16.1–0.16.9 are included in 0.17.0; 0.17.1–0.17.2 are included in 0.18.0; 0.18.1–0.18.6 are included in 0.19.0.
+
+## 0.19.0
+
+### Changed
+
+- Make Tree the default Deck view, followed by List and Grid. Rename Compact to List, remove the old full-card List renderer and its CSS, and migrate its saved preferences to the new List.
+- Include the 0.18.1–0.18.6 previews: Deck trees with persistent build planning and five card states, paired item grants, item-stat previews, Ultimate indicators and consistent card viewer sizing.
+- Refine Deck/header controls, floating Board surfaces, Large-card icon spacing, the single-row Preview and footer geometry.
+
+### Validation
+
+- Cover the default view and option order, saved preference migration, view switching, printed-card details and Grid canvas synchronization.
+- All 32 regression files and formatting checks pass; generated userscript/TXT match source.
+
+## 0.18.6 (local preview, included in 0.19.0)
+
+### Changed
+
+- Match the Deck control row to the main header height and remove its extra top inset.
+- Increase the shared card viewer height by 3% across Board, Heroes, Hand and Deck, including short screens.
+- Flatten the build Preview into one row with its label on the left, stat icons centered and Reset on the right.
+- Remove the empty footer band below the navigation buttons while keeping 44px touch targets and visual viewport positioning.
+
+### Validation
+
+- Extend layout regressions for header sizing, shared viewer heights, single-row Preview placement and footer touch-target geometry.
+- All 32 regression files and formatting checks pass; generated userscript/TXT match source.
+
+## 0.18.5 (local preview, included in 0.19.0)
+
+### Fixed
+
+- Reserve the Large-card initiative slot on Ultimate headers and the footer item slot on cards without an item, keeping both bars consistent with cards that display icons.
+- Reduce inline rule stat/token icons to 1.1em, with baseline alignment that fits the existing text line height. Sidebar and action-heading icons retain their size.
+
+### Validation
+
+- Extend Large-card regressions for empty header/footer slots, retained footer visibility and smaller inline stat/token icons.
+- All 32 regression files and formatting checks pass; generated userscript/TXT match source.
+
+## 0.18.4 (local preview, included in 0.19.0)
+
+### Changed
+
+- Center the enlarged item-stat Preview, rename its reset control, remove the color helper and label the Tree columns Tier 1/2/3. Show Gold, Silver and Ultimate first, with extra basic cards wrapping below in three-column rows.
+- Distinguish five Tree states: grey unselected, white current hand/discard/played pool, purple future selection, light grey actual item cards, and dark grey rejected/replaced cards. Tier 1 cards never receive item treatment; current basic cards and the level 8 Ultimate receive white borders too.
+- Reserve the empty initiative slot on Ultimate Small/Mini cards. Heroes upgrade rows gain a centered Nano U before their item icons; compact Board rows gain a reserved Ultimate dot. Both are grey before level 8 and breathe purple when unlocked, with static glow for reduced motion.
+
+### Validation
+
+- Add Ultimate spacing/unlock/relock coverage. Extend Deck tests for all five states, item history, basic/Ultimate ownership, centered Preview and overflow ordering.
+- All 32 regression files pass; formatting checks pass and generated userscript/TXT match source.
+
+## 0.18.3 (local preview, included in 0.19.0)
+
+### Fixed
+
+- Keep all four Deck view buttons and the sort toggle on one line. Remove the Deck title and Tree color/basic subtitles.
+- Extended Micro now shows the item earned from the paired alternative. Large Deck/Hero cards retain their centered printed item and add a grey **Gives** label with the alternative's item and a plus; native upgrade choices use the same footer.
+- Replace the selected-card build list with Hero-style upgrade totals. Use native acquired item values plus only tentative future grants, with grey empty icons, white acquired bonuses and purple projected totals. Tree game choices now highlight in white; plans remain purple.
+
+### Validation
+
+- Cover both sides of each paired grant, missing/ambiguous/hidden alternatives, Large-card footers, one-row controls, removed titles and acquired/planned totals (including storage, refresh, radius aliases and no double counting).
+- All 31 regression files pass. Generated userscript and TXT match source.
+
+## 0.18.2 (local preview, included in 0.19.0)
+
+### Changed
+
+- Add Tree to Deck with T1/T2/T3 columns, alternate choices below their standard counterparts, and connecting paths. Extended Micro cards add a printed initiative cap and the card's own upgrade icon with an overlaid plus on a clear cap.
+- Tapping a Tree card opens the unchanged Large Deck card. Uncommitted T2/T3 taps highlight a tentative choice and dim its alternative; the build summary lists planned and game-chosen cards separately. Clear plan removes only tentative choices.
+- Observe owned upgrades to lock actual game choices and darken unavailable alternatives more strongly. Retain observed earlier choices after higher-tier replacement, release them on observed rollback/renewed native eligibility, and persist plans and observations per game and hero. Planning never selects a native upgrade.
+
+### Fixed
+
+- Use one responsive card-viewer height across Board, Heroes, Hand, Compact Deck and Tree Deck, including short screens. Size the Heroes/Hand board pane around that height instead of using a separate percentage.
+- Fit Compact/Tree Deck into the space remaining below its native header so the card list and build summary remain scrollable above the footer.
+
+### Validation
+
+- Add Tree regressions for five slots, tier positions, correct grants, printed values/privacy, preview/plan behavior, committed choices, refresh/reopen/reload, game/hero isolation, rollback and storage failures. Include Tree in saved view/sort preference coverage.
+- All 31 regression files pass; formatting checks pass and generated userscript/TXT match source.
+
+## 0.18.1 (local preview)
+
+### Fixed
+
+- Shorten the card inspection area in Heroes and Hand from 43% to 38% of the available pane height. Keep the Options panel aligned to the same split.
+- Give the Compact Deck preview its own taller responsive height, including in short landscape viewports.
+- Move both header minion counters outward by mirrored offsets, with extra clearance on narrow screens.
+- Give the empty/selecting card slot a translucent fill in focused Board view so the board remains visible through it.
 
 ## 0.18.0
 

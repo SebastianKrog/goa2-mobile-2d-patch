@@ -56,29 +56,41 @@ const wait = () => new Promise((r) => setTimeout(r, 450));
     Array.from(doc.querySelectorAll('.m2-deck-controls button'))
       .find((b) => (t === 'By tier' ? b.getAttribute('role') === 'switch' : b.textContent === t))
       .click();
+  assert.equal(doc.querySelector('.m2-deck-browser').dataset.view, 'tree');
+  click('Grid');
   assert.deepEqual(headings(), ['Tier 1', 'Tier 2', 'Tier 3', 'Ultimate & basics']);
   assert.equal(doc.querySelectorAll('.m2-deck-grid').length, 4);
   click('By tier');
   assert.deepEqual(headings(), ['red', 'blue', 'green', 'purple', 'gold', 'silver']);
-  click('List');
-  assert.equal(doc.querySelectorAll('.m2-deck-list').length, 6);
-  assert.equal(JSON.parse(w.localStorage.getItem('goa2-mobile-deck')).view, 'list');
-  const ult = Array.from(doc.querySelectorAll('.m2-text-card')).find(
-    (e) => e.querySelector('.m2-card-top b').textContent === 'Ultimate',
-  );
-  assert.equal(ult.querySelector('.m2-card-type b').textContent, 'Ultimate');
-  assert.equal(ult.querySelectorAll('.m2-card-top img').length, 0);
-  assert(doc.querySelector('.m2-deck-list').textContent.includes('Move a unit.'));
   doc.querySelector('.m2-deck-card').click();
   assert(!doc.querySelector('.m2-deck-zoom').hidden);
   doc.querySelector('.m2-deck-zoom button').click();
   assert(doc.querySelector('.m2-deck-zoom').hidden);
-  click('Compact');
+  click('List');
+  assert.equal(JSON.parse(w.localStorage.getItem('goa2-mobile-deck')).view, 'compact');
   assert.equal(doc.querySelectorAll('.m2-deck-compact').length, 6);
   assert(doc.querySelector('.m2-deck-preview:empty'));
+  assert.equal(
+    w
+      .getComputedStyle(doc.documentElement)
+      .getPropertyValue('--m2-card-display-height')
+      .replace(/\s+/g, ''),
+    'clamp(206px,32.96dvh,278.1px)',
+  );
+  assert.equal(
+    w.getComputedStyle(doc.querySelector('.m2-deck-preview')).height,
+    'var(--m2-card-display-height)',
+  );
   assert.equal(doc.querySelectorAll('.m2-deck-compact .m2-list-card').length, 6);
   doc.querySelector('.m2-deck-compact .m2-deck-card').click();
   assert(doc.querySelector('.m2-deck-preview .m2-text-card'));
+  assert(doc.querySelector('.m2-deck-preview').textContent.includes('Move a unit.'));
+  const ultimate = [...doc.querySelectorAll('.m2-deck-card')].find(
+    (button) => button.getAttribute('aria-label') === 'View Ultimate',
+  );
+  ultimate.click();
+  assert.equal(doc.querySelector('.m2-deck-preview .m2-card-type b').textContent, 'Ultimate');
+  doc.querySelector('.m2-deck-compact .m2-deck-card').click();
   assert.equal(
     doc.querySelector('.m2-deck-compact .m2-deck-card').getAttribute('aria-pressed'),
     'true',
@@ -93,7 +105,7 @@ const wait = () => new Promise((r) => setTimeout(r, 450));
   w.GOA2Mobile2D.destroy();
   w.close();
   console.log(
-    'PASS: tier/color grouping, grid/list/compact, preview, descriptions, enlarge/close, native cards retained, deck removal.',
+    'PASS: tier/color grouping, tree/list/grid, preview, descriptions, enlarge/close, native cards retained, deck removal.',
   );
 })().catch((e) => {
   console.error(e);

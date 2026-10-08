@@ -1,7 +1,7 @@
 # Regression coverage
 
 Run `npm ci` once, then `npm test`. The command rebuilds the userscript and runs
-all 30 `test-*.cjs` files in separate Node processes, each with a 30-second timeout.
+all 32 `test-*.cjs` files in separate Node processes, each with a 30-second timeout.
 Failures retain their assertion stacks; the runner lists failed filenames at the end.
 
 To investigate one file, build first and run it directly:
@@ -48,10 +48,12 @@ copy, and canvas/image/font APIs are simulated where needed.
 | `board.js`: summaries, focus and header | [floating-hud](test-floating-hud.cjs), [roadmap-lists](test-roadmap-lists.cjs), [compact-overview](test-compact-overview.cjs) | Disconnect/reconnect strip and stable dot, coin casing, surviving minions, focused hero switching/back, ordered highlighted portraits, summary/status columns |
 | `board.js`: planning and resolution | [planning-layout](test-planning-layout.cjs), [resolution](test-resolution.cjs) | Status text, take-back placement/native click, resolution queue and stat presentation |
 | `board.js`: gestures | [rotation](test-rotation.cjs) | Two-touch rotation, fit transform composition, pointer-up/cancel, native reset, native transform change and cleanup |
-| `deck.js`: browser and preferences | [deck](test-deck.cjs), [deck-preferences](test-deck-preferences.cjs) | Tier/color grouping, grid/list/compact and previews, printed stats, native canvas retention, all saved view/sort combinations, legacy migration, corrupt/unavailable storage and persistence across installations |
+| `deck.js`: browser and preferences | [deck](test-deck.cjs), [deck-preferences](test-deck-preferences.cjs) | Tier/color grouping, grid/list/compact/tree and previews, printed stats, native canvas retention, all saved view/sort combinations, legacy migration, corrupt/unavailable storage and persistence across installations |
+| `deck-tree.js`: upgrade paths and planning | [deck-tree](test-deck-tree.cjs) | Five-slot Extended Micro cards, printed values and paired-alternative grants, tier/alternate placement, Large Gives footers, acquired/planned stat totals, one-row controls, preview and tentative selection, locked game choices, rebuild/reopen/reload, hero/game isolation, rollback/native eligibility, malformed or failed storage and shared viewer heights, five card states and basic-card wrapping |
+| Ultimate presentation | [ultimate-indicators](test-ultimate-indicators.cjs) | Reserved Small/Mini/Extended Micro initiative cells; centered Nano U and compact dot; level 8 unlock/relock, retained item slots and reduced-motion glow |
 | `deck.js`, `painter.js`: drawing and recovery | [deck-redraw](test-deck-redraw.cjs), [deck-recovery](test-deck-recovery.cjs), [painter-cleanup](test-painter-cleanup.cjs) | No idle redraw, native draw triggers copying, bounded zoom copies, restored canvas methods, sprite/font/background retries, staged fallback, reconnect during pending work, invalid/removed source cleanup and unchanged canvas commands for 72 variants |
 | `history.js`: persistence and boundaries | [saved-log](test-saved-log.cjs), [history-recovery](test-history-recovery.cjs), [history-boundaries](test-history-boundaries.cjs), [review-fixes](test-review-fixes.cjs) | Pagehide capture, duplicate polling, reload/ID restart, per-game isolation and stale-array quarantine, queued writes across navigation/read failure, native empty-log restoration, 2,000-event cap without idle churn and malformed stored/live data |
-| `styles.css`: asserted layout rules | [css-cascade](test-css-cascade.cjs), [large-artwork](test-large-artwork.cjs), [roadmap-lists](test-roadmap-lists.cjs), [floating-hud](test-floating-hud.cjs), [board-toggles](test-board-toggles.cjs) | Unique nonempty definitions, bold white overlays, gutters, state colors and card sizing across containers, explicit narrow/short/reduced-motion branches, safe-area declarations, opacity/blur, tier stripes, pane visibility and transparent portrait badges |
+| `styles.css`: asserted layout rules | [css-cascade](test-css-cascade.cjs), [large-artwork](test-large-artwork.cjs), [roadmap-lists](test-roadmap-lists.cjs), [floating-hud](test-floating-hud.cjs), [board-toggles](test-board-toggles.cjs) | Unique nonempty definitions, bold white overlays, gutters, state colors and card sizing across containers, explicit narrow/short/reduced-motion branches, footer touch-target geometry, opacity/blur, tier stripes, pane visibility and transparent portrait badges |
 
 ## Remaining boundaries
 

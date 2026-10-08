@@ -14,10 +14,10 @@ may have their own selectors.
 | Section | Ownership |
 | --- | --- |
 | 1. Layout and native panes | Shared variables, native sidebar/Deck/tool adaptation, pane visibility, card inspection positioning |
-| 2. Navigation | Footer buttons, pressed/hidden states, safe-area padding |
+| 2. Navigation | Footer buttons, pressed/hidden states, viewport offset |
 | 3. Header and connection strip | Icon/value overlays, phase/action strip, disconnect text and dot |
 | 4. Shared cards and stats | Large card shell/artwork, Small/Mini rows, Micro/Nano geometry, tier edges, printed/upgraded values |
-| 5. Deck browser | Grouped layouts, sort switch, canvas copies, zoom and Compact preview |
+| 5. Deck browser | Grouped layouts, sort switch, canvas copies, zoom, List/Tree preview, paths and build stat totals |
 | 6. Hero entries and portraits | Shared heading, metadata, Played/history slots, upgrades, portrait/status overlays |
 | 7. Board summaries and focus | Six overview columns, turn states, floating row/focus surfaces and portrait navigation |
 | 8. Board gestures and controls | SVG rotation, reset, planning proxies and choice launchers |
@@ -40,8 +40,16 @@ may have their own selectors.
 - Keep artwork, blur panes and text in the same documented stacking order: the
   cropped artwork is layer 1, blur is layer 2, and content is layer 3. Small/Mini
   tier stripes stay above decorative artwork without blocking controls.
-- Put safe-area padding after navigation's padding shorthand. `--m2-nav` includes
-  that inset and supplies the same reserved height to panes and previews.
+- Navigation ends at the bottom of its 44px touch targets, with no bottom padding.
+  `--m2-nav` includes the top border and padding and supplies the same reserved
+  height to panes and previews. `--m2-offset` follows visual viewport changes.
+- Every card viewer uses `--m2-card-display-height`. Heroes/Hand reserve that height
+  plus the bottom gutter through `--m2-board-pane-height`; Deck's preview does not
+  define its own height. The native Deck title is hidden; controls, preview, scrolling list and build stat
+  totals share a flex column so they fit above navigation. Keep all four controls
+  on one row, reserving a fixed-width final column for the sort toggle.
+- Deck controls share `--m2-head` with the main header. The Tree build Preview
+  places its left-aligned label, centered stat icons and Reset button in one row.
 - Change complete font shorthands when consolidating text rules, rather than
   retaining a stale font size beside a second size declaration.
 
@@ -55,7 +63,7 @@ npm run build:check
 ```
 
 `test-css-cascade.cjs` checks header typography, strip/dot stability, shared card
-gutters and state colors, floating focus sizing, safe-area declarations, and selected
+gutters and state colors, floating focus sizing, footer geometry, and selected
 short/narrow/reduced-motion media branches. It selects media branches explicitly
 because jsdom does not evaluate screen media queries.
 

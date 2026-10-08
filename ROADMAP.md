@@ -2,40 +2,7 @@
 
 Remaining UI work for the GoA II Mobile 2D patch after 0.15.0. This is a working roadmap rather than a fixed release plan. Completed Board/Heroes work and bugfixes are recorded in [CHANGELOG.md](CHANGELOG.md); the current card sizes are documented in [README.md](README.md#card-display-system).
 
-## Card display system
-
-- Add **Extended Micro** for the planned tree views: initiative at the left and the granted upgrade icon at the right, on uncolored end caps. Target five icon slots in total.
-
-## Deck
-
-### Tree view
-
-Add an upgrade-tree view for testing and visualizing builds.
-
-- Use modified **Micro** cards.
-- Add the gained upgrade icon at the right edge with an overlaid **+**, without a colored background.
-- In this tree, show the icon for the upgrade the selected card itself grants, rather than the upgrade another card receives.
-- Lay each upgrade path out with:
-  - T1 on the left
-  - T2 in the middle
-  - T3 on the right
-  - alternate T2/T3 choices directly below their standard counterparts
-- Tapping any card still opens its normal **Large** Deck card in the Card Viewer.
-
-For uncommitted T2/T3 choices:
-
-- Tapping a choice highlights it.
-- Slightly darken the alternative at the same tier.
-- Use this as a non-binding build-planning state.
-- Summarize the currently highlighted build at the bottom of the view.
-
-For upgrades already chosen in the actual game:
-
-- Permanently highlight the selected upgrade.
-- Darken the unavailable alternative more strongly.
-- Tapping either card only opens its Large Card view and does not alter the highlight state.
-
-The **Large** Deck card remains unchanged, including its existing bottom row.
+The Extended Micro cards and Deck tree are implemented in 0.18.2. Their behavior is documented in [README.md](README.md#deck-tree). The tree-based upgrade-selection menu below remains outstanding.
 
 ## Upgrade menu
 

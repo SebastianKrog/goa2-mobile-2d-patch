@@ -93,7 +93,7 @@ try {
   assert.equal(rowStyle.display, 'grid');
   assert.equal(
     rowStyle.gridTemplateColumns.replace(/\s+/g, ' ').replace(/\( /g, '(').replace(/ \)/g, ')'),
-    '23px minmax(var(--m2-name-min, 70px), 1fr) 45px var(--m2-piles-width, 48px) 70px 54px',
+    '23px minmax(var(--m2-name-min, 70px), 1fr) 45px var(--m2-piles-width, 48px) 70px 62px',
   );
   assert.equal(w.getComputedStyle(d.querySelector('.m2-summary-identity')).display, 'flex');
   assert.equal(w.getComputedStyle(d.querySelector('.m2-micro-board')).width, '70px');

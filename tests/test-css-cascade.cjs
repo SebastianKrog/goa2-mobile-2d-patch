@@ -113,6 +113,8 @@ test('header overlays stay bold white, with smaller coin labels and an unchanged
     assert(style.textShadow.includes('#000'));
   }
   const strip = d.querySelector('.m2-hud-bottom');
+  assert.equal(w.getComputedStyle(d.querySelector('.m2-minions.red')).left, 'calc(25% - 8px)');
+  assert.equal(w.getComputedStyle(d.querySelector('.m2-minions.blue')).left, 'calc(75% + 8px)');
   const columns = w.getComputedStyle(strip).gridTemplateColumns;
   const dotColor = w.getComputedStyle(strip.querySelector('.m2-action-dot')).color;
   const warning = d.createElement('div');
@@ -164,6 +166,25 @@ test('shared Mini gutters and Micro state remain correct inside Hero and Board c
   const focused = summary.querySelector('.m2-focused-hero');
   assert.equal(w.getComputedStyle(focused).backdropFilter, 'blur(3px)');
   assert.equal(w.getComputedStyle(focused.querySelector('.m2-micro-hero')).width, '64px');
+  const hero = d.querySelector('aside>section').__reactFiber$test.memoizedProps.hero;
+  const view = d.querySelector('aside').__reactFiber$test.memoizedProps.view;
+  hero.current_turn_card = null;
+  hero.played_cards = [];
+  for (const phase of ['PLANNING', 'RESOLUTION']) {
+    view.phase = phase;
+    w.testUI.refresh();
+    const slot = summary.querySelector('.m2-focused-hero .m2-current-card-slot');
+    assert(slot, `${phase} keeps the placeholder visible`);
+    assert.equal(w.getComputedStyle(slot).backgroundColor, 'rgba(32, 39, 49, 0.35)');
+    assert.equal(w.getComputedStyle(slot).height, '26px');
+  }
+  for (const mode of ['heroes', 'hand', 'board']) {
+    d.documentElement.setAttribute('data-m2-mode', mode);
+    assert.equal(
+      w.getComputedStyle(d.documentElement).getPropertyValue('--m2-board-pane-height'),
+      mode === 'board' ? '43%' : 'calc(var(--m2-card-display-height) + 8px)',
+    );
+  }
 });
 
 test('short/narrow and reduced-motion rules preserve overlay geometry and shared sizing', (t) => {
@@ -188,10 +209,10 @@ test('short/narrow and reduced-motion rules preserve overlay geometry and shared
   style.textContent = css;
   assert.equal(
     w.getComputedStyle(d.documentElement).getPropertyValue('--m2-card-display-height'),
-    '160px',
+    '164.8px',
   );
-  assert.equal(w.getComputedStyle(d.querySelector('.m2-minions.red')).left, 'calc(25% - 10px)');
-  assert.equal(w.getComputedStyle(d.querySelector('.m2-minions.blue')).left, 'calc(75% + 10px)');
+  assert.equal(w.getComputedStyle(d.querySelector('.m2-minions.red')).left, 'calc(25% - 12px)');
+  assert.equal(w.getComputedStyle(d.querySelector('.m2-minions.blue')).left, 'calc(75% + 12px)');
   const effect = d.querySelector('.m2-micro-button');
   effect.classList.add('m2-effect-active');
   const dots = d.createElement('span');
@@ -205,18 +226,29 @@ test('short/narrow and reduced-motion rules preserve overlay geometry and shared
   w.testUI.refresh();
   assert.equal(
     w.getComputedStyle(d.getElementById('goa2-m2-details')).height,
-    'auto',
-    'landscape rules do not reinstate an obsolete fixed-height inspector',
+    'var(--m2-card-display-height)',
+    'landscape Hand inspection shares the viewer height with every other pane',
   );
   assert.equal(w.getComputedStyle(d.querySelector('[data-m2="board"]')).visibility, 'visible');
 });
 
-test('navigation reserves the same safe-area height used by the panes', (t) => {
-  const { d } = setup(t);
+test('navigation fits its touch targets without a blank band below the buttons', (t) => {
+  const { w, d } = setup(t);
   const rules = [...d.getElementById('goa2-m2-style').sheet.cssRules];
   const root = rules.find((rule) => rule.selectorText === 'html[data-m2-active]');
   const nav = rules.find((rule) => rule.selectorText === 'html[data-m2-active] #goa2-m2-nav');
-  assert.equal(root.style.getPropertyValue('--m2-nav'), 'calc(48px + var(--m2-safe))');
+  const button = w.getComputedStyle(d.querySelector('#goa2-m2-nav button'));
+  const navStyle = w.getComputedStyle(d.querySelector('#goa2-m2-nav'));
+  const height = parseFloat(root.style.getPropertyValue('--m2-nav'));
   assert.equal(nav.style.getPropertyValue('height'), 'var(--m2-nav)');
-  assert.equal(nav.style.getPropertyValue('padding-bottom'), 'calc(2px + var(--m2-safe))');
+  assert.equal(navStyle.paddingBottom, '0px');
+  assert.equal(button.minHeight, '44px');
+  assert.equal(
+    height,
+    parseFloat(navStyle.borderTopWidth) +
+      parseFloat(navStyle.paddingTop) +
+      parseFloat(button.minHeight),
+    'the reserved footer height ends at the bottom of its 44px touch targets',
+  );
+  assert.equal(nav.style.getPropertyValue('bottom'), 'var(--m2-offset, 0px)');
 });

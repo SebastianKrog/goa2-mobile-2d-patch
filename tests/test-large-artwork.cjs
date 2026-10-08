@@ -364,6 +364,43 @@ try {
   assert.equal(tierStyle.placeItems, 'center');
   assert.equal(tierStyle.textAlign, 'center');
   assert.equal(card.initiative, 12);
+  const standard = textCard({ ...card, item: 'ATTACK' }, 'deck');
+  const ultimate = textCard({ ...card, color: 'PURPLE', tier: 'IV', initiative: null }, 'deck');
+  d.body.append(standard, ultimate);
+  const reservedHeader = ultimate.querySelector('.m2-card-top > .m2-symbol-placeholder');
+  const reservedFooter = ultimate.querySelector('.m2-card-foot > .m2-symbol-placeholder');
+  assert.equal(reservedHeader.getAttribute('aria-hidden'), 'true');
+  assert.equal(reservedFooter.getAttribute('aria-hidden'), 'true');
+  assert.equal(reservedHeader.querySelectorAll('img').length, 0);
+  assert.equal(
+    w.getComputedStyle(reservedHeader).height,
+    w.getComputedStyle(standard.querySelector('.m2-card-top .m2-symbol img')).height,
+  );
+  assert.equal(
+    w.getComputedStyle(reservedFooter).height,
+    w.getComputedStyle(standard.querySelector('.m2-card-foot .m2-symbol img')).height,
+  );
+  assert.equal(w.getComputedStyle(ultimate.querySelector('.m2-card-foot')).display, 'flex');
+  for (const context of ['deck', 'hero']) {
+    const noItem = textCard({ ...card, item: null }, context);
+    assert(noItem.querySelector('.m2-card-foot > .m2-symbol-placeholder'));
+  }
+  const inline = textCard(
+    { ...card, effect_text: 'Use :initiative: instead of :defense:. Place a :glitch_token:.' },
+    'deck',
+  );
+  d.body.append(inline);
+  const effect = inline.querySelector('.m2-card-effect');
+  assert.equal(effect.querySelectorAll('.m2-symbol').length, 2);
+  assert.equal(effect.querySelectorAll('.m2-rule-icon').length, 1);
+  for (const img of effect.querySelectorAll('img')) {
+    assert.equal(w.getComputedStyle(img).width, '14.3px');
+    assert.equal(w.getComputedStyle(img).height, '14.3px');
+  }
+  assert.equal(w.getComputedStyle(effect.querySelector('.m2-symbol')).display, 'inline-block');
+  assert.equal(w.getComputedStyle(effect.querySelector('.m2-symbol')).verticalAlign, '-0.15em');
+  assert.equal(w.getComputedStyle(effect).lineHeight, '1.5');
+  assert.equal(w.getComputedStyle(inline.querySelector('.m2-card-type img')).width, '27.3px');
   console.log(
     'PASS: Large artwork ownership, crop/fade/blur styles, load/error fallback, printed Deck values and hidden-card privacy',
   );

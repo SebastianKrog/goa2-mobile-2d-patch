@@ -75,7 +75,7 @@ function clearHeroCard() {
   delete heroPanel.dataset.key;
 }
 // Deck preferences persist independently of the active navigation tab.
-let deckView = 'grid',
+let deckView = 'tree',
   deckSort = 'tier',
   deckState = null;
 const deckPreferencesKey = 'goa2-mobile-deck';

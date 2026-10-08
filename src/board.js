@@ -169,6 +169,11 @@ function updateCardRow(row, card, knownItems) {
   const initiative = ultimate
     ? document.createElement('span')
     : symbol('INITIATIVE', card.initiative);
+  if (ultimate || card.initiative == null) {
+    initiative.replaceChildren();
+    initiative.classList.add('m2-symbol');
+    initiative.setAttribute('aria-hidden', 'true');
+  }
   const band = document.createElement('span');
   band.className = 'm2-list-band';
   band.style.setProperty('--card-color', cardColors[card.color] || '#bbc3cf');
@@ -453,7 +458,9 @@ function renderSummary(heroes) {
       button.onclick = () => { inspectHeroCard(h.id, h.currentCard); refresh(); };
       currentSlot.append(button);
     }
-    row.append(currentSlot, itemUpgradeSymbols(h.upgrades, 'm2-summary-upgrades'));
+    const upgrades = itemUpgradeSymbols(h.upgrades, 'm2-summary-upgrades');
+    upgrades.prepend(ultimateIndicator(h, true));
+    row.append(currentSlot, upgrades);
     summary.append(row);
   }
   // Share one compact pile width across every row. Reserve only what the largest

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GoA II — Mobile 2D
 // @namespace    goa2-mobile-local
-// @version      0.18.0
+// @version      0.19.0
 // @description  Compact 2D HUD, Board/Hand modes, contained setup and utility panels.
 // @match        https://goa2.frontend.pedroliv.dev/game/*
 // @grant        none

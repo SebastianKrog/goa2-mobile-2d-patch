@@ -318,7 +318,7 @@ on(media, 'change', schedule);
 
 // Public teardown for console installs and upgrades: release observers, timers, and DOM changes.
 window.GOA2Mobile2D = {
-  version: '0.18.0',
+  version: '0.19.0',
   destroy() {
     flushEventHistory();
     dead = true;
@@ -333,6 +333,7 @@ window.GOA2Mobile2D = {
     observer.disconnect();
     cancelAnimationFrame(frame);
     basicCanvases.clear();
+    deckTreeBuilds.clear();
     deckState?.watchers?.forEach((stop) => stop());
     deckState?.host.remove();
     deckState?.zoom.remove();

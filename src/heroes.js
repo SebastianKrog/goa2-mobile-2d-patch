@@ -117,6 +117,7 @@ function inspectHeroCard(heroId, card) {
 function updateHeroDashboard(box, view, suppliedHero = null) {
   const hero = suppliedHero || componentProp(box, 'hero');
   if (!hero || !Array.isArray(hero.played_cards)) return;
+  if (Array.isArray(hero.deck)) rememberDeckTreeChoices(hero);
   // An absent location means off board only when a location map is actually available.
   // Missing board data alone must not be treated as a death/off-board signal.
   const offboard = heroOffboard(hero, view);
@@ -280,7 +281,9 @@ function updateHeroDashboard(box, view, suppliedHero = null) {
   (hero.discard_pile || []).forEach((card, i) => slot(card, 'D' + (i + 1), null, discardGroup));
   history.append(playedGroup, discardGroup);
   dashboard.append(history);
-  dashboard.append(itemUpgradeSymbols(hero.items, 'm2-hero-upgrades'));
+  const upgrades = itemUpgradeSymbols(hero.items, 'm2-hero-upgrades');
+  upgrades.prepend(ultimateIndicator(hero));
+  dashboard.append(upgrades);
   // The header card and five history slots replace separate active-effect badges.
   // Only the source card glows, including defense-only discard Nano cards.
   function smallCard(card, nano = false, resolved = false) {
@@ -480,17 +483,7 @@ function updateUpgradeCards() {
     button.dataset.m2UpgradeKey = key;
     q(':scope>.m2-text-card', button)?.remove();
     // The discarded alternative grants the item, not the chosen card itself.
-    const display = textCard(card, 'deck', null, heroId);
-    if (item) {
-      const foot = q('.m2-card-foot', display);
-      foot.classList.add('m2-upgrade-footer');
-      const gain = document.createElement('span');
-      gain.className = 'm2-upgrade-gain';
-      gain.append(document.createTextNode('Gives '), cardSymbol(item === 'AREA' ? 'RADIUS' : item));
-      foot.append(gain);
-      foot.title = 'Choosing this gains ' + item.toLowerCase();
-      foot.setAttribute('aria-label', foot.title);
-    }
+    const display = textCard(card, 'deck', null, heroId, item || null);
     button.append(display);
     addExtra(display);
   }

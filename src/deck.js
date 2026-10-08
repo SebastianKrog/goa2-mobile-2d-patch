@@ -3,8 +3,8 @@
 function loadDeckPreferences() {
   try {
     const saved = JSON.parse(localStorage.getItem(deckPreferencesKey) || '{}');
-    if (['grid', 'list', 'compact'].includes(saved.view)) deckView = saved.view;
-    else if (saved.view === 'large') deckView = 'compact';
+    if (['tree', 'compact', 'grid'].includes(saved.view)) deckView = saved.view;
+    else if (['list', 'large'].includes(saved.view)) deckView = 'compact';
     if (['tier', 'color'].includes(saved.sort)) deckSort = saved.sort;
   } catch {}
 }
@@ -145,7 +145,16 @@ function deckUpdate() {
     deckState = { modal, host, zoom, key: '', copies: [], dirty: true, watchers: [] };
   }
   const state = deckState;
-  const key = JSON.stringify([deckView, deckSort, entries.map((e) => e.card)]);
+  const hero = componentProp(modal, 'hero');
+  const ownerKey = JSON.stringify([location.pathname, hero?.id || hero?.name ||
+    entries.map(e => deckCardIdentity(e.card))]);
+  if (state.ownerKey !== ownerKey) state.selectedCard = null;
+  state.ownerKey = ownerKey;
+  rememberDeckTreeChoices(hero, entries.map(e => e.card));
+  const build = deckView === 'tree' ? deckTreeBuild(hero, entries.map(e => e.card)) : null;
+  const key = JSON.stringify([deckView, deckSort, entries.map((e) => e.card),
+    ownerKey, deckView === 'tree' ? [hero?.level, hero?.items, [...build.chosen],
+      deckTreePool(hero).map(deckCardIdentity)] : null]);
   if (state.key === key && state.sources?.every((v, i) => v === sources[i])) return;
   state.watchers?.forEach((stop) => stop());
   state.watchers = [];
@@ -158,16 +167,12 @@ function deckUpdate() {
   state.zoom.replaceChildren();
   state.host.replaceChildren();
   state.host.dataset.view = deckView;
-  const titleBar = document.createElement('div');
-  titleBar.className = 'm2-deck-title';
-  titleBar.textContent = 'Deck';
-  state.host.append(titleBar);
   const controls = document.createElement('div');
   controls.className = 'm2-deck-controls';
   for (const [value, label] of [
+    ['tree', 'Tree'],
+    ['compact', 'List'],
     ['grid', 'Grid'],
-    ['list', 'List'],
-    ['compact', 'Compact'],
     ['sort', deckSort === 'tier' ? 'By tier' : 'By color'],
   ]) {
     const b = document.createElement('button');
@@ -192,26 +197,27 @@ function deckUpdate() {
     controls.append(b);
   }
   state.host.append(controls);
-  // The compact view shares the slim hero-card rows, while a separate dark area
-  // holds the selected printed card. It never applies the hero's item upgrades.
+  // List (stored as compact for compatibility) and Tree share the Large Deck viewer.
+  const hasPreview = deckView === 'compact' || deckView === 'tree';
   let preview;
-  if (deckView === 'compact') {
+  if (hasPreview) {
     preview = document.createElement('section');
     preview.className = 'm2-deck-preview';
     preview.setAttribute('aria-label', 'Selected deck card');
     state.host.append(preview);
   }
-  function selectCompact(card) {
+  function selectPreview(card) {
     state.selectedCard = card;
     preview.replaceChildren();
     if (card) {
-      const display = textCard(card, 'deck', null, componentProp(modal, 'hero')?.id);
+      const display = textCard(card, 'deck', null, hero?.id,
+        cardGrantedItem(card, entries.map(entry => entry.card)));
       const close = document.createElement('button');
       close.type = 'button';
       close.className = 'm2-card-dismiss';
       close.textContent = '×';
       close.setAttribute('aria-label', 'Close card details');
-      close.onclick = () => selectCompact(null);
+      close.onclick = () => selectPreview(null);
       const foot = q('.m2-card-foot', display);
       foot.classList.add('m2-has-dismiss');
       foot.append(close);
@@ -221,10 +227,18 @@ function deckUpdate() {
       row.setAttribute('aria-pressed', String(row.dataset.cardKey === JSON.stringify(card)));
   }
 
-  const listHost = deckView === 'compact' ? document.createElement('div') : state.host;
+  const listHost = hasPreview ? document.createElement('div') : state.host;
   if (listHost !== state.host) {
     listHost.className = 'm2-deck-row-list';
     state.host.append(listHost);
+  }
+  if (deckView === 'tree') {
+    renderDeckTree(listHost, entries, hero, selectPreview);
+    const selected = entries.find(e => state.selectedCard &&
+      deckCardIdentity(e.card) === deckCardIdentity(state.selectedCard));
+    selectPreview(selected?.card || null);
+    deckPaint();
+    return;
   }
   const colors = ['RED', 'BLUE', 'GREEN', 'PURPLE', 'GOLD', 'SILVER'];
   const tierRank = (v) =>
@@ -294,10 +308,8 @@ function deckUpdate() {
       if (deckView === 'compact') {
         b.dataset.cardKey = JSON.stringify(card);
         b.setAttribute('aria-pressed', 'false');
-        on(b, 'click', () => selectCompact(card));
+        on(b, 'click', () => selectPreview(card));
         updateCardRow(b, card, {});
-      } else if (deckView === 'list') {
-        b.append(textCard(card, 'deck', null, componentProp(modal, 'hero')?.id));
       } else b.append(image(entry));
       if (deckView !== 'compact') on(b, 'click', () => enlarge(entry));
       group.append(b);
@@ -307,7 +319,7 @@ function deckUpdate() {
     const selected = entries.find(e => state.selectedCard && (
       e.card.id ? e.card.id === state.selectedCard.id : e.card.name === state.selectedCard.name
     ));
-    selectCompact(selected?.card || null);
+    selectPreview(selected?.card || null);
   }
   deckPaint();
 }
