@@ -1,10 +1,8 @@
 # GoA II — Mobile 2D
 
-A mobile userscript for the existing Guards of Atlantis II frontend at
-`https://goa2.frontend.pedroliv.dev/game/*`, with `3d=0` in the query string.
-It activates at widths of 900 CSS pixels or less, plus short landscape phones up
-to 1200 pixels wide with a coarse pointer. The website retains responsibility
-for game rules and actions; the script adapts presentation and proxies native controls.
+A mobile userscript for [Guards of Atlantis II](https://goa2.frontend.pedroliv.dev).
+Open your game with `3d=0` in the URL. Supports portrait and phone landscape;
+the website handles game rules and actions.
 
 ## Install
 
@@ -25,7 +23,15 @@ I recommend **Firefox for Android** because it supports browser extensions, unli
 
 On iOS, use Safari with the free [Userscripts app](https://apps.apple.com/us/app/userscripts/id1463298887). Enable its Safari extension, then install the script from the URL above.
 
-## Build and test
+## Use
+
+- Board is the default view. Tap **Heroes**, **Hand**, **Deck**, **Log** or **Settings**; tap the active tab again to return to Board.
+- Tap a card to inspect it, or a hero name to focus that hero. Your played card appears above action choices.
+- Deck offers **Tree**, **List** and **Grid**. Deck plans are previews; level-up choices require **Commit**.
+- Long messages scroll automatically. Tap the message bar to read three rows; tap elsewhere to collapse it.
+- Preferences and received events are saved on this device. Log also retrieves server decision history; local events cannot recover events missed while offline.
+
+## Development
 
 Use Node.js 24 (minimum 22.12).
 
@@ -35,296 +41,12 @@ npm run build
 npm test
 ```
 
-Run `npm ci` before building. The pinned development dependencies provide module
-checks, bundling, browser fixtures and formatting; the installed userscript has no
-runtime dependencies or module loader.
+Edit `src/`, rebuild, and commit source and generated `dist/` files together.
 
-- `npm run build` checks module dependencies and bundles readable, unminified output in `dist/`.
-- `npm run modules:check` rejects undeclared application helpers and assignments to imported bindings.
-- `npm run build:check` checks that committed output matches the source.
-- `npm test` builds and runs all 40 regression test files in isolated Node processes.
-- `npm run test:format` formats test JavaScript; `npm run test:format:check` checks it.
-- `npm run css:format` formats the stylesheet; `npm run css:format:check` checks it.
-- GitHub Actions checks test/CSS formatting, committed output and regressions on pushes and pull requests.
-
-Edit `src/`, then rebuild and commit both source and `dist/`. Do not edit generated
-output directly. For a version change, update `package.json` and `package-lock.json`, the metadata in
-`src/userscript-header.txt`, and the public API version near the end of `src/main.js`.
-
-## Source guide
-
-| File | Responsibility |
-| --- | --- |
-| `src/userscript-header.txt` | Installation metadata and script usage notes |
-| `src/bootstrap.js` | Installation/reinstallation guards, run before module initialization |
-| `src/runtime.js` | Shared navigation/lifecycle state, DOM helpers, stylesheet attachment |
-| `src/styles.css` | Mobile layout and component styles |
-| `src/ui.js` | Generated containers, ownership markers, managed listeners and inspection cleanup |
-| `src/navigation.js` | Navigation, Deck mount tracking, keyboard/click routing |
-| `src/painter.js` | Self-contained canvas artwork renderer for basic Deck cards |
-| `src/cards.js` | Shared text cards, compact rows' stat helpers, upgrade values |
-| `src/deck.js` | Deck preferences, browser, canvas copy synchronization |
-| `src/tree-model.js` | Printed card identities, tiers, A/B variants and known hero card pools |
-| `src/tree-view.js` | Shared tree headings, cards, path geometry and item totals; no selection state |
-| `src/deck-tree.js` | Tentative Deck plans, observed game choices and per-game/hero persistence |
-| `src/header.js` | Native header adaptation and compact status strip |
-| `src/card-highlight.js` | Viewer source overlays, independent of game selection and active effects |
-| `src/card-rows.js` | Compact card rows and own-hand color dots |
-| `src/board.js` | Hero summaries, focus and portrait navigation |
-| `src/camera.js` | Board rotation, native pan/zoom composition, reset and hero centering |
-| `src/controls.js` | Native planning-action and choice-launcher proxies |
-| `src/game-input.js` | Live upgrade request discovery and delivered remaining counts |
-| `src/react.js` | Committed React prop lookup and per-refresh host cache |
-| `src/heroes.js` | Hero dashboards, card inspection, turn portraits and native upgrade cards |
-| `src/upgrade-tree.js` | Level-up batch staging, preview isolation, eligibility and sequential native submission |
-| `src/history.js` | Per-game local archive of received events |
-| `src/log.js` | Footer Log, player-scoped server decision history, cancellation and conditional requests |
-| `src/settings.js` | Appearance preferences, typography scaling, native sound/cursor preferences, fullscreen and tool proxies |
-| `src/main.js` | DOM reconciliation, observers, initialization, teardown |
-
-Source modules declare their dependencies with ES imports and export only helpers
-used by other modules. `scripts/check-modules.mjs` catches undeclared helpers that
-would otherwise become accidental globals. esbuild checks imported/exported names
-and follows the dependency graph from `main.js`; there is no ordered manifest.
-Module-local state stays private. Cross-module navigation and lifecycle writes use
-the explicitly imported `uiState` object; native Deck mount tracking stays owned
-by navigation. Some callback dependencies are cyclic, so callbacks run after module
-initialization, and `main.js` performs the first reconciliation after setup.
-
-The builder prepends `bootstrap.js` inside an outer installation closure so a 3D
-page exits before any module creates UI or starts timers. It imports CSS as escaped
-text and bundles the modules into one private IIFE. Only `window.GOA2Mobile2D` is
-intentionally exported; installation still uses a single `.user.js` or `.txt` file.
-No minification, external runtime imports or runtime loader is used.
-
-Deck and Upgrades share printed tree presentation through `tree-view.js`. Deck owns
-its persisted tentative plans, while `upgrade-tree.js` owns staged selections,
-isolated Preview state, eligibility and acknowledged native submissions. Rendering
-a tree never selects an upgrade or submits a game action.
-See [the stylesheet guide](src/STYLES.md) for component ownership, cascade rules and CSS checks.
-
-The `m0`–`m3` names inside the painter are inherited internal wrappers and are explained
-in that file. Other UI code calls the painter through its small returned API.
-
-## Tests and boundaries
-
-The jsdom fixtures cover navigation, card layouts, hero status/focus, upgrades,
-rotation/reset, event persistence and game isolation, lifecycle cleanup, and Deck
-redraw behavior. `tests/fixtures/goa2-mobile-2d-v0.14.2.txt` is an intentionally frozen
-baseline used to compare canvas commands for 72 card variants.
-
-Fixtures are synthetic; no live game history or credentials are included.
-See [the regression coverage map](tests/README.md) for asserted behaviors, individual
-test commands, formatting rules and remaining manual checks.
-
-Tests do not replace visual checks on Android Firefox. In particular, verify native
-two-finger gestures, browser chrome changes, and real canvas/font rendering on a phone.
-The adapter reads private React fibers and generated CSS-module class names; website
-changes can require selector/prop updates even when these local tests pass.
-
-## Local data
-
-Display preferences and up to 2,000 received events per game are stored in the site's
-localStorage. The event archive cannot recover events missed while the browser was
-closed or offline. Deck shows printed stats; Hand and hero details apply known upgrades.
-
-## Log and Settings
-
-The footer offers **Heroes**, **Hand**, **Deck**, **Log**, **Settings**, with contextual
-Setup during starting-position selection. Log replaces the floating native trigger.
-**Events** shows up to 2,000 events received on this device. **Decisions** retrieves
-earlier match choices from the player-scoped decision-history API, including undone
-choices. The server masks hidden card identities for the current player or spectator.
-The two timelines remain separate because decisions do not contain the full combat
-event output. If server history is unavailable, local events remain accessible.
-
-Log reads the same `GET /api/games/{game_id}/overrides/history` endpoint as the
-native rewind picker, using the current game link's token. It refreshes at most once
-every 10 seconds while open, supports conditional ETag requests, and cancels on
-closing, changing game/player link or teardown. It does not use the omniscient admin
-replay endpoints. API compatibility was checked against the live frontend bundle
-and [OpenAPI schema](https://goa2.frontend.pedroliv.dev/api/openapi.json) on 2026-10-08;
-fixture tests simulate requests and do not exercise a live private game.
-
-Settings groups **Appearance**, **Game** and the website's available **Tools**.
-Each setting has an **i** button: tap to open or close its explanation, or hover
-over the icon/label. Help explains defaults, persistence and reload requirements.
-Card artwork defaults on; disabling it removes the background from existing Large
-and Small cards immediately. Font size defaults to the center slider position:
-each smaller step multiplies by 0.95, each larger step by 1.1, over four steps each
-way. **Default** restores the exact original typography. These two preferences
-persist locally and apply without reload; the board and touch targets retain their size.
-
-The relevant shared native controls are player cursors, sound/volume and fullscreen
-when supported. Sound/cursor changes use the website's saved preference keys and
-**Apply & reload**, because the frontend initializes them on load. Game actions such
-as Report bug, Fix game state, Share links and Request pause remain native button
-proxies. Table layout, lighting and hero-model controls are specific to 3D and omitted.
+See [test coverage](tests/README.md), [stylesheet notes](src/STYLES.md),
+[the changelog](CHANGELOG.md) and [planned work](ROADMAP.md).
 
 ## Attribution
 
-The canvas card painter is adapted from `PedroVIOliv/goa2-frontend-portfolio`.
-Card art, icons, and fonts are loaded from the game website and are not copied into
-this repository. No new license grant is asserted for third-party code or artwork.
-
-## Horizontal phone layout
-
-The first landscape layout activates between 600 and 1200 CSS pixels wide, at a
-maximum height of 600 pixels. Wider-than-900 activation additionally requires a
-coarse pointer; larger tablets and desktops keep their existing layout.
-
-- Board fills the available width beneath floating summaries/focus. Opening
-  other views overlays the board without resizing it or changing its pan/zoom.
-  Its default center sits in the clear left area; Reset returns to that center.
-  Card Viewer occupies the left pane; Heroes and Hand scroll in the right pane.
-- Navigation forms a far-right rail. Buttons keep 44px minimum height and scroll
-  when the browser leaves too little vertical space.
-- Lives and minions form adjacent pairs at each corner in both orientations.
-  Landscape places Round/Turn just left of the centered coin and the push counter
-  just right. The phase/action strip attaches below the header at the top of the
-  map; disconnect keeps the same dot and layout. The landscape header has a 27px
-  background with icon/label pairs shifted down 5px to protrude. Reset and supported Fullscreen stack
-  on the left, with temporary choice/upgrade buttons below them.
-- Deck Tree/List and level-up reserve a tall viewer on the left, with card lists
-  and preview/commit controls on the right. Deck Grid enlarges images on the left.
-- Settings, Log and starting-position tools use the right pane. Safe-area insets
-  and visual viewport offsets reserve space for browser chrome and keyboards.
-
-Rotation changes presentation without moving native game nodes, changing the
-selected card or submitting actions. Portrait returns to its existing layout.
-Device checks are still needed for text fit, browser chrome and touch gestures.
-
-## Card display system
-
-| Size | Content and use |
-| --- | --- |
-| Full / Image | Rendered card artwork in Deck. |
-| Large | Complete text card with colored header and rules; selected-card viewers and upgrade choices. |
-| Small | Full-width title and stat icons without rules text; Hand rows. |
-| Mini / Tiny | Slim title/stat row; current or selected card in Hero entries and List Deck. |
-| Micro — Board | Three fixed 20px icon slots: primary, range/radius, movement. 70px total width including gaps and border/padding; no secondary defense, title or initiative. |
-| Micro — Hero history | Four fixed icon slots: primary, range/radius, movement, defense. 64px total width. |
-| Extended Micro | Six slots for Deck/upgrade trees: initiative, four colored Micro cells (primary, range/radius, movement, defense), and the granted item from its paired alternative with an overlaid plus. Clear end caps; 132px wide and 24px high. The ultimate uses a 70px three-cell Micro with a bold U in the center. Basics omit their empty granted-item cap and adjust their stat-cell widths to stay beside the ultimate. |
-| Nano | One defense icon/value for a discarded card; 20px wide and the same 24px height as Micro. |
-| Dot | Plain card color, with a breathing glow for active effects. |
-
-Large cards use one CSS-cropped original artwork layer across the title, body and
-footer. The artwork itself fades from fully transparent at the top left to 40%
-visible at the bottom right, revealing the original title color and dark card
-surfaces underneath. Both bars blur that same image in place; text stays sharp.
-Large-card titles stay white with a subtle shadow, and their title/body stat icons
-are enlarged without changing footer controls. Missing artwork retains the plain-card
-appearance. Large Ultimate headers and itemless footers reserve the missing icon
-slot. Inline rule icons use text-relative sizing and baseline alignment, keeping
-paragraph line spacing consistent.
-
-Small Hand rows use horizontally faded, blurred artwork only in their colored center.
-Small and Mini rows have one/two/three solid tier stripes at both edges with equal
-reserved gutters; fixed primary/range slots keep their titles centered. Mini rows
-have no background artwork.
-
-Micro and Nano cards indicate tier inside their existing widths. Basic/Tier I has
-one colored edge pixel plus two card-fill pixels; Tier II uses color/fill/color;
-Tier III has three solid colored edge pixels. Resolved edges remain muted.
-
-Missing Micro stats keep their cell empty. Known in-play upgrades use purple values;
-Deck uses printed values. Active effects breathe on their Micro/Nano/Dot source.
-Hand dots, hidden cards and Gold/Silver/Ultimate dots retain their plain color.
-Facedown cards do not reveal hidden names or stats. Small/Mini Ultimate cards retain the empty initiative slot, keeping their content
-aligned. Tree Ultimates use three Micro cells with a bold U in the center.
-Hero upgrade rows reserve a grey Nano **U** before their item icons, and compact
-Board rows reserve a grey Ultimate dot. At level 8 both glow purple; the Nano U
-and border breathe together. Reduced-motion mode keeps a static glow.
-
-Board, Heroes, Hand, List Deck and Tree Deck use the same responsive Large-card
-viewer height. Heroes/Hand reserve that height above their lists. Long rules scroll
-inside the viewer; there is one shared short-screen height too.
-
-### Deck tree
-
-Deck view buttons and the sort toggle share one row, without a Deck title. Each
-color path puts Tier 1 on its own row, then Tier 2 and Tier 3 below, with Tier 3
-flush right. Tier 2 aligns to the right beneath Tier 1. The tier headings appear
-once at the top. Extended cards include printed defense. Gold, Silver and the
-compact Ultimate share one row; empty grant caps are removed from basics and
-their stat cells adjust to narrow widths. The centered basics row uses the same
-12px gap as Tier 2/3. Cards within a color have a 4px vertical gap. Branches rise
-straight into Tier 1’s bottom edge and stop at the card edges, including faded alternatives. Additional cards wrap below.
-Deck opens in **Tree** by default, with controls ordered **Tree**, **List**, **Grid**.
-**List** is the former Compact layout; the old full-card List layout is removed. Saved
-Compact preferences keep their layout, and old List preferences migrate to the new List.
-Choose **Tree** in Deck to see each color's T1, T2 and T3 path. Standard choices sit
-above alternates. Tap any card to open its normal Large Deck card, with printed stats
-and a centered printed item. To its right, grey **Gives** text and an icon with a plus
-show the item earned from the alternative card. The same paired item appears in the
-Tree end cap and native upgrade picker; T1/basic/Ultimate cards grant no item.
-
-T2/T3 taps mark tentative choices in purple and darken the rejected alternative.
-Cards in the current hand/discard/played pool have white borders, including basic
-cards and the unlocked Ultimate. The same-tier alternative of a current upgrade
-is dark grey because that choice is locked. Older alternatives that became items
-have light grey borders after their paired playable card leaves the current pool;
-replaced playable cards (including Tier 1) and rejected choices are dark grey. Other unselected cards remain grey. Inspecting a committed choice or its
-item alternative does not change the build. The compact bottom bar places **Preview**
-on the left, upgrade totals in the center and **Reset** on the right. It shows totals
-using the Hero entry icons: grey for none, white for acquired bonuses, and purple
-when a total includes planned bonuses. Its tooltip separates acquired and planned
-amounts. Native item totals are authoritative; only tentative plans are added, so
-observed game choices are never counted twice.
-**Reset** clears tentative selections only. Tree taps do not submit game actions.
-
-Plans and observed choices persist separately for each game and hero. Observations
-come from native owned-card data, including while Deck is closed, and survive later
-tier replacement. The script cannot reconstruct older choices that were replaced
-before it observed them. Native eligibility and a lower level release observations
-after an undo. A/B artwork IDs keep standard/alternate rows aligned independently
-of source array order; there are no hero-specific card adjustments.
-
-### Level-up tree
-
-Level-up uses the same Extended Micro paths, omitting Gold, Silver and Ultimate.
-Tier 1 remains visible as context. Tier 2 and Tier 3 headings show separate
-selected/required counts. Only allowed upgrades can be selected; an unavailable
-card opens its printed Large details. Select all remaining Tier 2 upgrades before
-choosing Tier 3. Changing a Tier 2 selection clears dependent Tier 3 selections.
-The full-screen menu reserves the shared Card Viewer height even when no card is
-open; the tree scrolls independently beneath it. Preview and Reset sit beside item
-totals at the bottom, above the full-width Commit button. Known own deck cards
-show their printed stats and paired grants regardless of the deck-zone face-down
-flag; native cards and truly hidden cards are not changed.
-Tapping a selected card deselects it; Reset clears the local batch. Staged upgrade
-cards have gold borders, and changed totals are gold while Preview is off.
-
-**Preview** is a separate switch for later choices and item totals. Purple preview
-plans never alter staged game selections. Turning it off removes those plans and restores the staged choices.
-Centered help text sits immediately above the bottom Preview/Reset and Commit controls. Commit stays
-disabled while Preview is on, while a choice is pending, or until every required
-upgrade is validly selected. Selected grants add to native acquired item totals.
-
-**Commit** uses the website's own upgrade-selection callback, one choice at a time,
-rechecking the fresh server options after each acknowledged selection. It sends no
-independent API requests. A timeout or hidden page pauses the batch without retry;
-after acknowledgement, the remaining choices require another Commit. Closing the
-menu, changing game/player/round or leaving mobile mode discards local staging and
-cancels unsent work. Insufficient props/catalog data retains the native picker.
-
-## Release notes and planned work
-
-See [CHANGELOG.md](CHANGELOG.md) for published releases and [ROADMAP.md](ROADMAP.md)
-for unfinished work. Version 0.19.0 adds Deck trees with build previews, paired item
-grants, Ultimate indicators and shared card-viewer sizing. It also simplifies Deck
-to Tree, List and Grid. Version 0.18.0 fixes native update synchronization, history and
-artwork recovery, Deck cleanup, desktop log restoration and off-board portrait colors.
-Version 0.17.0 adds a slimmer overlaid-icon header and a single-line,
-translucent phase/action strip with blur. Connection warnings replace that strip's
-text while preserving its pulsing dot. Board summaries and focused Hero entries float
-over the board with blurred surfaces; focused entries have a turn-ordered portrait
-selector and a gray return triangle. Portrait initiative badges have transparent
-backgrounds in both Heroes and Board. Unfolded Hero boards remain disabled.
-
-Click a Heroes portrait to center the map on that hero at 250%, retaining the
-current rotation and open view. Double-click the focused Board entry (outside
-its card/back buttons), or its selected floating portrait, to center it too.
-Off-board heroes have no camera action. Owned figures are resolved from the
-game's public ownership data. Reset clears centering along with native pan/zoom
-and rotation; landscape returns to its default left-area map center.
+The card painter is adapted from [PedroVIOliv/goa2-frontend-portfolio](https://github.com/PedroVIOliv/goa2-frontend-portfolio).
+Card art, icons and fonts load from the game website.

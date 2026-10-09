@@ -86,7 +86,7 @@ try {
   refresh();
   assert(strip.classList.contains('m2-disconnected'));
   assert.equal(strip.querySelector('.m2-phase').textContent, 'DISCONNECTED');
-  assert.equal(strip.querySelector('.m2-status').textContent, 'reconnecting...');
+  assert.equal(strip.querySelector('.m2-status').textContent, 'Reconnecting...');
   assert.equal(style(strip).backgroundColor, 'rgba(179, 38, 38, 0.6)');
   assert.equal(style(strip).backdropFilter, 'blur(3px)');
   assert.equal(style(dot).color, dotColor);

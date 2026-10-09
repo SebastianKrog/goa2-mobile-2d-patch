@@ -846,7 +846,8 @@
   background: rgb(17 24 29 / 72%);
   backdrop-filter: blur(3px);
   -webkit-backdrop-filter: blur(3px);
-  pointer-events: none;
+  pointer-events: auto;
+  cursor: pointer;
   font: 600 9px/12px system-ui;
 }
 & .m2-hud-bottom > div {
@@ -862,6 +863,59 @@
 & .m2-status {
   color: #ead49d;
   text-align: left;
+}
+& .m2-status-text {
+  display: inline-block;
+  width: max-content;
+  max-width: none;
+  vertical-align: top;
+  white-space: nowrap;
+}
+& .m2-status.m2-status-overflow {
+  text-overflow: clip;
+}
+& .m2-status-overflow .m2-status-text {
+  animation: m2-action-ticker var(--m2-ticker-cycle, 8s) linear infinite;
+}
+/* Scroll the viewport toward the text's right end, hold, then jump back.
+   The loop boundary resets instantly; 0–20% and 80–100% are reading pauses. */
+@keyframes m2-action-ticker {
+  0%,
+  20% {
+    transform: translateX(0);
+  }
+  80%,
+  100% {
+    transform: translateX(calc(-1 * var(--m2-ticker-distance, 0px)));
+  }
+}
+& .m2-hud-bottom.m2-status-expanded {
+  height: 46px;
+}
+& .m2-status-expanded .m2-status {
+  height: 36px;
+  white-space: normal;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+& .m2-status-expanded .m2-status-text {
+  display: block;
+  width: auto;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  animation: none;
+  transform: none;
+}
+& .m2-hud-bottom:focus-visible {
+  outline: 2px solid #ead49d;
+  outline-offset: -2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  & .m2-status-overflow .m2-status-text {
+    animation: none;
+    transform: none;
+  }
 }
 & [class*="_disconnected_"] {
   display: none !important;
@@ -3434,6 +3488,88 @@
 & [data-m2-choice-source] {
   display: none !important;
 }
+/* Action choices retain native controls, with the played card above the menu. */
+& [data-m2-action-overlay] {
+  position: fixed !important;
+  inset: auto 8px auto 8px !important;
+  top: calc(var(--m2-viewport-top, 0px) + var(--m2-head) + var(--m2-status-h) + 6px) !important;
+  right: calc(var(--m2-nav-width, 0px) + 8px) !important;
+  bottom: calc(var(--m2-offset, 0px) + var(--m2-nav) + 8px) !important;
+  display: flex !important;
+  align-items: flex-start !important;
+  justify-content: center !important;
+  background: #080c12b3;
+  border-radius: 9px;
+  z-index: 1000 !important;
+  animation: none !important;
+  transform: none !important;
+  overflow: hidden;
+  pointer-events: auto;
+}
+& [data-m2-action-picker] {
+  box-sizing: border-box;
+  width: min(100%, 500px) !important;
+  min-width: 0 !important;
+  max-width: 500px !important;
+  max-height: 100% !important;
+  padding: 8px !important;
+  margin: 0 !important;
+  overflow-y: auto !important;
+  overscroll-behavior: contain;
+  border-radius: 9px !important;
+}
+& .m2-action-card-view {
+  height: min(var(--m2-card-display-height), 45dvh);
+  margin-bottom: 10px;
+  overflow: hidden;
+  border-radius: 8px;
+}
+& .m2-action-card-view > .m2-text-card {
+  height: 100%;
+}
+& .m2-action-card-view .m2-card-body {
+  min-height: 0;
+  overflow-y: auto;
+}
+& .m2-action-card-view :is(.m2-card-top, .m2-card-foot) {
+  flex-shrink: 0;
+}
+& [data-m2-action-picker] [class*="_titleRow_"] {
+  gap: 8px;
+}
+& [data-m2-action-picker] button {
+  min-height: 36px;
+  white-space: normal;
+}
+& [data-m2-board-peek] {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: auto !important;
+  padding: 6px 10px !important;
+  flex-shrink: 0;
+}
+& [data-m2-board-peek] > svg {
+  display: none;
+}
+& [data-m2-board-peek]::before {
+  content: "";
+  width: 16px;
+  height: 16px;
+  background: currentColor;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M8 3C4.5 3 1.7 5.1.5 8c1.2 2.9 4 5 7.5 5s6.3-2.1 7.5-5C14.3 5.1 11.5 3 8 3zm0 8.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7zm0-5.5a2 2 0 1 0 0 4 2 2 0 0 0 0-4z'/%3E%3C/svg%3E")
+    center / contain no-repeat;
+}
+& [data-m2-board-label="true"]::after {
+  content: "Board";
+}
+& [data-m2-board-prompt] {
+  display: none !important;
+}
+& .m2-hud-bottom.m2-board-prompt .m2-status {
+  color: #e7eadf;
+}
 & .m2-choice-launchers:not([hidden]) {
   position: absolute;
   top: calc(var(--m2-status-h, 22px) + 6px);
@@ -3452,6 +3588,10 @@
   background: #10151ee8;
   color: #e0e6ed;
   font: 600 12px system-ui;
+}
+& .m2-choice-launchers .m2-undo {
+  color: #f0b84b;
+  border-color: #bd8b37;
 }
 html:not([data-m2-active]) .m2-choice-launchers {
   display: none !important;

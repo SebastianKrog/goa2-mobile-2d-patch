@@ -1,4 +1,5 @@
 import { clearCardHighlights, highlightViewedCard } from './card-highlight.js';
+import { clearActionChoices, updateActionChoices } from './action-choices.js';
 import { renderSummary } from './board.js';
 import { clearBoardRotation, updateBoardRotation } from './camera.js';
 import { updateCardRow, updateOwnColors } from './card-rows.js';
@@ -7,7 +8,7 @@ import { updateChoiceLaunchers, updatePlanningActions } from './controls.js';
 import { deckTreeBuilds } from './deck-tree.js';
 import { basicCanvases, deckPaint, deckUpdate, renderedCard, retryBasicArtwork } from './deck.js';
 import { currentUpgradeRequest, remainingUpgrades } from './game-input.js';
-import { updateMobileHeader } from './header.js';
+import { clearMobileStatus, updateMobileHeader } from './header.js';
 import {
   cardIsActive,
   hasLocalSelection,
@@ -71,6 +72,8 @@ function refresh() {
   root.dataset.m2Panel = uiState.panel;
   updateEventHistory();
   if (!active) {
+    clearMobileStatus();
+    clearActionChoices();
     clearUpgradeTree();
     for (const [el, attrs] of changedAttributes)
       for (const [key, value] of attrs) {
@@ -112,7 +115,6 @@ function refresh() {
       if (count !== undefined && lane.dataset.m2Waves !== count) lane.dataset.m2Waves = count;
     }
   }
-  updateMobileHeader(header);
   tag(layout, 'layout');
   tag(header, 'header');
   tag(q(c('main'), layout || document), 'main');
@@ -181,7 +183,9 @@ function refresh() {
   updateBoardRotation();
   updateUpgradeCards();
   updateUpgradeTree();
-  updateChoiceLaunchers();
+  const actionChoices = updateActionChoices();
+  updateMobileHeader(header, actionChoices.prompt);
+  updateChoiceLaunchers(actionChoices.controls);
   const queue = resolutionEntries();
   const resolving = /^RESOLUTION$/i.test(
     q(c('phase'), header || document)?.textContent.trim() || '',
@@ -343,6 +347,7 @@ function refresh() {
   close.hidden = !active || !tip || tip === uiState.dismissedTip;
   close.style.display = close.hidden ? 'none' : '';
   updatePlanningActions();
+  if (actionChoices.card) highlightViewedCard('hero', actionChoices.card, actionChoices.heroId);
   syncNavigation();
   // Drop detached nodes from bookkeeping after React replaces native subtrees.
   // Otherwise repeated turns/navigation could retain old DOM and associated listeners.
@@ -393,10 +398,12 @@ on(media, 'change', schedule);
 
 // Public teardown for console installs and upgrades: release observers, timers, and DOM changes.
 window.GOA2Mobile2D = {
-  version: '0.23.0',
+  version: '1.0.0',
   destroy() {
     flushEventHistory();
     uiState.dead = true;
+    clearMobileStatus();
+    clearActionChoices();
     clearUpgradeTree();
     for (const [el, attrs] of changedAttributes)
       for (const [key, value] of attrs) {

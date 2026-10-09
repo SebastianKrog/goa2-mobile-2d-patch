@@ -51,7 +51,7 @@ function updatePlanningActions() {
 
 // Proxies live in board coordinates, outside native centered wrappers. They only
 // open native choices; the website retains all decision and validation handlers.
-function updateChoiceLaunchers() {
+function updateChoiceLaunchers(boardControls = []) {
   const board = q('[data-m2="board"]');
   if (!board) return;
   let host = q('.m2-choice-launchers', board);
@@ -61,7 +61,8 @@ function updateChoiceLaunchers() {
     board.append(host);
     addExtra(host);
   }
-  const sources = Array.from(board.querySelectorAll('button')).filter(button =>
+  const sources = boardControls.length ? [...boardControls].sort((a, b) =>
+    Number(/^Undo$/i.test(b.textContent.trim())) - Number(/^Undo$/i.test(a.textContent.trim()))) : Array.from(board.querySelectorAll('button')).filter(button =>
     !button.closest('.m2-choice-launchers') && /^(Options|Setup|Upgrades?)$/i.test(button.textContent.trim())
   );
   for (const button of new Set([...(host._sources || []), ...document.querySelectorAll('[data-m2-choice-source]')])) {
@@ -79,6 +80,7 @@ function updateChoiceLaunchers() {
     button.type = 'button';
     button.textContent = source.textContent.trim();
     button.disabled = source.disabled;
+    button.classList.toggle('m2-undo', /^Undo$/i.test(button.textContent));
     button.onclick = () => source.click();
     host.append(button);
   }

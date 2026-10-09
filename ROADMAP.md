@@ -1,8 +1,8 @@
 # Roadmap
 
 Remaining work for the GoA II Mobile 2D patch. Released features and fixes are
-recorded in [CHANGELOG.md](CHANGELOG.md); current behavior and card sizes are
-documented in [README.md](README.md).
+recorded in [CHANGELOG.md](CHANGELOG.md); installation and usage basics are in
+[README.md](README.md).
 
 ## Tablet layout
 

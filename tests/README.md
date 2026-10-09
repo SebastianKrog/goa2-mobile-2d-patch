@@ -1,7 +1,7 @@
 # Regression coverage
 
 Run `npm ci` once, then `npm test`. The command rebuilds the userscript and runs
-all 40 `test-*.cjs` files in separate Node processes, each with a 30-second timeout.
+all 42 `test-*.cjs` files in separate Node processes, each with a 30-second timeout.
 Failures retain their assertion stacks; the runner lists failed filenames at the end.
 
 To investigate one file, build first and run it directly:
@@ -39,6 +39,8 @@ copy, and canvas/image/font APIs are simulated where needed.
 
 | Source / behavior | Regression files | Assertions |
 | --- | --- | --- |
+| `action-choices.js`: resolution menus and board prompts | [action-choices](test-action-choices.cjs) | Played-card inspection above native choices, live stats, retained Board/Undo/Skip handlers, message-bar prompts, disconnect precedence and cleanup |
+| `header.js`: message ticker and expansion | [message-ticker](test-message-ticker.cjs) | Overflow-only CSS ticker, resize/font/message changes, three-row disclosure, outside-click collapse, isolated keyboard controls, reduced motion and observer cleanup |
 | ES module dependency contracts | [modules](test-modules.cjs) | Missing application imports, writes to imported bindings, shared state properties, module-local shadowing and missing owner exports; every source module checked during each build |
 | `bootstrap.js`, `runtime.js`, `ui.js`, `navigation.js`: installation and panes | [2d](test-2d.cjs), [board-toggles](test-board-toggles.cjs), [lifecycle](test-lifecycle.cjs) | 2D guard, reinjection, pane toggles, native Deck unmount and footer close/reopen, missing sidebar, mobile/desktop/3D transitions, original native attributes, teardown and reinstall |
 | `main.js`: reconciliation and events | [native-sync](test-native-sync.cjs), [review-fixes](test-review-fixes.cjs), [lifecycle](test-lifecycle.cjs) | Native text/src/disabled/class changes, replacement and removed actions, stable artwork/dismiss button, no idle feedback, detached-node bookkeeping, frame coalescing, viewport offsets, cancellation and listener/timer cleanup |
