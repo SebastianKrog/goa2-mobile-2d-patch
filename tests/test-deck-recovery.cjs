@@ -38,7 +38,8 @@ async function assetRecovery() {
   };
   vm.createContext(scope);
   vm.runInContext(
-    fs.readFileSync('src/painter.js', 'utf8') + ';globalThis.painter=m2Painter;',
+    fs.readFileSync('src/painter.js', 'utf8').replace(/^export \{ m2Painter \};$/m, '') +
+      ';globalThis.painter=m2Painter;',
     scope,
   );
   const painter = scope.painter;
@@ -81,7 +82,8 @@ async function assetRecovery() {
   vm.createContext(second);
   failFont = true;
   vm.runInContext(
-    fs.readFileSync('src/painter.js', 'utf8') + ';globalThis.painter=m2Painter;',
+    fs.readFileSync('src/painter.js', 'utf8').replace(/^export \{ m2Painter \};$/m, '') +
+      ';globalThis.painter=m2Painter;',
     second,
   );
   await assert.rejects(second.painter.ensureCardAssetsReady(), /font unavailable/);
@@ -172,7 +174,7 @@ async function deckRecovery() {
       .readFileSync('dist/goa2-mobile-2d.user.js', 'utf8')
       .replace(
         /window\.GOA2Mobile2D\s*=\s*\{/,
-        'window.testUI={m2Painter,basicCanvases,refresh,getDeck:()=>deckState};window.prepare(window.testUI);window.GOA2Mobile2D={',
+        'window.testUI={m2Painter,basicCanvases,refresh,getDeck:()=>uiState.deckState};window.prepare(window.testUI);window.GOA2Mobile2D={',
       ),
   );
   try {

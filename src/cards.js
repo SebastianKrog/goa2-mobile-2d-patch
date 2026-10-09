@@ -1,3 +1,8 @@
+import { dismiss } from './navigation.js';
+import { componentProp } from './react.js';
+import { q, uiState } from './runtime.js';
+import { detailsPanel, on } from './ui.js';
+
 // 5. Shared card presentation and upgrade values
 // All text cards, compact rows, dots, and accents share this color vocabulary.
 const cardColors = {
@@ -142,6 +147,8 @@ function miniatureCard(card, items = {}, includeDefense = false) {
 // Choosing a T2/T3 card earns the item printed on its same-color, same-tier
 // alternative. Missing or ambiguous pairs must not invent an awarded item.
 function cardGrantedItem(card, cards = []) {
+  // Other heroes' masked decks contain only a count, not a known card catalog.
+  if (!Array.isArray(cards)) return null;
   const tier = String(card?.tier).toUpperCase();
   if (card?.is_facedown || !['II', 'III', '2', '3'].includes(tier)) return null;
   const pair = cards.filter(candidate =>
@@ -153,15 +160,27 @@ function cardGrantedItem(card, cards = []) {
   const alternative = pair.find(candidate => !same(candidate));
   return alternative && !alternative.is_facedown ? alternative.item || null : null;
 }
-// Five printed-stat slots: clear initiative/granted-item caps around Board Micro.
+// Six printed-stat slots: clear initiative/item caps around four colored stats.
+// Ultimates use a compact three-cell Micro with a centered U instead.
 function extendedMicroCard(card, grantedItem) {
+  if (card && (card.color === 'PURPLE' || card.tier === 'IV')) {
+    const mini = miniatureCard(card);
+    mini.classList.add('m2-micro-ultimate');
+    if (!card.is_facedown) {
+      const marker = document.createElement('b');
+      marker.className = 'm2-micro-ultimate-label';
+      marker.textContent = 'U';
+      mini.replaceChildren(document.createElement('span'), marker, document.createElement('span'));
+    }
+    return mini;
+  }
   const extended = document.createElement('span');
   extended.className = 'm2-micro-extended';
   const visible = card && !card.is_facedown;
   extended.title = visible ? card.name : 'Hidden card';
   const initiative = document.createElement('span');
   initiative.className = 'm2-micro-cap';
-  if (visible && card.color !== 'PURPLE' && card.tier !== 'IV' && card.initiative != null)
+  if (visible && card.initiative != null)
     initiative.append(cardSymbol('INITIATIVE', card.initiative));
   const upgrade = document.createElement('span');
   upgrade.className = 'm2-micro-cap m2-micro-grant';
@@ -171,7 +190,9 @@ function extendedMicroCard(card, grantedItem) {
     upgrade.title = 'Gives ' + stat.toLowerCase() + ' +1';
     upgrade.setAttribute('aria-label', upgrade.title);
   }
-  extended.append(initiative, miniatureCard(card), upgrade);
+  const micro = miniatureCard(card, {}, true);
+  micro.classList.add('m2-micro-tree');
+  extended.append(initiative, micro, upgrade);
   return extended;
 }
 // Discards need only their defense stat. Hidden cards never expose icon values.
@@ -277,7 +298,7 @@ function appendCardArtwork(box, card, source, heroId) {
   image.decoding = 'async';
   image.loading = 'lazy';
   // Plain cards remain the fallback while loading or when artwork is unavailable.
-  image.onload = () => { if (!dead) box.classList.add('m2-has-art'); };
+  image.onload = () => { if (!uiState.dead) box.classList.add('m2-has-art'); };
   image.onerror = () => {
     box.classList.remove('m2-has-art');
     art.remove();
@@ -469,7 +490,7 @@ function textCard(card, context, tip, heroId, grantedItem) {
     x.setAttribute('aria-label', 'Hide card details');
     on(x, 'click', (e) => {
       e.stopPropagation();
-      hiddenCardKey = JSON.stringify(card);
+      uiState.hiddenCardKey = JSON.stringify(card);
       dismiss();
       detailsPanel.replaceChildren();
     });
@@ -478,3 +499,23 @@ function textCard(card, context, tip, heroId, grantedItem) {
   }
   return box;
 }
+
+export {
+  appendCardArtwork,
+  cardColors,
+  cardGrantedItem,
+  cardHero,
+  cardSymbol,
+  cardTierLines,
+  cardUpgrades,
+  extendedMicroCard,
+  goldSymbol,
+  itemUpgradeSymbols,
+  miniatureCard,
+  nanoCard,
+  relevantStat,
+  syncHandActions,
+  textCard,
+  ultimateIndicator,
+  upgradedSymbol,
+};

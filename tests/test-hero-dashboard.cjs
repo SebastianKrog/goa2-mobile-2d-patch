@@ -49,8 +49,8 @@ assert(doc.querySelector('.m2-summary-piles .m2-effect-active'));
 assert.equal(doc.querySelectorAll('.m2-summary-upgrades .m2-symbol').length, 6);
 assert(doc.querySelector('.m2-hero-history .m2-gold svg'));
 assert.equal(doc.querySelector('.m2-offboard-label').getAttribute('aria-label'), 'Off board');
-assert.equal(doc.querySelectorAll('.m2-history-slot').length, 1);
-assert.equal(doc.querySelector('.m2-history-slot').textContent, '');
+assert.equal(doc.querySelectorAll('.m2-history-slot').length, 0);
+assert.equal(doc.querySelectorAll('.m2-micro-history-slot button').length, 1);
 assert.equal(doc.querySelector('.m2-hero-portrait img').style.filter, 'grayscale(1)');
 assert.equal(doc.querySelector('.m2-hero-portrait').style.filter, '');
 assert(!doc.querySelector('#goa2-m2-summary').textContent.includes('(You)+2'));
@@ -59,14 +59,14 @@ assert.equal(doc.querySelectorAll('.m2-hero-effects').length, 0);
 assert.equal(row.querySelector('.m2-list-card>.m2-symbol .m2-upgraded-value').textContent, '3');
 assert.equal(card.initiative, 2);
 doc.querySelector('[data-mode="heroes"]').click();
-doc.querySelector('.m2-history-slot').click();
+doc.querySelector('.m2-micro-history-slot button').click();
 assert.equal(
   doc.querySelector('#goa2-m2-hero-display .m2-card-top .m2-upgraded-value').textContent,
   '3',
 );
 assert.equal(doc.querySelector('#goa2-m2-hero-display aside .m2-upgraded-value').textContent, '3');
 assert(doc.querySelector('#goa2-m2-hero-display .m2-text-card'));
-assert.equal(doc.querySelectorAll('.m2-history-slot img').length, 1);
+assert(!doc.querySelector('.m2-history-played,.m2-history-discard'), 'no hidden duplicate piles');
 view.board.entity_locations.hanu = { q: 0, r: 0, s: 0 };
 card.is_active = false;
 hero.current_turn_card = { id: 'hidden', is_facedown: true };
@@ -85,7 +85,7 @@ setTimeout(() => {
     assert(!doc.querySelector('.m2-hero-dashboard'));
     assert(doc.querySelector('._dots_x'));
     console.log(
-      'PASS: off-board transitions, active effects, history, runes, six upgrades, card inspection and cleanup',
+      'PASS: off-board transitions, active effects, history, six upgrades, card inspection and cleanup',
     );
   } finally {
     w.close();

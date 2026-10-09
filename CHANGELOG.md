@@ -1,6 +1,33 @@
 # Changelog
 
-Published releases, newest first. Each entry groups user-visible changes and fixes. Local previews 0.14.10–0.14.18 are included in 0.15.0; 0.15.1–0.15.11 are included in 0.16.0; 0.16.1–0.16.9 are included in 0.17.0; 0.17.1–0.17.2 are included in 0.18.0; 0.18.1–0.18.6 are included in 0.19.0; 0.19.3–0.19.5 are included in 0.20.0; 0.20.1–0.20.9 are included in 0.21.0; 0.21.1–0.21.4 are included in 0.22.0.
+Published releases, newest first. Each entry groups user-visible changes and fixes. Local previews 0.14.10–0.14.18 are included in 0.15.0; 0.15.1–0.15.11 are included in 0.16.0; 0.16.1–0.16.9 are included in 0.17.0; 0.17.1–0.17.2 are included in 0.18.0; 0.18.1–0.18.6 are included in 0.19.0; 0.19.3–0.19.5 are included in 0.20.0; 0.20.1–0.20.9 are included in 0.21.0; 0.21.1–0.21.4 are included in 0.22.0; 0.22.1–0.22.15 are included in 0.23.0.
+
+## 0.23.0
+
+### Changed
+
+- Add printed defense to Extended Micro cards. Put Tier 1 on its own row and right-align Tier 2/3 below it, with one heading row, a shared 12px horizontal gap and 4px spacing within each color.
+- Draw straight responsive branches into Tier 1's bottom edge and stop connectors at card edges, including faded alternatives.
+- Keep Gold, Silver and Ultimate together in a centered row. Use a compact three-cell Ultimate with a bold U; reclaim empty grant caps and adjust basic stat cells at narrow widths.
+- Highlight the card shown in the Card Viewer across Board, Heroes, Hand, Deck and Upgrades with a white gradient overlay. Sweep between the two diagonal directions over four seconds, slowing through the middle in both directions. Independently animate opacity stops between 15%/5% and 20%/0% over 4.2 seconds. Use CSS only, retain active-effect glows and respect reduced motion.
+
+### Fixed
+
+- Open other heroes' revealed current cards from Board, Heroes and Board focus when their deck is masked as a count. Preserve hidden-card protection and do not invent paired item grants.
+- Reserve intrinsic H/P/D width in portrait and landscape, preventing clipped dots and empty-pile dashes. Let the hero/player name area surrender space first.
+- Close Deck through its native handler on dismissal or navigation, preventing the modal from returning when adaptation deactivates.
+- Abort stalled decision-history requests and response reads after 15 seconds, preserving existing history and making Refresh available for retry.
+
+### Internal
+
+- Replace shared-scope fragments with explicit ES modules and checked dependencies. Split Board, React lookup, UI ownership and shared Deck/Upgrades presentation into their own modules.
+- Build a readable, dependency-free userscript with esbuild, with installation guards before module initialization. Keep Deck plans and native upgrade staging separate.
+- Discover live upgrade requests once per active refresh, keeping undo data fresh across the roster, Deck and focused hero.
+- Remove obsolete expansion state, interception, duplicate history controls and unused styles.
+
+### Validation
+
+- All 40 regression test files pass. Explicit module dependencies, CSS/test formatting and generated-file checks pass.
 
 ## 0.22.0
 

@@ -1,11 +1,64 @@
+import { clearCardHighlights, highlightViewedCard } from './card-highlight.js';
+import { renderSummary } from './board.js';
+import { clearBoardRotation, updateBoardRotation } from './camera.js';
+import { updateCardRow, updateOwnColors } from './card-rows.js';
+import { cardColors, cardUpgrades, syncHandActions, textCard } from './cards.js';
+import { updateChoiceLaunchers, updatePlanningActions } from './controls.js';
+import { deckTreeBuilds } from './deck-tree.js';
+import { basicCanvases, deckPaint, deckUpdate, renderedCard, retryBasicArtwork } from './deck.js';
+import { currentUpgradeRequest, remainingUpgrades } from './game-input.js';
+import { updateMobileHeader } from './header.js';
+import {
+  cardIsActive,
+  hasLocalSelection,
+  heroDisplayName,
+  heroTurnCard,
+  resolutionEntries,
+  updateHeroCardDisplay,
+  updateHeroDashboard,
+  updateTurnPortrait,
+  updateUpgradeCards,
+} from './heroes.js';
+import { eventHistoryTimer, flushEventHistory, updateEventHistory } from './history.js';
+import { cancelDecisionHistory } from './log.js';
+import { syncDeckMount, syncNavigation } from './navigation.js';
+import { committedFiberCache, componentProp } from './react.js';
+import {
+  ac,
+  c,
+  changedAttributes,
+  media,
+  q,
+  root,
+  uiState,
+  style,
+  tag,
+  tagged,
+} from './runtime.js';
+import { updateSettings } from './settings.js';
+import {
+  addExtra,
+  close,
+  detailsPanel,
+  extras,
+  generatedRoots,
+  heroPanel,
+  logPanel,
+  nav,
+  on,
+  settingsPanel,
+  summary,
+} from './ui.js';
+import { clearUpgradeTree, updateUpgradeTree } from './upgrade-tree.js';
+
 // Reconcile with the live DOM in one animation-frame batch. Reuse generated nodes where possible.
 // On desktop or outside 2D, restore the native layout rather than continuing to adapt it.
 // 10. DOM reconciliation and teardown
 // Order matters: discover/tag native containers, adapt shared components, update
 // hero order and summaries, then reconcile card details and navigation.
 function refresh() {
-  frame = 0;
-  if (dead) return;
+  uiState.frame = 0;
+  if (uiState.dead) return;
   committedFiberCache.clear();
   const sidebar = q(c('sidebar')),
     header = q('header' + c('bar')),
@@ -14,8 +67,8 @@ function refresh() {
     media.matches && !!sidebar && new URLSearchParams(location.search).get('3d') === '0';
   if (root.hasAttribute('data-m2-active') !== active)
     root.toggleAttribute('data-m2-active', active);
-  root.dataset.m2Mode = mode;
-  root.dataset.m2Panel = panel;
+  root.dataset.m2Mode = uiState.mode;
+  root.dataset.m2Panel = uiState.panel;
   updateEventHistory();
   if (!active) {
     clearUpgradeTree();
@@ -26,7 +79,7 @@ function refresh() {
       }
     changedAttributes.clear();
     clearBoardRotation();
-    deckUpdate();
+    deckUpdate(null);
     for (const box of document.querySelectorAll('[data-m2="hero"]'))
       box.style.removeProperty('order');
     return;
@@ -114,12 +167,13 @@ function refresh() {
     tag(dialog, 'fix-dialog');
     tag(backdrop, 'fix-backdrop');
   }
+  // Share one live upgrade request across Deck, hero dashboards and Board focus.
+  // Re-read each refresh so acknowledgements and undos cannot leave stale data.
+  const upgradeRequest = currentUpgradeRequest();
   const nativeDeck = q(c('modal') + ':has(' + c('cardGrid') + ')');
   tag(nativeDeck, 'deck');
-  // Native X, backdrop, and Escape can unmount Deck independently of our toggle.
-  if (deckOpen && nativeDeck) deckMounted = true;
-  else if (deckOpen && deckMounted) setDeckOpen(false);
-  deckUpdate();
+  syncDeckMount(nativeDeck);
+  deckUpdate(upgradeRequest);
   deckPaint();
   tag(q('[aria-label="Starting position"]'), 'setup');
   tag(q(c('gameToolsRow')), 'tools');
@@ -128,7 +182,6 @@ function refresh() {
   updateUpgradeCards();
   updateUpgradeTree();
   updateChoiceLaunchers();
-  const upgradeRequest = currentUpgradeRequest();
   const queue = resolutionEntries();
   const resolving = /^RESOLUTION$/i.test(
     q(c('phase'), header || document)?.textContent.trim() || '',
@@ -140,7 +193,7 @@ function refresh() {
     updateOwnColors(sidebar);
     const publicView = componentProp(sidebar, 'view');
     const heroes = Array.from(sidebar.querySelectorAll('[data-m2="hero"]')).map((box) => {
-      updateHeroDashboard(box, publicView);
+      updateHeroDashboard(box, publicView, null, upgradeRequest);
       const name = q(c('name'), box),
         details = q(c('details'), box),
         hero = componentProp(box, 'hero');
@@ -212,7 +265,7 @@ function refresh() {
     const sh = heroes.length * 32 + 12 + 'px';
     if (root.style.getPropertyValue('--m2-summary-h') !== sh)
       root.style.setProperty('--m2-summary-h', sh);
-    renderSummary(heroes);
+    renderSummary(heroes, upgradeRequest);
   }
   const commit =
     sidebar &&
@@ -260,11 +313,12 @@ function refresh() {
   // Include upgrades in the render key so item changes refresh visible values.
   // A dismissed card stays closed until a different selection or tooltip replaces it.
   const detailKey =
-    card && JSON.stringify(card) !== hiddenCardKey && (!tip || tip !== dismissedTip)
+    card && JSON.stringify(card) !== uiState.hiddenCardKey && (!tip || tip !== uiState.dismissedTip)
       ? JSON.stringify([card, cardUpgrades(card)])
       : '';
   // A read-only hero inspection takes precedence over a retained Hand selection.
-  const visibleDetailKey = selectedHeroCard ? '' : detailKey;
+  const visibleDetailKey = uiState.selectedHeroCard ? '' : detailKey;
+  highlightViewedCard('hand', visibleDetailKey && uiState.mode === 'hand' ? card : null);
   if (detailsPanel.dataset.key !== visibleDetailKey) {
     detailsPanel.dataset.key = visibleDetailKey;
     detailsPanel.replaceChildren();
@@ -284,9 +338,9 @@ function refresh() {
       if (foot) syncHandActions(foot, card, tip, items);
     }
   }
-  if (tip !== dismissedTip && tip?.hasAttribute('data-m2-dismissed'))
+  if (tip !== uiState.dismissedTip && tip?.hasAttribute('data-m2-dismissed'))
     tip.removeAttribute('data-m2-dismissed');
-  close.hidden = !active || !tip || tip === dismissedTip;
+  close.hidden = !active || !tip || tip === uiState.dismissedTip;
   close.style.display = close.hidden ? 'none' : '';
   updatePlanningActions();
   syncNavigation();
@@ -299,7 +353,7 @@ function refresh() {
 }
 // Many mutations can occur in one React update; collapse them into one refresh.
 function schedule() {
-  if (!frame) frame = requestAnimationFrame(refresh);
+  if (!uiState.frame) uiState.frame = requestAnimationFrame(refresh);
 }
 function isGeneratedNode(node) {
   for (let element = node.nodeType === 1 ? node : node.parentElement;
@@ -339,10 +393,10 @@ on(media, 'change', schedule);
 
 // Public teardown for console installs and upgrades: release observers, timers, and DOM changes.
 window.GOA2Mobile2D = {
-  version: '0.22.0',
+  version: '0.23.0',
   destroy() {
     flushEventHistory();
-    dead = true;
+    uiState.dead = true;
     clearUpgradeTree();
     for (const [el, attrs] of changedAttributes)
       for (const [key, value] of attrs) {
@@ -353,22 +407,22 @@ window.GOA2Mobile2D = {
     clearBoardRotation();
     ac.abort();
     observer.disconnect();
-    cancelAnimationFrame(frame);
+    cancelAnimationFrame(uiState.frame);
     basicCanvases.clear();
     deckTreeBuilds.clear();
-    deckState?.watchers?.forEach((stop) => stop());
-    deckState?.host.remove();
-    deckState?.zoom.remove();
-    deckState?.modal.removeAttribute('data-m2-deck-ready');
+    uiState.deckState?.watchers?.forEach((stop) => stop());
+    uiState.deckState?.host.remove();
+    uiState.deckState?.zoom.remove();
+    uiState.deckState?.modal.removeAttribute('data-m2-deck-ready');
     for (const e of document.querySelectorAll('.m2-current-hero,[data-m2="hero"]')) {
       e.classList.remove(
         'm2-current-hero',
         'm2-done-hero',
         'm2-pending-hero',
-        'm2-hero-expanded',
       );
       e.style.removeProperty('order');
     }
+    clearCardHighlights();
     for (const e of document.querySelectorAll('.m2-adapted-row')) {
       e.classList.remove('m2-adapted-row');
     }
@@ -419,3 +473,5 @@ window.GOA2Mobile2D = {
   },
 };
 refresh();
+
+export { isGeneratedNode, refresh, schedule };

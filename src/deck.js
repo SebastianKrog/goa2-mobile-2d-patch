@@ -1,19 +1,31 @@
+import { highlightViewedCard, trackCardSource } from './card-highlight.js';
+import { updateCardRow } from './card-rows.js';
+import { cardGrantedItem, textCard } from './cards.js';
+import { deckTreeBuild, rememberDeckTreeChoices, renderDeckTree } from './deck-tree.js';
+import { currentUpgradeRequest } from './game-input.js';
+import { schedule } from './main.js';
+import { m2Painter } from './painter.js';
+import { componentProp } from './react.js';
+import { c, deckPreferencesKey, q, root, uiState } from './runtime.js';
+import { deckCardIdentity, deckTreePool } from './tree-model.js';
+import { addExtra, on } from './ui.js';
+
 // 6. Deck browser and canvas synchronization
 // Read view/sort before rendering so opening Deck does not flash the wrong layout.
 function loadDeckPreferences() {
   try {
     const saved = JSON.parse(localStorage.getItem(deckPreferencesKey) || '{}');
-    if (['tree', 'compact', 'grid'].includes(saved.view)) deckView = saved.view;
-    else if (['list', 'large'].includes(saved.view)) deckView = 'compact';
-    if (['tier', 'color'].includes(saved.sort)) deckSort = saved.sort;
+    if (['tree', 'compact', 'grid'].includes(saved.view)) uiState.deckView = saved.view;
+    else if (['list', 'large'].includes(saved.view)) uiState.deckView = 'compact';
+    if (['tier', 'color'].includes(saved.sort)) uiState.deckSort = saved.sort;
   } catch {}
 }
 // Persist only presentation choices; this does not change cards or game state.
 function selectDeckOption(value) {
-  if (value === 'sort') deckSort = deckSort === 'tier' ? 'color' : 'tier';
-  else deckView = value;
+  if (value === 'sort') uiState.deckSort = uiState.deckSort === 'tier' ? 'color' : 'tier';
+  else uiState.deckView = value;
   try {
-    localStorage.setItem(deckPreferencesKey, JSON.stringify({ view: deckView, sort: deckSort }));
+    localStorage.setItem(deckPreferencesKey, JSON.stringify({ view: uiState.deckView, sort: uiState.deckSort }));
   } catch {}
   deckUpdate();
 }
@@ -46,7 +58,7 @@ function paintBasicArtwork(canvas, card, hero, cacheKey) {
       const slug = hero.id.toLowerCase().replace(/^hero_/, '');
       const background = card.image_id
         ? await m2Painter.loadCardBackground(slug, card.image_id) : undefined;
-      if (dead || basicCanvases.get(cacheKey) !== canvas) return;
+      if (uiState.dead || basicCanvases.get(cacheKey) !== canvas) return;
       // Paint offscreen first. A missing sprite or other drawing error must
       // leave the readable fallback on the displayed source canvas intact.
       const staging = document.createElement('canvas');
@@ -58,14 +70,14 @@ function paintBasicArtwork(canvas, card, hero, cacheKey) {
       target.drawImage(staging, 0, 0);
       state.painted = !card.image_id || !!background;
     } catch (error) {
-      if (!dead) console.warn('GoA mobile: basic card artwork unavailable', error);
+      if (!uiState.dead) console.warn('GoA mobile: basic card artwork unavailable', error);
     } finally {
       state.pending = false;
       state.retryAt = Date.now() + 5000;
       if (state.retryRequested) {
         state.retryRequested = false;
         state.retryAt = 0;
-        if (!dead && !state.painted) schedule();
+        if (!uiState.dead && !state.painted) schedule();
       }
     }
   })();
@@ -107,14 +119,15 @@ function deckBasics(modal) {
 // Reconcile the native Deck modal with the custom browser. If source cards are
 // not ready, retain the native fallback instead of displaying an empty replacement.
 function clearDeckState() {
-  if (!deckState) return;
-  deckState.watchers?.forEach(stop => stop());
-  deckState.host.remove();
-  deckState.zoom.remove();
-  deckState.modal.removeAttribute('data-m2-deck-ready');
-  deckState = null;
+  highlightViewedCard('deck');
+  if (!uiState.deckState) return;
+  uiState.deckState.watchers?.forEach(stop => stop());
+  uiState.deckState.host.remove();
+  uiState.deckState.zoom.remove();
+  uiState.deckState.modal.removeAttribute('data-m2-deck-ready');
+  uiState.deckState = null;
 }
-function deckUpdate() {
+function deckUpdate(upgradeRequest) {
   const modal = q('[data-m2="deck"]');
   if (!modal || !root.hasAttribute('data-m2-active')) {
     clearDeckState();
@@ -131,7 +144,7 @@ function deckUpdate() {
     clearDeckState();
     return;
   } // Retain native deck if framework changes.
-  if (!deckState || deckState.modal !== modal) {
+  if (!uiState.deckState || uiState.deckState.modal !== modal) {
     clearDeckState();
     const host = document.createElement('section');
     host.className = 'm2-deck-browser';
@@ -142,18 +155,21 @@ function deckUpdate() {
     addExtra(host);
     addExtra(zoom);
     modal.setAttribute('data-m2-deck-ready', '');
-    deckState = { modal, host, zoom, key: '', copies: [], dirty: true, watchers: [] };
+    uiState.deckState = { modal, host, zoom, key: '', copies: [], dirty: true, watchers: [] };
   }
-  const state = deckState;
+  const state = uiState.deckState;
   const hero = componentProp(modal, 'hero');
   const ownerKey = JSON.stringify([location.pathname, hero?.id || hero?.name ||
     entries.map(e => deckCardIdentity(e.card))]);
   if (state.ownerKey !== ownerKey) state.selectedCard = null;
   state.ownerKey = ownerKey;
-  rememberDeckTreeChoices(hero, entries.map(e => e.card));
-  const build = deckView === 'tree' ? deckTreeBuild(hero, entries.map(e => e.card)) : null;
-  const key = JSON.stringify([deckView, deckSort, entries.map((e) => e.card),
-    ownerKey, deckView === 'tree' ? [hero?.level, hero?.items, [...build.chosen],
+  // Footer view/sort changes may update Deck outside refresh(). Read once for
+  // those calls; an explicit null from refresh means no upgrade request exists.
+  if (upgradeRequest === undefined) upgradeRequest = currentUpgradeRequest();
+  rememberDeckTreeChoices(hero, entries.map(e => e.card), upgradeRequest);
+  const build = uiState.deckView === 'tree' ? deckTreeBuild(hero, entries.map(e => e.card)) : null;
+  const key = JSON.stringify([uiState.deckView, uiState.deckSort, entries.map((e) => e.card),
+    ownerKey, uiState.deckView === 'tree' ? [hero?.level, hero?.items, [...build.chosen],
       deckTreePool(hero).map(deckCardIdentity)] : null]);
   if (state.key === key && state.sources?.every((v, i) => v === sources[i])) return;
   state.watchers?.forEach((stop) => stop());
@@ -164,29 +180,30 @@ function deckUpdate() {
   state.dirty = true;
   for (const source of entries.map((e) => e.canvas)) watchDeckCanvas(state, source);
   state.zoom.hidden = true;
+  highlightViewedCard('deck');
   state.zoom.replaceChildren();
   state.host.replaceChildren();
-  state.host.dataset.view = deckView;
+  state.host.dataset.view = uiState.deckView;
   const controls = document.createElement('div');
   controls.className = 'm2-deck-controls';
   for (const [value, label] of [
     ['tree', 'Tree'],
     ['compact', 'List'],
     ['grid', 'Grid'],
-    ['sort', deckSort === 'tier' ? 'By tier' : 'By color'],
+    ['sort', uiState.deckSort === 'tier' ? 'By tier' : 'By color'],
   ]) {
     const b = document.createElement('button');
     b.type = 'button';
     b.textContent = label;
     b.setAttribute(
       'aria-pressed',
-      String(value === 'sort' ? deckSort === 'color' : deckView === value),
+      String(value === 'sort' ? uiState.deckSort === 'color' : uiState.deckView === value),
     );
     if (value === 'sort') {
       b.className = 'm2-sort-switch';
       b.setAttribute('role', 'switch');
       b.setAttribute('aria-label', 'Sort by color instead of tier');
-      b.setAttribute('aria-checked', String(deckSort === 'color'));
+      b.setAttribute('aria-checked', String(uiState.deckSort === 'color'));
       b.textContent = '';
       const labels = document.createElement('span');
       labels.innerHTML = '<span>Tier</span><span>Color</span>';
@@ -198,7 +215,7 @@ function deckUpdate() {
   }
   state.host.append(controls);
   // List (stored as compact for compatibility) and Tree share the Large Deck viewer.
-  const hasPreview = deckView === 'compact' || deckView === 'tree';
+  const hasPreview = uiState.deckView === 'compact' || uiState.deckView === 'tree';
   let preview;
   if (hasPreview) {
     preview = document.createElement('section');
@@ -208,6 +225,7 @@ function deckUpdate() {
   }
   function selectPreview(card) {
     state.selectedCard = card;
+    highlightViewedCard('deck', card, hero?.id || '');
     preview.replaceChildren();
     if (card) {
       const display = textCard(card, 'deck', null, hero?.id,
@@ -232,7 +250,7 @@ function deckUpdate() {
   const listHost = document.createElement('div');
   listHost.className = 'm2-deck-row-list';
   state.host.append(listHost);
-  if (deckView === 'tree') {
+  if (uiState.deckView === 'tree') {
     renderDeckTree(listHost, entries, hero, selectPreview);
     const selected = entries.find(e => state.selectedCard &&
       deckCardIdentity(e.card) === deckCardIdentity(state.selectedCard));
@@ -248,7 +266,7 @@ function deckUpdate() {
     return r < 0 ? 99 : r;
   };
   entries.sort((a, b) =>
-    deckSort === 'tier'
+    uiState.deckSort === 'tier'
       ? tierRank(a.card.tier) - tierRank(b.card.tier) ||
         colorRank(a.card.color) - colorRank(b.card.color)
       : colorRank(a.card.color) - colorRank(b.card.color) ||
@@ -257,7 +275,7 @@ function deckUpdate() {
   const groups = new Map();
   for (const entry of entries) {
     const title =
-      deckSort === 'tier'
+      uiState.deckSort === 'tier'
         ? tierRank(entry.card.tier) === 4
           ? 'Ultimate & basics'
           : 'Tier ' + tierRank(entry.card.tier)
@@ -287,31 +305,34 @@ function deckUpdate() {
     close.textContent = 'Close ×';
     on(close, 'click', () => {
       state.zoom.hidden = true;
+      highlightViewedCard('deck');
     });
     const canvas = image(entry, true);
     state.zoom.append(close, canvas);
     state.zoom.hidden = false;
+    highlightViewedCard('deck', entry.card, hero?.id || '');
     deckPaint();
   }
   for (const [title, cards] of groups) {
     const heading = document.createElement('h3');
     heading.textContent = title;
     const group = document.createElement('div');
-    group.className = 'm2-deck-cards m2-deck-' + deckView;
+    group.className = 'm2-deck-cards m2-deck-' + uiState.deckView;
     listHost.append(heading, group);
     for (const entry of cards) {
       const card = entry.card,
         b = document.createElement('button');
       b.type = 'button';
       b.className = 'm2-deck-card';
-      b.setAttribute('aria-label', (deckView === 'compact' ? 'View ' : 'Enlarge ') + card.name);
-      if (deckView === 'compact') {
+      trackCardSource(b, card, 'deck', hero?.id || '');
+      b.setAttribute('aria-label', (uiState.deckView === 'compact' ? 'View ' : 'Enlarge ') + card.name);
+      if (uiState.deckView === 'compact') {
         b.dataset.cardKey = JSON.stringify(card);
         b.setAttribute('aria-pressed', 'false');
         on(b, 'click', () => selectPreview(card));
         updateCardRow(b, card, {});
       } else b.append(image(entry));
-      if (deckView !== 'compact') on(b, 'click', () => enlarge(entry));
+      if (uiState.deckView !== 'compact') on(b, 'click', () => enlarge(entry));
       group.append(b);
     }
   }
@@ -367,8 +388,8 @@ function watchDeckCanvas(state, canvas) {
 }
 // Copy pixels only for dirty sources while Deck is open; idle frames do no work.
 function deckPaint() {
-  if (!deckState || !deckOpen || !deckState.dirty) return;
-  const state = deckState;
+  if (!uiState.deckState || !uiState.deckOpen || !uiState.deckState.dirty) return;
+  const state = uiState.deckState;
   state.dirty = false;
   state.copies = state.copies.filter(([, dst]) => dst.isConnected);
   for (const [src, dst] of state.copies) {
@@ -377,3 +398,5 @@ function deckPaint() {
     } catch {}
   }
 }
+
+export { basicCanvases, deckPaint, deckUpdate, renderedCard, retryBasicArtwork };

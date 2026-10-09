@@ -1,8 +1,18 @@
+import { highlightViewedCard, trackCardSource } from './card-highlight.js';
+import { cardGrantedItem, textCard } from './cards.js';
+import { deckTreeBuild, saveDeckTreeBuild } from './deck-tree.js';
+import { componentProp } from './react.js';
+import { c, managedAttribute, q, root, uiState } from './runtime.js';
+import { deckTreeGroup, deckTreePool, deckTreeTier } from './tree-model.js';
+import { appendTreePath, createTreeCard, createTreeView, deckTreeItemTotals } from './tree-view.js';
+import { addExtra, extras, on } from './ui.js';
+
 // Stage a complete level-up batch without changing the game. On Commit, use the
 // native picker callback once per acknowledged request; never send our own API input.
 let upgradeTreeState = null;
 const upgradeColors = ['RED', 'BLUE', 'GREEN'];
 function clearUpgradeTree() {
+  highlightViewedCard('upgrade');
   const state = upgradeTreeState;
   if (!state) return;
   clearTimeout(state.timer);
@@ -86,7 +96,7 @@ function pauseUpgradeCommit(state, message, uncertain = false) {
   renderUpgradeTreeState(state);
 }
 function sendNextUpgrade(state) {
-  if (state !== upgradeTreeState || !state.busy || state.pending || dead ||
+  if (state !== upgradeTreeState || !state.busy || state.pending || uiState.dead ||
       !root.hasAttribute('data-m2-active') || document.visibilityState === 'hidden') return;
   const source = upgradeSource();
   if (!source || source.owner !== state.source.owner || source.signature !== state.source.signature ||
@@ -147,6 +157,7 @@ function selectUpgradeTreeCard(state, card) {
 function showUpgradeDetails(state) {
   state.details.replaceChildren();
   const card = state.catalog.get(state.detailCard);
+  highlightViewedCard('upgrade', card, state.source.heroId);
   if (!card) return;
   const display = textCard(card, 'deck', null, state.source.heroId,
     cardGrantedItem(card, [...state.catalog.values()])), close = document.createElement('button');
@@ -172,49 +183,21 @@ function buildUpgradeTree(state) {
   state.content = document.createElement('div');
   state.content.className = 'm2-upgrade-content';
   state.content.append(state.details, scroll);
-  const tree = document.createElement('div');
-  tree.className = 'm2-deck-tree';
-  tree.setAttribute('aria-label', 'Level-up upgrade paths');
-  const headings = document.createElement('div');
-  headings.className = 'm2-tree-headings';
-  headings.innerHTML = '<b>Tier 1</b><b data-upgrade-tier="2"></b><b data-upgrade-tier="3"></b>';
-  tree.append(headings);
+  const { tree, headings } = createTreeView('Level-up upgrade paths');
+  headings.children[1].dataset.upgradeTier = '2';
+  headings.children[2].dataset.upgradeTier = '3';
   scroll.append(tree);
   state.buttons = [];
+  const catalog = [...state.catalog.values()];
   for (const color of upgradeColors) {
-    const section = document.createElement('section'), path = document.createElement('div');
-    section.className = 'm2-tree-color';
-    section.setAttribute('aria-label', color.toLowerCase() + ' upgrade path');
-    section.style.setProperty('--path-color', cardColors[color]);
-    path.className = 'm2-tree-path';
-    path.style.gridTemplateRows = 'repeat(2, 28px)';
-    for (const tier of [1, 2, 3]) {
-      const cards = [...state.catalog.values()].filter(card => card.color === color && deckTreeTier(card) === tier)
-        .sort(compareDeckTreeCards);
-      cards.forEach((card, index) => {
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.className = 'm2-deck-card m2-tree-card';
-        button.dataset.cardId = card.id;
-        button.dataset.tier = tier;
-        button.dataset.variant = index ? 'alternate' : 'standard';
-        button.style.gridColumn = tier;
-        button.style.gridRow = tier === 1 ? '1 / span 2' : String(index + 1);
-        button.append(extendedMicroCard(card, cardGrantedItem(card, [...state.catalog.values()])));
-        on(button, 'click', () => selectUpgradeTreeCard(state, card));
-        state.buttons.push({ card, button });
-        path.append(button);
-      });
-    }
-    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg'),
-      lines = document.createElementNS(svg.namespaceURI, 'path');
-    svg.setAttribute('viewBox', '0 0 358 64');
-    svg.setAttribute('aria-hidden', 'true');
-    lines.setAttribute('d', 'M114 32H118V14H122 M118 32V50H122 M236 14H244 M236 50H244');
-    svg.append(lines);
-    path.prepend(svg);
-    section.append(path);
-    tree.append(section);
+    const tiers = new Map([1, 2, 3].map(tier => [tier,
+      catalog.filter(card => card.color === color && deckTreeTier(card) === tier)]));
+    appendTreePath(tree, color, tiers, card => {
+      const button = createTreeCard(card, catalog, () => selectUpgradeTreeCard(state, card));
+      trackCardSource(button, card, 'upgrade', state.source.heroId);
+      state.buttons.push({ card, button });
+      return button;
+    });
   }
   state.totals = document.createElement('div');
   state.totals.className = 'm2-tree-build-stats m2-upgrade-totals';
@@ -263,7 +246,8 @@ function renderUpgradeTreeState(state) {
   for (const tier of [2, 3]) {
     const required = tier === 2 ? source.required2 : source.required3,
       selected = [...state.selected.keys()].filter(key => key.endsWith(':' + tier)).length;
-    q('[data-upgrade-tier="' + tier + '"]', state.host).textContent = 'Tier ' + tier + ' · ' + selected + '/' + required;
+    for (const label of state.host.querySelectorAll('[data-upgrade-tier="' + tier + '"]'))
+      label.textContent = 'Tier ' + tier + ' · ' + selected + '/' + required;
   }
   for (const { card, button } of state.buttons) {
     const group = deckTreeGroup(card), picked = state.selected.get(group), planned = state.preview.get(group),
@@ -305,7 +289,7 @@ function renderUpgradeTreeState(state) {
   commit.textContent = state.busy ? 'Committing…' : 'Commit ' + source.player.remaining + (source.player.remaining === 1 ? ' upgrade' : ' upgrades');
 }
 function updateUpgradeTree() {
-  if (!root.hasAttribute('data-m2-active') || dead) { clearUpgradeTree(); return; }
+  if (!root.hasAttribute('data-m2-active') || uiState.dead) { clearUpgradeTree(); return; }
   const source = upgradeSource();
   if (!source) { clearUpgradeTree(); return; }
   if (upgradeTreeState?.source.owner !== source.owner) clearUpgradeTree();
@@ -360,3 +344,5 @@ on(document, 'visibilitychange', () => {
   if (document.visibilityState === 'hidden' && upgradeTreeState?.busy)
     pauseUpgradeCommit(upgradeTreeState, 'Commit paused. Review the remaining upgrades when you return.', !!upgradeTreeState.pending);
 });
+
+export { clearUpgradeTree, updateUpgradeTree };

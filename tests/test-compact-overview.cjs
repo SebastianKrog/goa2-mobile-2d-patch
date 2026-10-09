@@ -96,6 +96,23 @@ try {
     ['H', 'P', 'D'],
   );
   assert(row.querySelector('.m2-summary-piles .m2-effect-active'));
+  const piles = row.querySelector('.m2-summary-piles');
+  assert.equal(piles.lastElementChild.textContent, 'D–');
+  assert.equal(w.getComputedStyle(piles).minWidth, 'max-content');
+  assert.equal(w.getComputedStyle(piles).overflow, 'visible');
+  assert.equal(w.getComputedStyle(piles).whiteSpace, 'nowrap');
+  for (const group of piles.children)
+    assert.equal(
+      w.getComputedStyle(group).flexShrink,
+      '0',
+      'portrait pile labels and dashes cannot shrink',
+    );
+  assert(
+    w
+      .getComputedStyle(row)
+      .gridTemplateColumns.includes('minmax(var(--m2-piles-width, 48px), max-content)'),
+  );
+
   assert.equal(row.querySelector('.m2-gold-value').textContent, '3');
   const summary = d.querySelector('#goa2-m2-summary');
   // Verify the whole outer box fits its column, not just the CSS content width.
@@ -117,8 +134,8 @@ try {
   micro.parentElement.parentElement.style.removeProperty('width');
   assert.equal(
     summary.style.getPropertyValue('--m2-piles-width'),
-    '33px',
-    'sparse piles reclaim spare width',
+    '40px',
+    'sparse piles reserve label/gap space while reclaiming spare width',
   );
   const nameStyle = w.getComputedStyle(row.querySelector('.m2-summary-identity strong'));
   assert.equal(nameStyle.maxWidth, 'none');
@@ -134,6 +151,10 @@ try {
       .compareDocumentPosition(row.querySelector('.m2-mini-current')) &
       w.Node.DOCUMENT_POSITION_FOLLOWING,
   );
+  renderSummary([{ ...hero, dots: [], cardPiles: [], currentCard: null }]);
+  assert.equal(d.querySelector('.m2-summary-piles').textContent, 'H–P–D–');
+  for (const group of d.querySelector('.m2-summary-piles').children)
+    assert.equal(w.getComputedStyle(group).flexShrink, '0');
   renderSummary([{ ...hero, currentCard: { ...card, is_facedown: true } }]);
   const facedown = d.querySelector('.m2-micro-board');
   assert.equal(

@@ -93,7 +93,7 @@ try {
   assert.equal(rowStyle.display, 'grid');
   assert.equal(
     rowStyle.gridTemplateColumns.replace(/\s+/g, ' ').replace(/\( /g, '(').replace(/ \)/g, ')'),
-    '23px minmax(var(--m2-name-min, 70px), 1fr) 45px var(--m2-piles-width, 48px) 70px 62px',
+    '23px minmax(var(--m2-name-min, 70px), 1fr) 45px minmax(var(--m2-piles-width, 48px), max-content) 70px 62px',
   );
   assert.equal(w.getComputedStyle(d.querySelector('.m2-summary-identity')).display, 'flex');
   assert.equal(w.getComputedStyle(d.querySelector('.m2-micro-board')).width, '70px');
@@ -103,11 +103,11 @@ try {
   assert.equal(w.getComputedStyle(microSlots).borderTopWidth, '1px', 'one divider above history');
   assert.equal(w.getComputedStyle(microSlots).marginTop, '4px');
   assert.equal(w.getComputedStyle(microSlots).paddingTop, '2px');
-  for (const hidden of box.querySelectorAll('.m2-history-played,.m2-history-discard')) {
-    assert(hidden.hidden, 'retain but hide duplicate dot groups');
-    assert.equal(w.getComputedStyle(hidden).display, 'none');
-  }
-  assert.equal(box.querySelectorAll('.m2-history-pile[hidden]').length, 2);
+  assert.equal(
+    box.querySelectorAll('.m2-history-played,.m2-history-discard,.m2-history-slot').length,
+    0,
+    'duplicate hidden history controls are removed',
+  );
   assert.equal(
     box.querySelectorAll('.m2-history-pile:not([hidden])').length,
     1,
@@ -223,7 +223,6 @@ try {
   );
   assert.equal(w.getComputedStyle(slots[4]).height, '24px');
   assert.equal(w.getComputedStyle(slots[4]).borderTopWidth, '0px');
-  assert.equal(w.getComputedStyle(box.querySelector('.m2-history-slot')).marginLeft, '0px');
   assert.equal(w.getComputedStyle(box.querySelector('.m2-history-pile')).gap, '3px');
   assert.equal(slots[4].querySelector('.m2-upgraded-value').textContent, '3');
   assert(!box.querySelector('.m2-hero-effects'), 'effects are shown on cards, not separate badges');

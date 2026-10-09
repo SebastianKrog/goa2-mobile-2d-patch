@@ -1,68 +1,13 @@
-// 3. Navigation and generated containers
-// These roots sit outside React ownership; native elements are tagged rather than replaced.
-const nav = document.createElement('nav');
-nav.id = 'goa2-m2-nav';
-nav.setAttribute('aria-label', 'Mobile 2D controls');
-for (const [key, label] of [
-  ['heroes', 'Heroes'],
-  ['hand', 'Hand'],
-  ['deck', 'Deck'],
-  ['setup', 'Setup'],
-  ['log', 'Log'],
-  ['tools', 'Settings'],
-]) {
-  const b = document.createElement('button');
-  b.type = 'button';
-  b.dataset.mode = key;
-  b.textContent = label;
-  if (key === 'tools') b.setAttribute('aria-label', 'Settings');
-  b.setAttribute('aria-pressed', 'false');
-  nav.append(b);
-}
-const close = document.createElement('button');
-close.id = 'goa2-m2-close';
-close.type = 'button';
-close.textContent = 'Close details ×';
-const summary = document.createElement('section');
-summary.id = 'goa2-m2-summary';
-summary.setAttribute('aria-label', 'Hero summaries');
-document.body.append(nav, close, summary);
-// Hand details and inspected hero cards use different containers, so switching
-// views does not confuse a playable selection with a read-only inspection.
-const detailsPanel = document.createElement('section');
-detailsPanel.id = 'goa2-m2-details';
-const extras = new Set();
-const heroPanel = document.createElement('section');
-heroPanel.id = 'goa2-m2-hero-display';
-const settingsPanel = document.createElement('section');
-settingsPanel.id = 'goa2-m2-settings';
-settingsPanel.className = 'm2-utility-panel';
-settingsPanel.setAttribute('aria-label', 'Settings');
-const logPanel = document.createElement('section');
-logPanel.id = 'goa2-m2-log';
-logPanel.className = 'm2-utility-panel';
-logPanel.setAttribute('aria-label', 'Match log');
-document.body.append(settingsPanel, logPanel);
-// Keep weak ownership markers after removal, so queued mutation records can
-// distinguish generated UI from native changes without retaining detached DOM.
-const generatedRoots = new WeakSet([nav, close, summary, detailsPanel, heroPanel, settingsPanel, logPanel]);
-function addExtra(element) {
-  extras.add(element);
-  generatedRoots.add(element);
-}
+import { retryBasicArtwork } from './deck.js';
+import { refresh, schedule } from './main.js';
+import { c, q, root, uiState } from './runtime.js';
+import { clearHeroCard, close, nav, on } from './ui.js';
 
-// Global listeners share teardown; detached generated nodes retain no global listener registry.
-const on = (e, n, f, options = {}) =>
-  e.addEventListener(
-    n,
-    f,
-    e instanceof Node && e !== document ? options : { ...options, signal: ac.signal },
-  );
 // Hide the current native tooltip without changing the website’s selected card.
 function dismiss() {
   const tip = q('[data-m2="tip"]');
   if (tip) {
-    dismissedTip = tip;
+    uiState.dismissedTip = tip;
     tip.setAttribute('data-m2-dismissed', '');
   }
   refresh();
@@ -70,21 +15,29 @@ function dismiss() {
 on(close, 'click', dismiss);
 let deckMounted = false;
 function setDeckOpen(open) {
-  deckOpen = open;
+  uiState.deckOpen = open;
   deckMounted = false;
   if (open) retryBasicArtwork();
   root.toggleAttribute('data-m2-deck-open', open);
+}
+// Native X, backdrop, and Escape can unmount Deck independently of our toggle.
+function syncDeckMount(nativeDeck) {
+  if (uiState.deckOpen && nativeDeck) deckMounted = true;
+  else if (uiState.deckOpen && deckMounted) setDeckOpen(false);
 }
 // Board is the resting state. Every footer control toggles a single overlay/pane;
 // switching controls replaces the active pane instead of retaining a hidden tab.
 function navigate(key) {
   if (!key) return;
-  const selected = deckOpen ? 'deck' : panel || mode;
+  const selected = uiState.deckOpen ? 'deck' : uiState.panel || uiState.mode;
   const closing = selected === key;
+  // Close through React's own handler so a dismissed Deck cannot resurface
+  // when mobile styling is removed. Reopening uses the native Deck button.
+  if (uiState.deckOpen) q('[data-m2="deck"] ' + c('closeBtn'))?.click();
   setDeckOpen(false);
-  panel = '';
-  focusedHeroId = null;
-  mode = 'board';
+  uiState.panel = '';
+  uiState.focusedHeroId = null;
+  uiState.mode = 'board';
   clearHeroCard();
   dismiss();
   if (!closing) {
@@ -92,8 +45,8 @@ function navigate(key) {
       setDeckOpen(true);
       if (!q('[data-m2="deck"]'))
         q('[data-m2="hero"]:not([data-m2-other]) ' + c('viewDeckBtn'))?.click();
-    } else if (key === 'setup' || key === 'tools' || key === 'log') panel = key;
-    else if (key === 'hand' || key === 'heroes') mode = key;
+    } else if (key === 'setup' || key === 'tools' || key === 'log') uiState.panel = key;
+    else if (key === 'hand' || key === 'heroes') uiState.mode = key;
   }
   refresh();
 }
@@ -103,11 +56,11 @@ function syncNavigation() {
   const setupAvailable = !!q('[aria-label="Starting position"]');
   setupButton.hidden = !setupAvailable;
   nav.style.gridTemplateColumns = 'repeat(' + (setupAvailable ? 6 : 5) + ',minmax(0,1fr))';
-  if (!setupAvailable && panel === 'setup') {
-    panel = '';
+  if (!setupAvailable && uiState.panel === 'setup') {
+    uiState.panel = '';
     root.dataset.m2Panel = '';
   }
-  const selected = deckOpen ? 'deck' : panel || mode;
+  const selected = uiState.deckOpen ? 'deck' : uiState.panel || uiState.mode;
   for (const button of nav.children) {
     const pressed = String(button.dataset.mode === selected);
     if (button.getAttribute('aria-pressed') !== pressed)
@@ -118,10 +71,10 @@ on(nav, 'click', (e) => navigate(e.target.closest('button')?.dataset.mode));
 on(document, 'pointerdown', (e) => {
   if (e.target.closest?.('[data-m2="sidebar"] ' + c('row'))) {
     clearHeroCard();
-    dismissedTip?.removeAttribute('data-m2-dismissed');
-    dismissedTip = null;
-    hiddenCardKey = '';
-    panel = '';
+    uiState.dismissedTip?.removeAttribute('data-m2-dismissed');
+    uiState.dismissedTip = null;
+    uiState.hiddenCardKey = '';
+    uiState.panel = '';
     schedule();
   }
 });
@@ -130,38 +83,23 @@ on(
   'click',
   (e) => {
     if (!root.hasAttribute('data-m2-active')) return;
-    if (deckOpen && e.target.closest?.('[data-m2="deck"] ' + c('closeBtn'))) {
+    if (uiState.deckOpen && e.target.closest?.('[data-m2="deck"] ' + c('closeBtn'))) {
       setDeckOpen(false);
-      mode = 'board';
+      uiState.mode = 'board';
       schedule();
     }
     if (e.target.closest?.('[data-m2="hand-list"] ' + c('row'))) clearHeroCard();
-    const box = e.target.closest?.('[data-m2="hero"]');
-    if (!box) return;
-    if (e.target.closest('button,a,input,' + c('row') + ',.m2-hero-effects,.m2-hero-history'))
-      return;
-    const hero = componentProp(box, 'hero');
-    if (!hero) return;
-    e.preventDefault();
-    e.stopImmediatePropagation();
-    // Unfolding is temporarily disabled. Cards remain independently inspectable.
-    return;
   },
   { capture: true },
 );
 on(document, 'keydown', (e) => {
   if (e.key === 'Escape') {
-    focusedHeroId = null;
-    panel = '';
+    uiState.focusedHeroId = null;
+    uiState.panel = '';
     clearHeroCard();
     dismiss();
     return;
   }
-  if (
-    ['Enter', ' '].includes(e.key) &&
-    e.target.matches?.('[data-m2="hero"]>[class*="_name_"]')
-  ) {
-    e.preventDefault();
-    e.target.click();
-  }
 });
+
+export { dismiss, navigate, setDeckOpen, syncDeckMount, syncNavigation };

@@ -85,7 +85,7 @@ test('plain dots retain active-effect glow and inspection; hidden cards clear ef
   const marker = d.querySelector('.m2-summary-piles > span:nth-child(2) i');
   assert(marker.classList.contains('m2-effect-active'));
   assert.equal(marker.childElementCount, 0);
-  const slot = source.querySelector('.m2-history-played .m2-history-slot');
+  const slot = source.querySelector('.m2-micro-history-slot button');
   d.querySelector('[data-mode="heroes"]').click();
   slot.click();
   assert(d.querySelector('#goa2-m2-hero-display .m2-text-card'));
@@ -96,5 +96,5 @@ test('plain dots retain active-effect glow and inspection; hidden cards clear ef
   assert.equal(hidden.childElementCount, 0);
   assert(!hidden.classList.contains('m2-effect-active'));
   assert.equal(hidden.title, 'Hidden card');
-  assert(source.querySelector('.m2-history-played .m2-history-slot').disabled);
+  assert(source.querySelector('.m2-micro-history-slot button').disabled);
 });

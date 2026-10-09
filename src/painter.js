@@ -1549,3 +1549,5 @@ const m2Painter = (() => {
   })();
   return m0;
 })();
+
+export { m2Painter };

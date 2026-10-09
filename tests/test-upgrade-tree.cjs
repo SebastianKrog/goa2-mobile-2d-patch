@@ -26,7 +26,7 @@ function setup(t, tiers = { RED: 1, BLUE: 1, GREEN: 1 }, remaining = 1) {
           initiative: 5,
           primary_action: 'ATTACK',
           primary_action_value: 3,
-          secondary_actions: { MOVEMENT: 2 },
+          secondary_actions: { MOVEMENT: 2, DEFENSE: 4 },
           item: variant === 'A' ? 'ATTACK' : 'DEFENSE',
         });
       }
@@ -142,6 +142,81 @@ function setup(t, tiers = { RED: 1, BLUE: 1, GREEN: 1 }, remaining = 1) {
   };
 }
 
+test('Deck and level-up share printed paths while planning, staging and Preview stay isolated', (t) => {
+  const { w, d, cards, hero, calls, node, control } = setup(t);
+  w.HTMLCanvasElement.prototype.getContext = () => ({
+    drawImage() {},
+    fillRect() {},
+    fillText() {},
+  });
+  w.document.fonts = { load: () => new Promise(() => {}), ready: Promise.resolve() };
+  const modal = d.createElement('div');
+  modal.className = '_modal_test';
+  modal.innerHTML = '<div class="_header_test">Test</div><div class="_cardGrid_test"></div>';
+  modal.__reactFiber$test = { memoizedProps: { hero } };
+  for (const card of cards.filter((card) => ['RED', 'BLUE', 'GREEN'].includes(card.color))) {
+    const canvas = d.createElement('canvas');
+    canvas.__reactFiber$test = { memoizedProps: { card: { ...card, is_facedown: false } } };
+    modal.lastElementChild.append(canvas);
+  }
+  d.body.append(modal);
+  d.querySelector('[data-mode="deck"]').click();
+  const deck = d.querySelector('.m2-deck-browser');
+  const geometry = (host) =>
+    [...host.querySelectorAll('.m2-tree-color')].map((section) => ({
+      label: section.getAttribute('aria-label'),
+      color: section.style.getPropertyValue('--path-color'),
+      rows: section.querySelector('.m2-tree-path').style.gridTemplateRows,
+      fork: section.querySelector('.m2-tree-fork').style.height,
+      links: [...section.querySelectorAll('.m2-tree-link, .m2-tree-branch-link')].map((line) => [
+        line.className,
+        line.style.top,
+      ]),
+      slots: [...section.querySelectorAll('.m2-tree-card')].map((button) => [
+        button.dataset.cardId,
+        button.dataset.tier,
+        button.dataset.variant,
+        button.style.gridColumn,
+        button.style.gridRow,
+        button.querySelector('.m2-micro-grant')?.textContent,
+      ]),
+    }));
+  assert.deepEqual(geometry(deck), geometry(d.querySelector('.m2-upgrade-browser')));
+  const storageKey = 'goa2-mobile-build:' + JSON.stringify(['/game/test', hero.id]);
+  deck.querySelector('[data-card-id="RED:2:B"]').click();
+  const savedPlan = w.localStorage.getItem(storageKey);
+  assert.deepEqual(JSON.parse(savedPlan).planned, [['RED:2', 'RED:2:B']]);
+  assert(control('m2-upgrade-commit').disabled, 'Deck planning cannot stage a native upgrade');
+  assert.equal(node('RED:2:B').getAttribute('aria-pressed'), 'false');
+  node('BLUE:2:A').click();
+  assert.deepEqual(
+    [...d.querySelectorAll('.m2-upgrade-browser [data-upgrade-tier="2"]')].map(
+      (label) => label.textContent,
+    ),
+    ['Tier 2 · 1/1'],
+    'one top heading keeps the shared upgrade count synchronized',
+  );
+  assert(!control('m2-upgrade-commit').disabled);
+  assert.equal(w.localStorage.getItem(storageKey), savedPlan, 'staging is not a saved Deck plan');
+  control('m2-upgrade-preview-toggle').click();
+  node('GREEN:3:B').click();
+  assert(control('m2-upgrade-commit').disabled);
+  assert.equal(w.localStorage.getItem(storageKey), savedPlan, 'Preview cannot write Deck plans');
+  assert.equal(calls.length, 0, 'no planning or staging action submits a native choice');
+  control('m2-upgrade-preview-toggle').click();
+  control('m2-upgrade-reset').click();
+  assert.equal(
+    w.localStorage.getItem(storageKey),
+    savedPlan,
+    'upgrade Reset retains the Deck plan',
+  );
+  const selected = deck.querySelector('[data-card-id="RED:2:B"]');
+  assert(selected.classList.contains('m2-tree-planned'));
+  assert(
+    hero.deck.every((card) => card.is_facedown || ['gold', 'silver', 'ult'].includes(card.id)),
+  );
+});
+
 test('level-up tree omits basics, separates allowed tiers, aligns A/B variants and retains native fallback on teardown', (t) => {
   const { w, d, node, control, picker } = setup(t);
   assert(picker.hasAttribute('data-m2-upgrade-tree'));
@@ -151,9 +226,11 @@ test('level-up tree omits basics, separates allowed tiers, aligns A/B variants a
   assert.equal(d.querySelector('[data-upgrade-tier="3"]').textContent, 'Tier 3 · 0/0');
   for (const color of ['RED', 'BLUE', 'GREEN'])
     for (const tier of [2, 3]) {
-      assert.equal(node(`${color}:${tier}:A`).style.gridRow, '1');
-      assert.equal(node(`${color}:${tier}:B`).style.gridRow, '2');
+      assert.equal(node(`${color}:${tier}:A`).style.gridRow, '2');
+      assert.equal(node(`${color}:${tier}:B`).style.gridRow, '3');
       assert.equal(node(`${color}:${tier}:B`).dataset.variant, 'alternate');
+      assert.equal(node(`${color}:${tier}:A`).style.gridColumn, tier === 3 ? '3' : '1 / span 2');
+      assert.equal(node(`${color}:1:A`).style.gridRow, '1');
     }
   assert(control('m2-upgrade-commit').disabled);
   assert.equal(w.getComputedStyle(d.querySelector('._upgradeGroups_test')).display, 'none');
@@ -170,6 +247,9 @@ test('known face-down deck cards show printed upgrade stats and paired grants wi
     assert(!button.querySelector('.m2-micro-hidden'), card.id);
     assert.equal(button.querySelector('.m2-micro-cap .m2-symbol-value').textContent, '5');
     assert.equal(button.querySelector('.m2-mini-current .m2-symbol-value').textContent, '3');
+    const defense = button.querySelector('.m2-mini-current').lastElementChild;
+    assert(defense.querySelector('img').src.endsWith('/defense.png'));
+    assert.equal(defense.querySelector('.m2-symbol-value').textContent, '4');
     if (card.tier !== 'I') {
       const expectedItem = card.id.endsWith('A') ? 'defense' : 'attack';
       assert(button.querySelector('.m2-micro-grant img').src.endsWith('/' + expectedItem + '.png'));
@@ -207,7 +287,14 @@ test('full-screen upgrade menu reserves the viewer, scrolls only the tree and ke
   d.querySelector('._peekBtn_test').click();
   assert.equal(boardClicks, 1, 'native Board control retains its handler');
   node('RED:2:A').click();
+  assert(node('RED:2:A').hasAttribute('data-m2-viewed'));
+  node('BLUE:1:A').click();
+  assert(node('BLUE:1:A').hasAttribute('data-m2-viewed'));
+  assert(!node('RED:2:A').hasAttribute('data-m2-viewed'));
+  assert(node('RED:2:A').classList.contains('m2-upgrade-selected'));
   d.querySelector('.m2-upgrade-details .m2-card-dismiss').click();
+  assert(!d.querySelector('[data-m2-viewed]'));
+  assert(node('RED:2:A').classList.contains('m2-upgrade-selected'));
   assert.equal(details.children.length, 0);
   assert.notEqual(style(details).display, 'none');
   assert.equal(style(details).minHeight, initialHeight);

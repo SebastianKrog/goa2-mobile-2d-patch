@@ -35,12 +35,14 @@ npm run build
 npm test
 ```
 
-Building alone needs no npm packages: `node scripts/build.mjs` also works before
-`npm ci`. Dependencies are used only by the browser-fixture tests and test formatter.
+Run `npm ci` before building. The pinned development dependencies provide module
+checks, bundling, browser fixtures and formatting; the installed userscript has no
+runtime dependencies or module loader.
 
-- `npm run build` combines source files into readable, unminified output in `dist/`.
+- `npm run build` checks module dependencies and bundles readable, unminified output in `dist/`.
+- `npm run modules:check` rejects undeclared application helpers and assignments to imported bindings.
 - `npm run build:check` checks that committed output matches the source.
-- `npm test` builds and runs all 38 regression test files in isolated Node processes.
+- `npm test` builds and runs all 40 regression test files in isolated Node processes.
 - `npm run test:format` formats test JavaScript; `npm run test:format:check` checks it.
 - `npm run css:format` formats the stylesheet; `npm run css:format:check` checks it.
 - GitHub Actions checks test/CSS formatting, committed output and regressions on pushes and pull requests.
@@ -54,27 +56,51 @@ output directly. For a version change, update `package.json` and `package-lock.j
 | File | Responsibility |
 | --- | --- |
 | `src/userscript-header.txt` | Installation metadata and script usage notes |
-| `src/manifest.json` | Explicit build order |
-| `src/init.js` | Shared UI state, installation guard, stylesheet attachment |
+| `src/bootstrap.js` | Installation/reinstallation guards, run before module initialization |
+| `src/runtime.js` | Shared navigation/lifecycle state, DOM helpers, stylesheet attachment |
 | `src/styles.css` | Mobile layout and component styles |
-| `src/navigation.js` | Generated containers, navigation, keyboard/click routing |
+| `src/ui.js` | Generated containers, ownership markers, managed listeners and inspection cleanup |
+| `src/navigation.js` | Navigation, Deck mount tracking, keyboard/click routing |
 | `src/painter.js` | Self-contained canvas artwork renderer for basic Deck cards |
 | `src/cards.js` | Shared text cards, compact rows' stat helpers, upgrade values |
 | `src/deck.js` | Deck preferences, browser, canvas copy synchronization |
-| `src/deck-tree.js` | Upgrade paths, tentative builds, observed game choices and per-game/hero persistence |
-| `src/board.js` | Header, compact summaries, rotation, planning controls |
-| `src/heroes.js` | Rendered component props, hero dashboards, card inspection, upgrades |
+| `src/tree-model.js` | Printed card identities, tiers, A/B variants and known hero card pools |
+| `src/tree-view.js` | Shared tree headings, cards, path geometry and item totals; no selection state |
+| `src/deck-tree.js` | Tentative Deck plans, observed game choices and per-game/hero persistence |
+| `src/header.js` | Native header adaptation and compact status strip |
+| `src/card-highlight.js` | Viewer source overlays, independent of game selection and active effects |
+| `src/card-rows.js` | Compact card rows and own-hand color dots |
+| `src/board.js` | Hero summaries, focus and portrait navigation |
+| `src/camera.js` | Board rotation, native pan/zoom composition, reset and hero centering |
+| `src/controls.js` | Native planning-action and choice-launcher proxies |
+| `src/game-input.js` | Live upgrade request discovery and delivered remaining counts |
+| `src/react.js` | Committed React prop lookup and per-refresh host cache |
+| `src/heroes.js` | Hero dashboards, card inspection, turn portraits and native upgrade cards |
 | `src/upgrade-tree.js` | Level-up batch staging, preview isolation, eligibility and sequential native submission |
 | `src/history.js` | Per-game local archive of received events |
 | `src/log.js` | Footer Log, player-scoped server decision history, cancellation and conditional requests |
 | `src/settings.js` | Appearance preferences, typography scaling, native sound/cursor preferences, fullscreen and tool proxies |
 | `src/main.js` | DOM reconciliation, observers, initialization, teardown |
 
-These JavaScript files are **ordered source fragments sharing one private closure**,
-not separately executable ES modules. The builder wraps them in one IIFE, preserving
-the existing initialization order and keeping internal state off `window`. Only
-`window.GOA2Mobile2D` is intentionally exported. The CSS marker is replaced at build
-time with an escaped template literal. No minification or runtime loader is used.
+Source modules declare their dependencies with ES imports and export only helpers
+used by other modules. `scripts/check-modules.mjs` catches undeclared helpers that
+would otherwise become accidental globals. esbuild checks imported/exported names
+and follows the dependency graph from `main.js`; there is no ordered manifest.
+Module-local state stays private. Cross-module navigation and lifecycle writes use
+the explicitly imported `uiState` object; native Deck mount tracking stays owned
+by navigation. Some callback dependencies are cyclic, so callbacks run after module
+initialization, and `main.js` performs the first reconciliation after setup.
+
+The builder prepends `bootstrap.js` inside an outer installation closure so a 3D
+page exits before any module creates UI or starts timers. It imports CSS as escaped
+text and bundles the modules into one private IIFE. Only `window.GOA2Mobile2D` is
+intentionally exported; installation still uses a single `.user.js` or `.txt` file.
+No minification, external runtime imports or runtime loader is used.
+
+Deck and Upgrades share printed tree presentation through `tree-view.js`. Deck owns
+its persisted tentative plans, while `upgrade-tree.js` owns staged selections,
+isolated Preview state, eligibility and acknowledged native submissions. Rendering
+a tree never selects an upgrade or submits a game action.
 See [the stylesheet guide](src/STYLES.md) for component ownership, cascade rules and CSS checks.
 
 The `m0`–`m3` names inside the painter are inherited internal wrappers and are explained
@@ -178,7 +204,7 @@ Device checks are still needed for text fit, browser chrome and touch gestures.
 | Mini / Tiny | Slim title/stat row; current or selected card in Hero entries and List Deck. |
 | Micro — Board | Three fixed 20px icon slots: primary, range/radius, movement. 70px total width including gaps and border/padding; no secondary defense, title or initiative. |
 | Micro — Hero history | Four fixed icon slots: primary, range/radius, movement, defense. 64px total width. |
-| Extended Micro | Five slots for Deck trees: initiative, three colored Micro cells (primary, range/radius, movement), and the granted item from its paired alternative with an overlaid plus. Clear end caps; 110px wide and 24px high. |
+| Extended Micro | Six slots for Deck/upgrade trees: initiative, four colored Micro cells (primary, range/radius, movement, defense), and the granted item from its paired alternative with an overlaid plus. Clear end caps; 132px wide and 24px high. The ultimate uses a 70px three-cell Micro with a bold U in the center. Basics omit their empty granted-item cap and adjust their stat-cell widths to stay beside the ultimate. |
 | Nano | One defense icon/value for a discarded card; 20px wide and the same 24px height as Micro. |
 | Dot | Plain card color, with a breathing glow for active effects. |
 
@@ -204,8 +230,8 @@ Tier III has three solid colored edge pixels. Resolved edges remain muted.
 Missing Micro stats keep their cell empty. Known in-play upgrades use purple values;
 Deck uses printed values. Active effects breathe on their Micro/Nano/Dot source.
 Hand dots, hidden cards and Gold/Silver/Ultimate dots retain their plain color.
-Facedown cards do not reveal hidden names or stats. Small/Mini and Extended Micro
-Ultimate cards retain the empty initiative slot, keeping their content aligned.
+Facedown cards do not reveal hidden names or stats. Small/Mini Ultimate cards retain the empty initiative slot, keeping their content
+aligned. Tree Ultimates use three Micro cells with a bold U in the center.
 Hero upgrade rows reserve a grey Nano **U** before their item icons, and compact
 Board rows reserve a grey Ultimate dot. At level 8 both glow purple; the Nano U
 and border breathe together. Reduced-motion mode keeps a static glow.
@@ -216,9 +242,14 @@ inside the viewer; there is one shared short-screen height too.
 
 ### Deck tree
 
-Deck view buttons and the sort toggle share one row, without a Deck title. Tree
-columns read Tier 1/2/3. The basic row starts Gold, Silver, Ultimate; additional cards
-wrap below in three-column rows.
+Deck view buttons and the sort toggle share one row, without a Deck title. Each
+color path puts Tier 1 on its own row, then Tier 2 and Tier 3 below, with Tier 3
+flush right. Tier 2 aligns to the right beneath Tier 1. The tier headings appear
+once at the top. Extended cards include printed defense. Gold, Silver and the
+compact Ultimate share one row; empty grant caps are removed from basics and
+their stat cells adjust to narrow widths. The centered basics row uses the same
+12px gap as Tier 2/3. Cards within a color have a 4px vertical gap. Branches rise
+straight into Tier 1’s bottom edge and stop at the card edges, including faded alternatives. Additional cards wrap below.
 Deck opens in **Tree** by default, with controls ordered **Tree**, **List**, **Grid**.
 **List** is the former Compact layout; the old full-card List layout is removed. Saved
 Compact preferences keep their layout, and old List preferences migrate to the new List.

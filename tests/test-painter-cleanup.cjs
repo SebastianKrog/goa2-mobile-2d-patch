@@ -3,7 +3,9 @@ const fs = require('fs'),
   assert = require('assert');
 async function renderer(path) {
   const source = fs.readFileSync(path, 'utf8');
-  const begin = source.search(/const m2Painter\s*=/);
+  // The source/frozen fixture use const; the bundler emits a private var binding.
+  const begin = source.search(/\b(?:const|let|var) m2Painter\s*=/);
+  assert(begin >= 0, 'Painter declaration missing');
   const ending = /return m0;\s*}\)\(\);/.exec(source.slice(begin));
   assert(ending, 'Painter boundary missing');
   const end = begin + ending.index + ending[0].length;

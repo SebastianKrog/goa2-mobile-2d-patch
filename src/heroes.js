@@ -1,44 +1,22 @@
-// Read only props already supplied to the rendered hero/sidebar components.
-// 8. Public component props and hero dashboards
-// The cache lasts only until the next refresh; retaining a React tree across updates
-// would produce stale selections, item values, and event arrays.
-let committedFiberCache = new Map();
+import { highlightViewedCard, trackCardSource } from './card-highlight.js';
+import { centerBoardHero } from './camera.js';
+import { updateCardRow } from './card-rows.js';
+import {
+  cardColors,
+  cardSymbol,
+  goldSymbol,
+  itemUpgradeSymbols,
+  miniatureCard,
+  nanoCard,
+  textCard,
+  ultimateIndicator,
+} from './cards.js';
+import { rememberDeckTreeChoices } from './deck-tree.js';
+import { renderedCard } from './deck.js';
+import { componentProp } from './react.js';
+import { c, q, uiState, tag } from './runtime.js';
+import { addExtra, clearHeroCard, heroPanel } from './ui.js';
 
-// React may leave an alternate fiber on a DOM node. Read the committed tree, not stale props.
-// This private integration is isolated here because a website update may change it.
-function currentFiber(element) {
-  const key = element && Object.keys(element).find((k) => k.startsWith('__reactFiber$'));
-  const original = key ? element[key] : null;
-  if (!original) return null;
-  let top = original;
-  while (top.return) top = top.return;
-  const rootState = top.stateNode,
-    current = rootState?.current;
-  if (!current) return original;
-  let cache = committedFiberCache.get(rootState);
-  if (!cache || cache.current !== current) {
-    const hosts = new WeakMap(),
-      stack = [current];
-    while (stack.length) {
-      const node = stack.pop();
-      if (node.stateNode && typeof node.stateNode === 'object') hosts.set(node.stateNode, node);
-      for (let child = node.child; child; child = child.sibling) stack.push(child);
-    }
-    cache = { current, hosts };
-    committedFiberCache.set(rootState, cache);
-  }
-  return cache.hosts.get(element) || null;
-}
-// Walk up a bounded number of component ancestors to find a supplied prop.
-// Missing props are normal during mounting/navigation; callers must tolerate null.
-function componentProp(element, key) {
-  let fiber = currentFiber(element);
-  for (let i = 0; fiber && i < 32; i++, fiber = fiber.return) {
-    const value = fiber.memoizedProps?.[key];
-    if (value !== undefined && value !== null) return value;
-  }
-  return null;
-}
 // Exclude injected item/stat nodes when recovering the native hero/player label.
 function heroDisplayName(name) {
   if (!name) return '';
@@ -109,15 +87,15 @@ function heroTurnCard(box, hero, view) {
 }
 function inspectHeroCard(heroId, card) {
   if (!card || card.is_facedown) return;
-  selectedHeroCard = { heroId, cardId: card.id };
+  uiState.selectedHeroCard = { heroId, cardId: card.id };
   updateHeroCardDisplay();
 }
 // Build the shared portrait, metadata, current Mini card and fixed history slots.
 // The serialized render key prevents replacing buttons and animations on every refresh.
-function updateHeroDashboard(box, view, suppliedHero = null) {
+function updateHeroDashboard(box, view, suppliedHero = null, upgradeRequest = null) {
   const hero = suppliedHero || componentProp(box, 'hero');
   if (!hero || !Array.isArray(hero.played_cards)) return;
-  if (Array.isArray(hero.deck)) rememberDeckTreeChoices(hero);
+  if (Array.isArray(hero.deck)) rememberDeckTreeChoices(hero, hero.deck, upgradeRequest);
   // An absent location means off board only when a location map is actually available.
   // Missing board data alone must not be treated as a death/off-board signal.
   const offboard = heroOffboard(hero, view);
@@ -148,18 +126,7 @@ function updateHeroDashboard(box, view, suppliedHero = null) {
   const planning = isCardSelection(view);
   const currentCard = visibleCurrentCard(box, hero);
   // One compact entry is shared by Heroes, Hand and Board focus in every phase.
-  const expanded = false;
-  box.classList.remove('m2-hero-expanded');
-  const heading = q(':scope>' + c('name'), box);
-  if (heading) {
-    managedAttribute(heading, 'role', 'button');
-    managedAttribute(heading, 'tabindex', '-1');
-    managedAttribute(heading, 'aria-disabled', 'true');
-    managedAttribute(heading, 'aria-expanded', String(expanded));
-  }
   const key = JSON.stringify([
-    expanded,
-    mode,
     currentCard,
     hero.hand,
     locallySelected,
@@ -170,7 +137,6 @@ function updateHeroDashboard(box, view, suppliedHero = null) {
     hero.can_commit_second_card,
     hero.played_cards,
     hero.discard_pile,
-    hero.rune_slots,
     hero.items,
     hero.cast_spells?.length,
     active,
@@ -248,48 +214,6 @@ function updateHeroDashboard(box, view, suppliedHero = null) {
     handGroup.append(marker);
   }
   if (!handDots.length) handGroup.append(document.createTextNode('—'));
-  // Each pile dot can inspect a known card. Facedown cards remain non-interactive;
-  // active source cards receive the breathing class, and rune markers remain attached.
-  function slot(card, label, rune, group) {
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.className = 'm2-history-slot';
-    const marker = document.createElement('span');
-    marker.className = 'm2-history-marker';
-    if (card?.color) marker.style.setProperty('--effect-color', cardColors[card.color] || '#888');
-    button.append(marker);
-    button.disabled = !card || card.is_facedown;
-    button.title = label + ': ' + (card?.is_facedown ? 'Hidden card' : card?.name || 'Empty');
-    button.setAttribute('aria-label', button.title);
-    if (card && !card.is_facedown) {
-      button.onclick = () => inspect(card);
-      if (active.some((a) => a.id === card.id)) marker.classList.add('m2-effect-active');
-    }
-    if (rune) {
-      const img = document.createElement('img');
-      img.src = '/cards/sheets/rune_' + encodeURIComponent(rune) + '.png';
-      img.alt = 'Rune ' + rune;
-      button.append(img);
-    }
-    group.append(button);
-  }
-  // Keep the complete dot renderers for reuse, but hide duplicate Played/Discard
-  // metadata now that the fixed history slots carry this information.
-  const playedGroup = document.createElement('span');
-  playedGroup.className = 'm2-history-pile m2-history-played';
-  playedGroup.hidden = true;
-  playedGroup.append(document.createTextNode('Played:'));
-  hero.played_cards.forEach((card, i) => {
-    if (card) slot(card, 'Turn ' + (i + 1), hero.rune_slots?.[String(i + 1)], playedGroup);
-  });
-  if (!hero.played_cards.some(Boolean)) playedGroup.append(document.createTextNode('—'));
-  const discardGroup = document.createElement('span');
-  discardGroup.className = 'm2-history-pile m2-history-discard';
-  discardGroup.hidden = true;
-  discardGroup.append(document.createTextNode('Discard:'));
-  if (!hero.discard_pile?.length) discardGroup.append(document.createTextNode('—'));
-  (hero.discard_pile || []).forEach((card, i) => slot(card, 'D' + (i + 1), null, discardGroup));
-  history.append(playedGroup, discardGroup);
   dashboard.append(history);
   const upgrades = itemUpgradeSymbols(hero.items, 'm2-hero-upgrades');
   upgrades.prepend(ultimateIndicator(hero));
@@ -300,6 +224,7 @@ function updateHeroDashboard(box, view, suppliedHero = null) {
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'm2-micro-button';
+    trackCardSource(button, card, 'hero', hero.id);
     button.disabled = !!card.is_facedown;
     button.title = card.is_facedown ? 'Hidden card' : card.name;
     button.setAttribute('aria-label', button.title);
@@ -324,6 +249,7 @@ function updateHeroDashboard(box, view, suppliedHero = null) {
     const card = document.createElement('button');
     card.type = 'button';
     card.className = 'm2-current-card-mini';
+    trackCardSource(card, currentCard, 'hero', hero.id);
     card.setAttribute('aria-label', currentCard.name);
     updateCardRow(card, currentCard, hero.items || {});
     if (cardIsActive(currentCard, view)) {
@@ -431,9 +357,9 @@ function updateTurnPortrait(box, entry, done, offboard, resolving) {
 }
 // Resolve the selected card by identity each refresh so upgrades and visibility stay current.
 function updateHeroCardDisplay() {
-  if (!selectedHeroCard) return;
+  if (!uiState.selectedHeroCard) { highlightViewedCard('hero'); return; }
   const box = Array.from(document.querySelectorAll('[data-m2="sidebar"] [data-m2="hero"]')).find(
-    (box) => componentProp(box, 'hero')?.id === selectedHeroCard.heroId,
+    (box) => componentProp(box, 'hero')?.id === uiState.selectedHeroCard.heroId,
   );
   const hero = box && componentProp(box, 'hero');
   if (!hero) {
@@ -448,11 +374,13 @@ function updateHeroCardDisplay() {
       Array.isArray(hero[key]) ? hero[key] : [],
     ),
   ];
-  const card = cards.find((card) => card?.id === selectedHeroCard.cardId && !card.is_facedown);
+  const card = cards.find((card) => card?.id === uiState.selectedHeroCard.cardId && !card.is_facedown);
   if (!card) {
     clearHeroCard();
     return;
   }
+  highlightViewedCard('hero', card, hero.id);
+  highlightViewedCard('hand');
   const key = JSON.stringify([card, hero.items]);
   if (heroPanel.dataset.key === key) return;
   const display = textCard(card, 'hero', null, hero.id),
@@ -517,3 +445,16 @@ function resolutionEntries() {
     current: e.matches(c('nextEntry')),
   }));
 }
+
+export {
+  cardIsActive,
+  hasLocalSelection,
+  heroDisplayName,
+  heroTurnCard,
+  inspectHeroCard,
+  resolutionEntries,
+  updateHeroCardDisplay,
+  updateHeroDashboard,
+  updateTurnPortrait,
+  updateUpgradeCards,
+};

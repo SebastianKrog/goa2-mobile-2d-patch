@@ -65,7 +65,11 @@ try {
   assert.equal(doc.querySelectorAll('.m2-hero-micro-slots').length, 2);
   clickHero('own');
   clickHero('other');
-  assert(!doc.querySelector('.m2-hero-expanded'), 'Heroes expansion is temporarily disabled');
+  const heading = doc.querySelector('#own ._name_x');
+  assert(!heading.hasAttribute('role'), 'plain headings are not expansion buttons');
+  assert(!heading.hasAttribute('aria-disabled'));
+  assert(!heading.hasAttribute('aria-expanded'));
+  assert(!doc.querySelector('.m2-hero-expanded'), 'hero entries remain compact');
   assert(!doc.querySelector('.m2-expanded-board'));
   assert(!doc.querySelector('#other').textContent.includes('SECRET'));
   doc.querySelector('#own .m2-hero-current-mini button').click();
@@ -162,7 +166,7 @@ try {
   assert(!doc.querySelector('.m2-hero-expanded'));
   assert(doc.querySelector('#own .m2-hero-current-mini'));
   console.log(
-    'PASS: disabled Heroes expansion, retained current cards, planning lock, shared compact Hand entry, turn slots, privacy and card inspection',
+    'PASS: compact Heroes entries, retained current cards, planning lock, shared compact Hand entry, turn slots, privacy and card inspection',
   );
 } finally {
   w.GOA2Mobile2D.destroy();

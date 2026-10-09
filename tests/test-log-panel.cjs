@@ -23,6 +23,19 @@ function setup(t, { events = [], saved, url } = {}) {
   fixture.d.querySelector('._toggle_test').__reactFiber$test = { memoizedProps: props };
   if (saved) fixture.w.localStorage.setItem('goa2-mobile-events:/game/test', JSON.stringify(saved));
   const calls = [];
+  const timers = new Map();
+  let timerId = 0;
+  const timeout = fixture.w.setTimeout.bind(fixture.w);
+  const clear = fixture.w.clearTimeout.bind(fixture.w);
+  fixture.w.setTimeout = (fn, delay, ...args) => {
+    if (delay !== 15000) return timeout(fn, delay, ...args);
+    timers.set(--timerId, fn);
+    return timerId;
+  };
+  fixture.w.clearTimeout = (id) => {
+    if (timers.has(id)) timers.delete(id);
+    else clear(id);
+  };
   fixture.w.fetch = (url, options) =>
     new Promise((resolve) => calls.push({ url, options, resolve }));
   fixture.install();
@@ -30,6 +43,7 @@ function setup(t, { events = [], saved, url } = {}) {
     ...fixture,
     props,
     calls,
+    timers,
     open: () => fixture.d.querySelector('[data-mode="log"]').click(),
   };
 }
@@ -72,6 +86,78 @@ test('Log sits before Settings, displays archived/live events once, and replaces
     'none',
     'desktop restores the native log',
   );
+});
+
+test('stalled request and response body time out, preserve history and allow a fresh retry', async (t) => {
+  for (const phase of ['request', 'body']) {
+    const { d, calls, timers, open } = setup(t, { saved: [event(1)] });
+    open();
+    respond(calls[0], { total: 1, decisions: [decision(1)] });
+    await tick();
+    assert.equal(timers.size, 0, 'successful requests clear their timeout');
+    d.querySelector('[data-log-tab="decisions"]').click();
+    const refresh = d.querySelector('.m2-panel-title button');
+    refresh.click();
+    const stale = calls[1];
+    let finishBody;
+    if (phase === 'body') {
+      stale.resolve({
+        ok: true,
+        status: 200,
+        headers: { get: () => '' },
+        json: () =>
+          new Promise((resolve) => {
+            finishBody = resolve;
+          }),
+      });
+      await tick();
+    }
+    assert(refresh.disabled);
+    assert.equal(timers.size, 1);
+    const expire = [...timers.values()][0];
+    timers.clear();
+    expire();
+    assert(stale.options.signal.aborted, phase + ' is aborted');
+    assert(!refresh.disabled, 'Refresh becomes available without closing Log');
+    assert.match(d.querySelector('.m2-log-status').textContent, /timed out/);
+    assert.equal(
+      d.querySelectorAll('.m2-log-entries details').length,
+      1,
+      'previous decisions remain',
+    );
+    d.querySelector('[data-log-tab="events"]').click();
+    assert.equal(d.querySelectorAll('.m2-log-entries details').length, 1, 'local events remain');
+    d.querySelector('[data-log-tab="decisions"]').click();
+    refresh.click();
+    assert.equal(calls.length, 3, 'manual retry bypasses cooldown');
+    if (finishBody) finishBody({ total: 1, decisions: [decision(2, { label: 'Stale response' })] });
+    else respond(stale, { total: 1, decisions: [decision(2, { label: 'Stale response' })] });
+    await tick();
+    assert(refresh.disabled, 'late response cannot unlock the newer request');
+    assert(!d.querySelector('.m2-log-entries').textContent.includes('Stale response'));
+    respond(calls[2], { total: 1, decisions: [decision(3, { label: 'Recovered history' })] });
+    await tick();
+    assert(!refresh.disabled);
+    assert.equal(timers.size, 0);
+    assert(d.querySelector('.m2-log-entries').textContent.includes('Recovered history'));
+  }
+});
+
+test('closing Log, changing player and teardown cancel history timeout work', (t) => {
+  const { w, calls, timers, open } = setup(t);
+  open();
+  assert.equal(timers.size, 1);
+  open();
+  assert(calls[0].options.signal.aborted);
+  assert.equal(timers.size, 0);
+  open();
+  w.history.replaceState(null, '', '?3d=0&token=other');
+  w.testUI.refresh();
+  assert(calls[1].options.signal.aborted);
+  assert.equal(timers.size, 1, 'only the current player request retains a timer');
+  w.GOA2Mobile2D.destroy();
+  assert(calls[2].options.signal.aborted);
+  assert.equal(timers.size, 0);
 });
 
 test('server history respects masked labels, coalesces requests and handles ETags and rewinds', async (t) => {

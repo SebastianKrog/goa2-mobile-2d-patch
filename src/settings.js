@@ -1,3 +1,9 @@
+import { boardRotation } from './camera.js';
+import { isGeneratedNode, schedule } from './main.js';
+import { navigate } from './navigation.js';
+import { css, inactiveCss, q, root, uiState, style } from './runtime.js';
+import { on, settingsPanel } from './ui.js';
+
 // Appearance preferences are adapter-owned. Game preferences use the website's
 // existing keys; its sound/pointer state is initialized at load, so apply by reload.
 const displayPreferencesKey = 'goa2-mobile-display';
@@ -58,7 +64,7 @@ function fullscreenAvailable() {
 }
 // Board and Settings share one browser action and reflect external exits too.
 async function toggleFullscreen() {
-  if (dead || !root.hasAttribute('data-m2-active') || fullscreenPending || !fullscreenAvailable()) return;
+  if (uiState.dead || !root.hasAttribute('data-m2-active') || fullscreenPending || !fullscreenAvailable()) return;
   fullscreenPending = true;
   updateSettings();
   boardRotation?.sync();
@@ -67,7 +73,7 @@ async function toggleFullscreen() {
     else await root.requestFullscreen();
   } catch {} finally {
     fullscreenPending = false;
-    if (!dead) {
+    if (!uiState.dead) {
       updateSettings();
       boardRotation?.sync();
       schedule();
@@ -249,9 +255,11 @@ function updateSettings() {
   q('.m2-settings-tools', settingsPanel).hidden = sources.length === 0;
 }
 on(document, 'fullscreenchange', () => {
-  if (!dead) {
+  if (!uiState.dead) {
     updateSettings();
     boardRotation?.sync();
     schedule();
   }
 });
+
+export { fullscreenAvailable, fullscreenPending, toggleFullscreen, updateSettings };

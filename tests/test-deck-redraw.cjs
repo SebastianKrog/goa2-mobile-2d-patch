@@ -35,7 +35,10 @@ const original = src.getContext('2d').drawImage;
 w.eval(
   fs
     .readFileSync('dist/goa2-mobile-2d.user.js', 'utf8')
-    .replace(/window\.GOA2Mobile2D\s*=\s*\{/, ' window.__deck=()=>deckState;window.GOA2Mobile2D={'),
+    .replace(
+      /window\.GOA2Mobile2D\s*=\s*\{/,
+      ' window.__deck=()=>uiState.deckState;window.GOA2Mobile2D={',
+    ),
 );
 doc.querySelector('[data-mode="deck"]').click();
 [...doc.querySelectorAll('.m2-deck-controls button')]

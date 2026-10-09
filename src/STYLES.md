@@ -2,7 +2,7 @@
 
 `styles.css` is the canonical stylesheet. At installation, `&` expands to
 `html[data-m2-active]`, keeping native overrides limited to the active mobile 2D
-adapter. The inactive visibility guard lives in `init.js`.
+adapter. The inactive visibility guard lives in `runtime.js`.
 
 Edit the existing component definition when changing its appearance. Avoid appending
 another block for the same selector. The CSS regression rejects duplicate definitions

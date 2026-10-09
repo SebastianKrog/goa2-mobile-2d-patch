@@ -1,10 +1,24 @@
+import {
+  EVENT_LIMIT,
+  eventKey,
+  historyError,
+  historyRevision,
+  savedEventText,
+  savedEvents,
+} from './history.js';
+import { componentProp } from './react.js';
+import { c, q, root, uiState, tag } from './runtime.js';
+import { logPanel, on } from './ui.js';
+
 // The live API exposes player-scoped decision history, not event deltas. Keep
 // server decisions separate from received events: a decision is not a combat event.
 // Never fetch the admin/omniscient replay routes or create a public replay share.
 let logTab = 'events',
   logTabChosen = false,
-  decisionHistory = { scope: '', rows: [], total: 0, revision: 0, status: '', due: 0, etag: '', request: null };
+  decisionHistory = { scope: '', rows: [], total: 0, revision: 0, status: '', due: 0, etag: '', request: null, timer: null };
 function cancelDecisionHistory() {
+  clearTimeout(decisionHistory.timer);
+  decisionHistory.timer = null;
   if (decisionHistory.request) {
     decisionHistory.due = 0;
     decisionHistory.status = decisionHistory.rows.length ? 'Match decision history' : '';
@@ -14,7 +28,7 @@ function cancelDecisionHistory() {
 }
 function resetDecisionHistory() {
   cancelDecisionHistory();
-  decisionHistory = { scope: '', rows: [], total: 0, revision: 0, status: '', due: 0, etag: '', request: null };
+  decisionHistory = { scope: '', rows: [], total: 0, revision: 0, status: '', due: 0, etag: '', request: null, timer: null };
   logTab = 'events';
   logTabChosen = false;
   delete logPanel.dataset.key;
@@ -44,6 +58,17 @@ function requestDecisionHistory(force = false) {
   state.request = request;
   state.status = 'Loading match history…';
   state.due = Date.now() + 10000;
+  // Bound both the request and response-body read. Release the controls here
+  // even if the fetch implementation never settles after it is aborted.
+  state.timer = setTimeout(() => {
+    if (uiState.dead || state !== decisionHistory || state.request !== request) return;
+    request.abort();
+    state.request = null;
+    state.timer = null;
+    state.due = Date.now() + 10000;
+    state.status = 'Match history timed out. Select Refresh to retry.';
+    renderLogPanel();
+  }, 15000);
   const headers = {};
   if (scope.token) headers.Authorization = 'Bearer ' + scope.token;
   if (state.etag) headers['If-None-Match'] = state.etag;
@@ -81,6 +106,8 @@ function requestDecisionHistory(force = false) {
     state.status = 'Match history unavailable. Saved events are still available.';
   }).finally(() => {
     if (request.signal.aborted || state !== decisionHistory || state.request !== request) return;
+    clearTimeout(state.timer);
+    state.timer = null;
     state.request = null;
     renderLogPanel();
   });
@@ -141,8 +168,10 @@ function updateLogPanel(force = false) {
   // Hide the old floating trigger/container without opening or moving React nodes.
   for (const toggle of document.querySelectorAll('button' + c('toggle')))
     if (Array.isArray(componentProp(toggle, 'eventLog'))) tag(toggle.parentElement, 'native-log');
-  const active = root.hasAttribute('data-m2-active') && panel === 'log';
+  const active = root.hasAttribute('data-m2-active') && uiState.panel === 'log';
   if (!active) { cancelDecisionHistory(); return; }
   if (document.visibilityState !== 'hidden') requestDecisionHistory(force);
   renderLogPanel();
 }
+
+export { cancelDecisionHistory, resetDecisionHistory, updateLogPanel };

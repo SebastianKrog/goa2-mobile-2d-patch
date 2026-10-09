@@ -93,7 +93,7 @@ test('Heroes reserve a centered U Nano before items; Board reserves an Ultimate 
   assert(!dot().classList.contains('m2-ultimate-unlocked'));
 });
 
-test('Ultimate Small and Mini cards reserve the initiative cell; Extended Micro retains its clear end cap', (t) => {
+test('Ultimate Small and Mini cards reserve the initiative cell; tree Micro uses three cells with a centered U', (t) => {
   const { w, d, ultimate, row } = setup(t);
   const small = row.querySelector('.m2-list-card');
   assert(small.classList.contains('m2-small-card'));
@@ -110,12 +110,16 @@ test('Ultimate Small and Mini cards reserve the initiative cell; Extended Micro 
   assert(!mini.querySelector('img[src*="initiative"]'));
   const extended = w.testUI.extendedMicroCard(ultimate);
   d.body.append(extended);
-  assert.equal(w.getComputedStyle(extended.firstElementChild).width, '20px');
+  assert.equal(w.getComputedStyle(extended).width, '70px');
+  assert.equal(extended.children.length, 3);
   assert.equal(extended.firstElementChild.children.length, 0);
-  assert.equal(
-    extended.children[1].children.length,
-    3,
-    'empty Micro cells retain the same geometry',
-  );
-  assert(!extended.querySelector('img[src*="initiative"]'));
+  assert.equal(extended.lastElementChild.children.length, 0);
+  assert.equal(extended.children[1].tagName, 'B');
+  assert.equal(extended.children[1].textContent, 'U');
+  assert.equal(w.getComputedStyle(extended.children[1]).fontWeight, '800');
+  assert(!extended.querySelector('.m2-micro-cap, img'));
+  const hidden = w.testUI.extendedMicroCard({ ...ultimate, is_facedown: true });
+  assert.equal(hidden.textContent, '?');
+  assert(!hidden.querySelector('.m2-micro-ultimate-label'));
+  assert.equal(ultimate.is_facedown, undefined);
 });

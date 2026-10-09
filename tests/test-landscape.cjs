@@ -295,6 +295,7 @@ test('Hand and Heroes keep lists beside the left viewer and retain native row ac
   const viewer = d.querySelector('#goa2-m2-details'),
     card = viewer.firstElementChild;
   assert(card);
+  assert(row.hasAttribute('data-m2-viewed'));
   assert.equal(css('#goa2-m2-details').inset, '6px calc(var(--m2-list-width) + 6px) auto 6px');
   assert.equal(css('#goa2-m2-details').height, 'var(--m2-card-display-height)');
   assert.equal(css('[data-m2="sidebar"]').display, 'flex');
@@ -302,6 +303,7 @@ test('Hand and Heroes keep lists beside the left viewer and retain native row ac
   assert.equal(css('[data-m2="main"]').flexDirection, 'column');
   assert.equal(css('#goa2-m2-nav').height, 'var(--m2-nav)');
   assert.equal(viewer.firstElementChild, card, 'rotation preserves inspected content');
+  assert(row.hasAttribute('data-m2-viewed'));
   assert.equal(row.parentElement, parent, 'native rows are never moved');
   screen(844, 360);
   assert.equal(css('[data-m2="main"]').flexDirection, 'row');
@@ -310,6 +312,14 @@ test('Hand and Heroes keep lists beside the left viewer and retain native row ac
   navigate('heroes');
   assert.equal(css('[data-m2="sidebar"]').width, 'var(--m2-list-width)');
   assert.equal(css('#goa2-m2-details').display, 'none');
+  assert(!row.hasAttribute('data-m2-viewed'));
+  navigate('hand');
+  assert(row.hasAttribute('data-m2-viewed'));
+  viewer.querySelector('.m2-card-dismiss').click();
+  assert(!row.hasAttribute('data-m2-viewed'));
+  w.GOA2Mobile2D.destroy();
+  assert(!row.classList.contains('m2-card-source'));
+  assert(!row.hasAttribute('data-m2-viewed'));
 });
 
 test('landscape centers the map in the left area through view changes and Reset; portrait keeps its vertical panes', (t) => {
@@ -457,6 +467,7 @@ test('Deck Tree/List use a left viewer; Grid keeps its cards and image enlargeme
   assert.equal(css('.m2-deck-row-list').gridColumn, '2');
   assert.equal(css('.m2-tree-build').gridRow, '3');
   d.querySelector('.m2-tree-card').click();
+  assert(d.querySelector('.m2-tree-card[data-m2-viewed]'));
   assert(d.querySelector('.m2-deck-preview .m2-text-card'));
   const options = () => [...d.querySelectorAll('.m2-deck-controls button')];
   options()
@@ -464,17 +475,28 @@ test('Deck Tree/List use a left viewer; Grid keeps its cards and image enlargeme
     .click();
   assert.equal(css('.m2-deck-preview').gridColumn, '1');
   assert(d.querySelector('.m2-deck-row-list .m2-deck-compact'));
+  assert(
+    d.querySelector('.m2-deck-compact [data-m2-viewed]'),
+    'Tree to List retains the viewed card',
+  );
+  const cards = d.querySelectorAll('.m2-deck-compact button');
+  cards[1].click();
+  assert(cards[1].hasAttribute('data-m2-viewed'));
+  assert(!cards[0].hasAttribute('data-m2-viewed'));
   options()
     .find((button) => button.textContent === 'Grid')
     .click();
   assert(d.querySelector('.m2-deck-row-list .m2-deck-grid'));
+  assert(!d.querySelector('[data-m2-viewed]'), 'Grid starts with the image viewer closed');
   d.querySelector('.m2-deck-grid button').click();
   const zoom = d.querySelector('.m2-deck-zoom');
   assert.equal(zoom.hidden, false);
+  assert(d.querySelector('.m2-deck-grid [data-m2-viewed]'));
   assert(css('.m2-deck-zoom').inset.includes('var(--m2-list-width)'));
   assert.equal(css('.m2-deck-zoom canvas').objectFit, 'contain');
   zoom.querySelector('button').click();
   assert.equal(zoom.hidden, true);
+  assert(!d.querySelector('[data-m2-viewed]'));
 });
 
 test('wide rotated phones stay active while large tablets/desktops retain native layout; teardown restores all sources', (t) => {
@@ -498,4 +520,53 @@ test('wide rotated phones stay active while large tablets/desktops retain native
   assert(!d.querySelector('#goa2-m2-nav'));
   assert(!d.querySelector('[data-m2]'));
   assert.equal(d.documentElement.style.getPropertyValue('--m2-vh'), '');
+});
+
+test('landscape reserves full H/P/D width and takes the space from names through rotation', (t) => {
+  const { w, d, css, screen } = setup(t);
+  const hero = d.querySelector('.own').__reactFiber$test.memoizedProps.hero;
+  const hand = d.querySelector('[data-m2="hand-list"]');
+  for (const card of hero.hand.slice(1)) {
+    const row = d.createElement('div');
+    row.className = '_row_test';
+    row.innerHTML = '<span class="_cardName_test">' + card.name + '</span>';
+    row.__reactFiber$test = { memoizedProps: { card } };
+    hand.append(row);
+  }
+  hero.played_cards = hero.deck.filter((card) => card.tier === 'II').slice(0, 4);
+  hero.discard_pile = hero.deck.filter((card) => card.tier === 'III').slice(0, 3);
+  w.testUI.refresh();
+  const summary = d.querySelector('#goa2-m2-summary');
+  const expected = Math.ceil(24 + (3 + 4 + 3) * 5.5) + 'px';
+  for (const [width, height] of [
+    [600, 360],
+    [844, 360],
+    [1200, 600],
+  ]) {
+    screen(width, height);
+    assert.equal(summary.style.getPropertyValue('--m2-piles-width'), expected);
+    const article = css('#goa2-m2-summary > article');
+    assert.notEqual(article.getPropertyValue('--m2-piles-width').trim(), '36px');
+    assert.equal(article.getPropertyValue('--m2-name-min').trim(), '0px');
+    assert.equal(css('.m2-summary-identity strong').flexShrink, '1');
+    assert.equal(css('.m2-summary-identity strong').textOverflow, 'ellipsis');
+    assert.equal(css('.m2-summary-piles > span').flexShrink, '0');
+    assert.equal(summary.querySelector('.m2-summary-piles').textContent, 'HPD');
+    assert.equal(summary.querySelectorAll('article:first-child .m2-summary-piles i').length, 10);
+  }
+  screen(393, 760);
+  assert.equal(css('.m2-summary-identity strong').flexShrink, '0');
+  assert.equal(css('.m2-summary-identity strong').textOverflow, 'clip');
+  assert.equal(summary.style.getPropertyValue('--m2-piles-width'), expected);
+  for (const width of [320, 360, 393]) {
+    screen(width, 760);
+    assert.equal(css('.m2-summary-piles').minWidth, 'max-content');
+    assert.equal(css('.m2-summary-piles > span').flexShrink, '0');
+    assert.equal(css('.m2-summary-piles').overflow, 'visible');
+    assert(
+      css('#goa2-m2-summary > article').gridTemplateColumns.includes(
+        'minmax(var(--m2-piles-width, 48px), max-content)',
+      ),
+    );
+  }
 });

@@ -1,3 +1,8 @@
+import { resetDecisionHistory, updateLogPanel } from './log.js';
+import { committedFiberCache, componentProp } from './react.js';
+import { c, managedAttribute, q, root, uiState } from './runtime.js';
+import { addExtra, clearHeroCard, on } from './ui.js';
+
 // Persist only the events already delivered to the rendered EventLog component.
 // 9. Received-event history
 // This archive contains only events delivered to this browser. It cannot backfill
@@ -72,8 +77,7 @@ function changeEventGame() {
   }
   seenEvents = new Set(savedEvents.map(eventKey));
   for (const el of document.querySelectorAll('.m2-saved-events')) el.remove();
-  expandedHeroIds.clear();
-  focusedHeroId = null;
+  uiState.focusedHeroId = null;
   clearHeroCard();
   return true;
 }
@@ -124,7 +128,7 @@ function savedEventText(entry) {
 // Merge current delivered entries with the local archive, then show only archived
 // entries absent from the native log. The native log remains responsible for live rows.
 function updateEventHistory() {
-  if (dead) return;
+  if (uiState.dead) return;
   committedFiberCache.clear();
   changeEventGame();
   for (const toggle of document.querySelectorAll('button' + c('toggle'))) {
@@ -208,3 +212,15 @@ on(window, 'pagehide', updateEventHistory);
 // Periodic collection also runs when no relevant DOM mutation occurs; pagehide
 // attempts a final collection/write before the document is unloaded.
 const eventHistoryTimer = setInterval(updateEventHistory, 1500);
+
+export {
+  EVENT_LIMIT,
+  eventHistoryTimer,
+  eventKey,
+  flushEventHistory,
+  historyError,
+  historyRevision,
+  savedEventText,
+  savedEvents,
+  updateEventHistory,
+};

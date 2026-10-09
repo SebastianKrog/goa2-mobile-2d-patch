@@ -1,26 +1,40 @@
-/** Combine ordered source fragments into one readable, dependency-free userscript. */
+/** Bundle explicit source modules into one readable, dependency-free userscript. */
 import { readFile, mkdir, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { resolve, dirname } from 'node:path';
 import { Script } from 'node:vm';
+import { build } from 'esbuild';
+import { checkModules } from './check-modules.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const read = (path) => readFile(resolve(root, path), 'utf8');
-const manifest = JSON.parse(await read('src/manifest.json'));
-const header = await read('src/userscript-header.txt');
-const css = await read('src/styles.css');
-const version = JSON.parse(await read('package.json')).version;
-const fragments = await Promise.all(manifest.map((name) => read(`src/${name}`)));
-let body = fragments.join('');
-if (body.split('/* BUILD:STYLES */').length !== 2) throw new Error('Expected one stylesheet marker');
-// CSS is source text, not JavaScript: escape template-literal delimiters and backslashes.
-const escapedCss = css.replaceAll('\\', '\\\\').replaceAll('`', '\\`').replaceAll('${', '\\${');
-body = body.replace('/* BUILD:STYLES */', () => 'const css = `\n' + escapedCss + '`;');
-body = body.split('\n').map((line) => line ? `  ${line}` : '').join('\n');
-const bundle = header + '(() => {\n' + body + '})();\n';
-if (!header.includes(`@version      ${version}`) || !body.includes(`version: '${version}'`)) {
+const [header, bootstrap, main, packageJson] = await Promise.all([
+  read('src/userscript-header.txt'), read('src/bootstrap.js'),
+  read('src/main.js'), read('package.json'),
+]);
+const version = JSON.parse(packageJson).version;
+if (!header.includes(`@version      ${version}`) || !main.includes(`version: '${version}'`)) {
   throw new Error('Keep package.json, userscript header, and public API versions in sync');
 }
+await checkModules();
+const result = await build({
+  absWorkingDir: root,
+  entryPoints: ['src/main.js'],
+  bundle: true,
+  format: 'iife',
+  platform: 'browser',
+  target: 'es2022',
+  write: false,
+  minify: false,
+  treeShaking: false,
+  charset: 'utf8',
+  loader: { '.css': 'text' },
+  // Guards run before any module creates DOM, timers, preferences or listeners.
+  // The inner bundle keeps all module bindings private to this installation.
+  banner: { js: header + '(() => {\n' + bootstrap },
+  footer: { js: '})();' },
+});
+const bundle = result.outputFiles[0].text;
 new Script(bundle); // Reject syntax errors before producing an installable file.
 const outputs = ['dist/goa2-mobile-2d.user.js', `dist/goa2-mobile-2d-v${version}.txt`];
 await mkdir(resolve(root, 'dist'), { recursive: true });

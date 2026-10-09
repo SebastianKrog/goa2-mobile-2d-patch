@@ -95,7 +95,8 @@ test('desktop/mobile, missing sidebar and 3D/2D transitions restore native attri
   const root = d.documentElement;
   const name = d.querySelector('._name_test');
   assert(root.hasAttribute('data-m2-active'));
-  assert.equal(name.getAttribute('role'), 'button');
+  assert.equal(name.getAttribute('role'), 'heading');
+  assert(!name.hasAttribute('aria-disabled'), 'native headings are not disabled expansion buttons');
 
   media.matches = false;
   media.dispatchEvent(new w.Event('change'));
@@ -109,7 +110,8 @@ test('desktop/mobile, missing sidebar and 3D/2D transitions restore native attri
   media.dispatchEvent(new w.Event('change'));
   await settle();
   assert(root.hasAttribute('data-m2-active'));
-  assert.equal(name.getAttribute('role'), 'button');
+  assert.equal(name.getAttribute('role'), 'heading');
+  assert(!name.hasAttribute('aria-disabled'), 'native headings are not disabled expansion buttons');
 
   const sidebar = d.querySelector('aside');
   sidebar.remove();
@@ -128,6 +130,47 @@ test('desktop/mobile, missing sidebar and 3D/2D transitions restore native attri
   await settle();
   assert(root.hasAttribute('data-m2-active'));
   assert.equal(d.querySelectorAll('#goa2-m2-nav').length, 1);
+});
+
+test('footer closes the native Deck, permits reopening and cannot resurrect a dismissed modal on desktop', (t) => {
+  const fixture = browserFixture({
+    html: '<aside class="_sidebar_test"><section><div class="_name_test">Test (You)</div><div class="_details_test">Lv 1</div><button class="_viewDeckBtn_test">View Deck</button></section></aside>',
+    hooks: ['refresh'],
+  });
+  t.after(() => fixture.close());
+  const { w, d, media } = fixture;
+  let opens = 0,
+    closes = 0;
+  d.querySelector('._viewDeckBtn_test').onclick = () => {
+    opens++;
+    const backdrop = d.createElement('div');
+    backdrop.className = '_backdrop_test';
+    backdrop.innerHTML =
+      '<div class="_modal_test"><button class="_closeBtn_test">Close</button><div class="_cardGrid_test"></div></div>';
+    backdrop.querySelector('button').onclick = () => {
+      closes++;
+      backdrop.remove();
+    };
+    d.body.append(backdrop);
+  };
+  fixture.install();
+  const deck = d.querySelector('[data-mode="deck"]');
+  deck.click();
+  assert(d.querySelector('[data-m2="deck"]'));
+  deck.click();
+  assert.equal(closes, 1);
+  assert(!d.querySelector('._modal_test'), 'native close unmounts the modal');
+  media.matches = false;
+  w.testUI.refresh();
+  assert(!d.querySelector('._backdrop_test'), 'desktop cannot reveal a dismissed Deck');
+  media.matches = true;
+  w.testUI.refresh();
+  deck.click();
+  assert.equal(opens, 2, 'reopening invokes the native Deck control again');
+  d.querySelector('[data-mode="hand"]').click();
+  assert.equal(closes, 2, 'switching footer views also closes the native modal');
+  assert(!d.querySelector('._modal_test'));
+  assert.equal(d.documentElement.dataset.m2Mode, 'hand');
 });
 
 test('destroy cancels pending work, removes event listeners and permits a clean reinstall', async (t) => {
