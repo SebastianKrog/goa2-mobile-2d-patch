@@ -1,3 +1,4 @@
+import { clearBoardTexture, updateBoardTexture } from './board-texture.js';
 import { clearCardHighlights, highlightViewedCard } from './card-highlight.js';
 import { clearActionChoices, updateActionChoices } from './action-choices.js';
 import { renderSummary } from './board.js';
@@ -82,6 +83,7 @@ function refresh() {
       }
     changedAttributes.clear();
     clearBoardRotation();
+    clearBoardTexture();
     deckUpdate(null);
     for (const box of document.querySelectorAll('[data-m2="hero"]'))
       box.style.removeProperty('order');
@@ -181,6 +183,7 @@ function refresh() {
   tag(q(c('gameToolsRow')), 'tools');
   updateSettings();
   updateBoardRotation();
+  updateBoardTexture();
   updateUpgradeCards();
   updateUpgradeTree();
   const actionChoices = updateActionChoices();
@@ -398,7 +401,7 @@ on(media, 'change', schedule);
 
 // Public teardown for console installs and upgrades: release observers, timers, and DOM changes.
 window.GOA2Mobile2D = {
-  version: '1.0.0',
+  version: '1.0.1',
   destroy() {
     flushEventHistory();
     uiState.dead = true;
@@ -412,6 +415,7 @@ window.GOA2Mobile2D = {
       }
     changedAttributes.clear();
     clearBoardRotation();
+    clearBoardTexture();
     ac.abort();
     observer.disconnect();
     cancelAnimationFrame(uiState.frame);

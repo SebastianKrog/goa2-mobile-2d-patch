@@ -2,6 +2,12 @@
 
 Published releases, newest first.
 
+## 1.0.1
+
+- Add smaller hex textures with 8% shading, random 70–80% size and 0–60° rotation. Seed each tile by map name for a consistent appearance.
+- Give minion and hero spawn textures a 1 px light border, beneath unit icons.
+- Add a default-on Board texture toggle under Settings → Appearance; remember the preference and apply it immediately.
+
 ## 1.0.0
 
 - Show your played card above action choices and confirmation menus, with an eye icon on Board.

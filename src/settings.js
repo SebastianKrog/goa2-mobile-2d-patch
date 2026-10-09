@@ -7,7 +7,7 @@ import { on, settingsPanel } from './ui.js';
 // Appearance preferences are adapter-owned. Game preferences use the website's
 // existing keys; its sound/pointer state is initialized at load, so apply by reload.
 const displayPreferencesKey = 'goa2-mobile-display';
-let displayPreferences = { cardArt: true, fontStep: 0 },
+let displayPreferences = { cardArt: true, boardTexture: true, fontStep: 0 },
   cursorsVisible = true,
   soundsEnabled = true,
   soundVolume = 100,
@@ -16,6 +16,7 @@ let displayPreferences = { cardArt: true, fontStep: 0 },
 try {
   const saved = JSON.parse(localStorage.getItem(displayPreferencesKey) || '{}');
   if (typeof saved?.cardArt === 'boolean') displayPreferences.cardArt = saved.cardArt;
+  if (typeof saved?.boardTexture === 'boolean') displayPreferences.boardTexture = saved.boardTexture;
   if (Number.isInteger(saved?.fontStep) && saved.fontStep >= -4 && saved.fontStep <= 4)
     displayPreferences.fontStep = saved.fontStep;
 } catch {}
@@ -25,6 +26,10 @@ try {
   const saved = localStorage.getItem('goa2.sound.volume'), value = Number(saved);
   if (saved !== null && Number.isFinite(value)) soundVolume = Math.round(Math.max(0, Math.min(150, value * 100)));
 } catch {}
+
+export function boardTextureEnabled() {
+  return displayPreferences.boardTexture;
+}
 
 function fontScale(step) {
   return step < 0 ? 0.95 ** -step : 1.1 ** step;
@@ -50,6 +55,7 @@ function saveDisplayPreferences() {
 }
 
 const settingHelpText = {
+  texture: 'Show smaller shaded hexes and light borders at spawn points. On by default. Changes apply immediately and are saved on this device.',
   art: 'Use card illustrations behind card text. On by default. Changes apply immediately and are saved on this device.',
   font: 'Center is the original size (100%). Each step below center multiplies it by 0.95; each step above multiplies it by 1.10. Default resets the size. Changes apply immediately and are saved on this device.',
   cursors: 'Show other players’ pointers on the board. Changes here take effect after Apply & reload.',
@@ -169,6 +175,10 @@ function buildSettings() {
   appearance.append(settingSwitch('Card artwork', 'art', () => {
     displayPreferences.cardArt = !displayPreferences.cardArt;
     saveDisplayPreferences();
+  }), settingSwitch('Board texture', 'texture', () => {
+    displayPreferences.boardTexture = !displayPreferences.boardTexture;
+    saveDisplayPreferences();
+    schedule();
   }), settingSlider('Font size', 'font', -4, 4, displayPreferences.fontStep, (value) => {
     displayPreferences.fontStep = value;
     saveDisplayPreferences();
@@ -214,7 +224,7 @@ function updateSettings() {
   applyDisplayPreferences();
   root.toggleAttribute('data-m2-hide-cursors', !cursorsVisible);
   if (!settingsPanel.firstChild) buildSettings();
-  for (const [key, value] of [['art', displayPreferences.cardArt], ['cursors', cursorsVisible],
+  for (const [key, value] of [['art', displayPreferences.cardArt], ['texture', displayPreferences.boardTexture], ['cursors', cursorsVisible],
       ['sounds', soundsEnabled], ['fullscreen', !!document.fullscreenElement]])
     q('[data-setting="' + key + '"]', settingsPanel).setAttribute('aria-checked', String(value));
   for (const [key, value, percent] of [['font', displayPreferences.fontStep, Math.round(fontScale(displayPreferences.fontStep) * 100)],
