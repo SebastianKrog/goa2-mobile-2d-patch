@@ -1,6 +1,38 @@
+import { heroTurnCard } from './heroes.js';
+import { componentProp } from './react.js';
 import { navigate } from './navigation.js';
 import { c, managedAttribute, q, uiState } from './runtime.js';
 import { addExtra, extras, on } from './ui.js';
+
+// Reopen the native picker only for your current card's action decision.
+// Read live props on tap: a request may change without rebuilding the Board row.
+function openCardActionOptions(heroId, card) {
+  if (uiState.mode !== 'board' || !card || card.is_facedown) return false;
+  const board = q('[data-m2="board"]');
+  if (!board) return false;
+  const picker = q(c('picker'), board);
+  const options = Array.from(board.querySelectorAll('button')).find(button =>
+    !button.closest('.m2-choice-launchers') && /^Options$/i.test(button.textContent.trim()));
+  const contexts = [q('svg' + c('svg'), board), picker, options].filter(Boolean);
+  const context = contexts.find(element => componentProp(element, 'inputRequest'));
+  const request = context && componentProp(context, 'inputRequest');
+  if (request?.type !== 'CHOOSE_ACTION') return false;
+  const sidebar = q('[data-m2="sidebar"]');
+  const ownId = componentProp(context, 'myHeroId') || componentProp(sidebar, 'myHeroId');
+  const view = componentProp(context, 'view') || componentProp(sidebar, 'view');
+  if (!ownId || ownId !== heroId || !/^RESOLUTION$/i.test(view?.phase || '') ||
+      (request.player_id && request.player_id !== heroId) ||
+      (view.current_actor_id && view.current_actor_id !== heroId) ||
+      componentProp(context, 'isMyInput') === false) return false;
+  const source = Array.from(sidebar?.querySelectorAll('[data-m2="hero"]') || [])
+    .find(box => componentProp(box, 'hero')?.id === heroId);
+  const hero = source && componentProp(source, 'hero');
+  if (!source || !hero || heroTurnCard(source, hero, view)?.id !== card.id) return false;
+  if (picker) return true;
+  if (!options?.isConnected || options.disabled) return false;
+  options.click();
+  return true;
+}
 
 let planningActions = null;
 // Create compact proxies for native take-back/finish controls. Their original click
@@ -94,4 +126,4 @@ function updateChoiceLaunchers(boardControls = []) {
   host.hidden = !host.children.length;
 }
 
-export { updateChoiceLaunchers, updatePlanningActions };
+export { openCardActionOptions, updateChoiceLaunchers, updatePlanningActions };

@@ -1,3 +1,4 @@
+import { openCardActionOptions } from './controls.js';
 import { highlightViewedCard, trackCardSource } from './card-highlight.js';
 import { centerBoardHero } from './camera.js';
 import { updateCardRow } from './card-rows.js';
@@ -87,6 +88,7 @@ function heroTurnCard(box, hero, view) {
 }
 function inspectHeroCard(heroId, card) {
   if (!card || card.is_facedown) return;
+  if (openCardActionOptions(heroId, card)) return;
   uiState.selectedHeroCard = { heroId, cardId: card.id };
   updateHeroCardDisplay();
 }

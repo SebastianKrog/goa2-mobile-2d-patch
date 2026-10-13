@@ -1,4 +1,4 @@
-import { textCard } from './cards.js';
+import { cardSymbol, textCard } from './cards.js';
 import { heroTurnCard } from './heroes.js';
 import { componentProp } from './react.js';
 import { c, managedAttribute, q } from './runtime.js';
@@ -7,6 +7,54 @@ import { addExtra, extras } from './ui.js';
 const boardInputs = new Set(['SELECT_HEX', 'SELECT_UNIT', 'SELECT_UNIT_OR_TOKEN', 'CHOOSE_RESPAWN_HEX']);
 const adapted = new Set();
 let viewer = null;
+const choiceLabels = new Map();
+
+function clearChoiceLabel(button) {
+  const state = choiceLabels.get(button);
+  if (!state) return;
+  state.label.remove();
+  extras.delete(state.label);
+  managedAttribute(button, 'data-m2-action-choice', null);
+  managedAttribute(button, 'aria-label', state.ariaLabel);
+  choiceLabels.delete(button);
+}
+function updateChoiceLabels(picker, request) {
+  const live = new Set();
+  if (request?.type === 'CHOOSE_ACTION' && picker) {
+    for (const button of picker.querySelectorAll('button')) {
+      const previous = choiceLabels.get(button);
+      const text = Array.from(button.childNodes)
+        .filter(node => node !== previous?.label).map(node => node.textContent).join('').trim();
+      const match = text.match(/^(?:(Primary|Secondary):\s*)?(ATTACK|MOVEMENT|HOLD|HELD|CLEAR)\s*(?:\((\d+\+?)\))?$/i);
+      if (!match) continue;
+      const [, kind, action, value] = match;
+      const key = action.toUpperCase();
+      const symbol = ['ATTACK', 'MOVEMENT'].includes(key);
+      if (symbol ? value === undefined : value !== undefined && value !== '0') continue;
+      live.add(button);
+      let state = previous;
+      if (!state) {
+        const label = document.createElement('span');
+        label.className = 'm2-action-choice-label';
+        label.setAttribute('aria-hidden', 'true');
+        addExtra(label);
+        state = { label, ariaLabel: button.getAttribute('aria-label'), text: null };
+        choiceLabels.set(button, state);
+      }
+      if (state.text !== text) {
+        state.label.replaceChildren();
+        if (kind) state.label.append(document.createTextNode(kind + ': '));
+        state.label.append(symbol ? cardSymbol(key, value) : document.createTextNode(action));
+        state.text = text;
+      }
+      if (state.label.parentElement !== button) button.append(state.label);
+      managedAttribute(button, 'data-m2-action-choice', 'true');
+      managedAttribute(button, 'aria-label', (kind ? kind + ': ' : '') + action + (symbol ? ' ' + value : ''));
+    }
+  }
+  for (const button of choiceLabels.keys())
+    if (!live.has(button)) clearChoiceLabel(button);
+}
 
 // Only presentation is added. Native buttons stay under React's ownership and
 // keep their click, preview and board-peek handlers.
@@ -15,6 +63,7 @@ function mark(element, attribute, value = 'true') {
   adapted.add(element);
 }
 function clearActionChoices() {
+  for (const button of choiceLabels.keys()) clearChoiceLabel(button);
   for (const element of adapted)
     for (const attribute of ['data-m2-action-picker', 'data-m2-action-overlay',
       'data-m2-board-peek', 'data-m2-board-label', 'data-m2-board-prompt'])
@@ -88,6 +137,7 @@ function updateActionChoices() {
       if (element.hasAttribute(attribute)) managedAttribute(element, attribute, null);
     adapted.delete(element);
   }
+  updateChoiceLabels(card ? picker : null, request);
   return { prompt, controls: prompt ? controls : [], card, heroId: card ? hero.id : null };
 }
 

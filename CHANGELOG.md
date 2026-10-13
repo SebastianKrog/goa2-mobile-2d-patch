@@ -2,6 +2,12 @@
 
 Published releases, newest first.
 
+## 1.0.2
+
+- Tapping your current card on Board reopens Options while its action choice is pending.
+- Keep the played card at its usual width and minimum height in action-selection menus; scroll the whole menu rather than compressing the card body.
+- Show attack and movement options with stat icons and values. Remove zero values from Hold and Clear while preserving native controls.
+
 ## 1.0.1
 
 - Add smaller hex textures with 8% shading, random 70–80% size and 0–60° rotation. Seed each tile by map name for a consistent appearance.

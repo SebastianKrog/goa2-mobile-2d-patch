@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GoA II — Mobile 2D
 // @namespace    goa2-mobile-local
-// @version      1.0.1
+// @version      1.0.2
 // @description  Compact 2D HUD, Board/Hand modes, contained setup and utility panels.
 // @match        https://goa2.frontend.pedroliv.dev/game/*
 // @grant        none
@@ -3571,27 +3571,45 @@ window.GOA2Mobile?.destroy();
   min-width: 0 !important;
   max-width: 500px !important;
   max-height: 100% !important;
-  padding: 8px !important;
+  padding: 0 0 8px !important;
   margin: 0 !important;
   overflow-y: auto !important;
   overscroll-behavior: contain;
   border-radius: 9px !important;
 }
+& [data-m2-action-picker] > :not(.m2-action-card-view) {
+  margin-left: 8px;
+  margin-right: 8px;
+}
+& [data-m2-action-picker] > button {
+  box-sizing: border-box;
+  width: calc(100% - 16px);
+}
 & .m2-action-card-view {
-  height: min(var(--m2-card-display-height), 45dvh);
+  min-height: var(--m2-card-display-height);
+  flex-shrink: 0;
   margin-bottom: 10px;
-  overflow: hidden;
   border-radius: 8px;
 }
 & .m2-action-card-view > .m2-text-card {
-  height: 100%;
+  min-height: var(--m2-card-display-height);
 }
-& .m2-action-card-view .m2-card-body {
-  min-height: 0;
-  overflow-y: auto;
+& [data-m2-action-choice] {
+  font-size: 0 !important;
 }
-& .m2-action-card-view :is(.m2-card-top, .m2-card-foot) {
-  flex-shrink: 0;
+& [data-m2-action-choice] > :not(.m2-action-choice-label) {
+  display: none !important;
+}
+& .m2-action-choice-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  line-height: 1.4;
+}
+& .m2-action-choice-label .m2-symbol img {
+  width: 27px;
+  height: 27px;
 }
 & [data-m2-action-picker] [class*="_titleRow_"] {
   gap: 8px;
@@ -7578,6 +7596,111 @@ html:not([data-m2-active]) .m2-choice-launchers {
     }
   }
 
+  // src/controls.js
+  function openCardActionOptions(heroId, card) {
+    if (uiState.mode !== "board" || !card || card.is_facedown) return false;
+    const board = q('[data-m2="board"]');
+    if (!board) return false;
+    const picker = q(c("picker"), board);
+    const options = Array.from(board.querySelectorAll("button")).find((button) => !button.closest(".m2-choice-launchers") && /^Options$/i.test(button.textContent.trim()));
+    const contexts = [q("svg" + c("svg"), board), picker, options].filter(Boolean);
+    const context = contexts.find((element) => componentProp(element, "inputRequest"));
+    const request = context && componentProp(context, "inputRequest");
+    if (request?.type !== "CHOOSE_ACTION") return false;
+    const sidebar = q('[data-m2="sidebar"]');
+    const ownId = componentProp(context, "myHeroId") || componentProp(sidebar, "myHeroId");
+    const view = componentProp(context, "view") || componentProp(sidebar, "view");
+    if (!ownId || ownId !== heroId || !/^RESOLUTION$/i.test(view?.phase || "") || request.player_id && request.player_id !== heroId || view.current_actor_id && view.current_actor_id !== heroId || componentProp(context, "isMyInput") === false) return false;
+    const source = Array.from(sidebar?.querySelectorAll('[data-m2="hero"]') || []).find((box) => componentProp(box, "hero")?.id === heroId);
+    const hero = source && componentProp(source, "hero");
+    if (!source || !hero || heroTurnCard(source, hero, view)?.id !== card.id) return false;
+    if (picker) return true;
+    if (!options?.isConnected || options.disabled) return false;
+    options.click();
+    return true;
+  }
+  var planningActions = null;
+  function updatePlanningActions() {
+    const sources2 = Array.from(
+      document.querySelectorAll(c("takeBackBtn") + "," + c("finishPlanningBtn"))
+    ).filter((source) => uiState.mode !== "board" || !source.matches(c("takeBackBtn")));
+    const host = uiState.mode === "board" ? q('[data-m2="board"]') : q('[data-m2="hand-list"]');
+    if (!sources2.length || !host) {
+      if (planningActions) {
+        planningActions.element.remove();
+        extras.delete(planningActions.element);
+      }
+      planningActions = null;
+      return;
+    }
+    if (!planningActions) {
+      const element = document.createElement("div");
+      element.className = "m2-planning-actions";
+      planningActions = { element, sources: [] };
+      addExtra(element);
+    }
+    const state = planningActions;
+    state.element.classList.toggle("m2-on-board", uiState.mode === "board");
+    if (state.element.parentElement !== host) host.append(state.element);
+    if (sources2.length !== state.sources.length || sources2.some((source, i) => source !== state.sources[i])) {
+      state.sources = sources2;
+      state.element.replaceChildren(
+        ...sources2.map((source) => {
+          const button = document.createElement("button");
+          button.type = "button";
+          on(button, "click", () => source.click());
+          return button;
+        })
+      );
+    }
+    sources2.forEach((source, i) => {
+      const button = state.element.children[i];
+      if (button.textContent !== source.textContent) button.textContent = source.textContent;
+      button.disabled = source.disabled;
+    });
+  }
+  function updateChoiceLaunchers(boardControls = []) {
+    const board = q('[data-m2="board"]');
+    if (!board) return;
+    let host = q(".m2-choice-launchers", board);
+    if (!host) {
+      host = document.createElement("div");
+      host.className = "m2-choice-launchers";
+      board.append(host);
+      addExtra(host);
+    }
+    const sources2 = boardControls.length ? [...boardControls].sort((a, b) => Number(/^Undo$/i.test(b.textContent.trim())) - Number(/^Undo$/i.test(a.textContent.trim()))) : Array.from(board.querySelectorAll("button")).filter(
+      (button) => !button.closest(".m2-choice-launchers") && /^(Options|Setup|Upgrades?)$/i.test(button.textContent.trim())
+    );
+    for (const button of /* @__PURE__ */ new Set([...host._sources || [], ...document.querySelectorAll("[data-m2-choice-source]")])) {
+      if (!sources2.includes(button)) button.removeAttribute("data-m2-choice-source");
+    }
+    for (const source of sources2) managedAttribute(source, "data-m2-choice-source", "true");
+    const setup = !!q('[data-m2="setup"]');
+    const key = JSON.stringify([setup, sources2.map((button) => [button.textContent, button.disabled])]);
+    if (host._sources?.length === sources2.length && host._sources.every((source, i) => source === sources2[i]) && host.dataset.key === key) return;
+    host._sources = sources2;
+    host.dataset.key = key;
+    host.replaceChildren();
+    for (const source of sources2) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.textContent = source.textContent.trim();
+      button.disabled = source.disabled;
+      button.classList.toggle("m2-undo", /^Undo$/i.test(button.textContent));
+      button.onclick = () => source.click();
+      host.append(button);
+    }
+    if (setup && !sources2.some((button) => /^Setup$/i.test(button.textContent.trim()))) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.textContent = "Setup";
+      button.onclick = () => navigate("setup");
+      host.append(button);
+    }
+    host.hidden = !host.children.length;
+  }
+
   // src/heroes.js
   function heroDisplayName(name) {
     if (!name) return "";
@@ -7630,6 +7753,7 @@ html:not([data-m2-active]) .m2-choice-launchers {
   }
   function inspectHeroCard(heroId, card) {
     if (!card || card.is_facedown) return;
+    if (openCardActionOptions(heroId, card)) return;
     uiState.selectedHeroCard = { heroId, cardId: card.id };
     updateHeroCardDisplay();
   }
@@ -7957,11 +8081,58 @@ html:not([data-m2-active]) .m2-choice-launchers {
   var boardInputs = /* @__PURE__ */ new Set(["SELECT_HEX", "SELECT_UNIT", "SELECT_UNIT_OR_TOKEN", "CHOOSE_RESPAWN_HEX"]);
   var adapted = /* @__PURE__ */ new Set();
   var viewer = null;
+  var choiceLabels = /* @__PURE__ */ new Map();
+  function clearChoiceLabel(button) {
+    const state = choiceLabels.get(button);
+    if (!state) return;
+    state.label.remove();
+    extras.delete(state.label);
+    managedAttribute(button, "data-m2-action-choice", null);
+    managedAttribute(button, "aria-label", state.ariaLabel);
+    choiceLabels.delete(button);
+  }
+  function updateChoiceLabels(picker, request) {
+    const live = /* @__PURE__ */ new Set();
+    if (request?.type === "CHOOSE_ACTION" && picker) {
+      for (const button of picker.querySelectorAll("button")) {
+        const previous = choiceLabels.get(button);
+        const text = Array.from(button.childNodes).filter((node) => node !== previous?.label).map((node) => node.textContent).join("").trim();
+        const match = text.match(/^(?:(Primary|Secondary):\s*)?(ATTACK|MOVEMENT|HOLD|HELD|CLEAR)\s*(?:\((\d+\+?)\))?$/i);
+        if (!match) continue;
+        const [, kind, action, value] = match;
+        const key = action.toUpperCase();
+        const symbol = ["ATTACK", "MOVEMENT"].includes(key);
+        if (symbol ? value === void 0 : value !== void 0 && value !== "0") continue;
+        live.add(button);
+        let state = previous;
+        if (!state) {
+          const label = document.createElement("span");
+          label.className = "m2-action-choice-label";
+          label.setAttribute("aria-hidden", "true");
+          addExtra(label);
+          state = { label, ariaLabel: button.getAttribute("aria-label"), text: null };
+          choiceLabels.set(button, state);
+        }
+        if (state.text !== text) {
+          state.label.replaceChildren();
+          if (kind) state.label.append(document.createTextNode(kind + ": "));
+          state.label.append(symbol ? cardSymbol(key, value) : document.createTextNode(action));
+          state.text = text;
+        }
+        if (state.label.parentElement !== button) button.append(state.label);
+        managedAttribute(button, "data-m2-action-choice", "true");
+        managedAttribute(button, "aria-label", (kind ? kind + ": " : "") + action + (symbol ? " " + value : ""));
+      }
+    }
+    for (const button of choiceLabels.keys())
+      if (!live.has(button)) clearChoiceLabel(button);
+  }
   function mark(element, attribute, value = "true") {
     managedAttribute(element, attribute, value);
     adapted.add(element);
   }
   function clearActionChoices() {
+    for (const button of choiceLabels.keys()) clearChoiceLabel(button);
     for (const element of adapted)
       for (const attribute of [
         "data-m2-action-picker",
@@ -8038,6 +8209,7 @@ html:not([data-m2-active]) .m2-choice-launchers {
         if (element.hasAttribute(attribute)) managedAttribute(element, attribute, null);
       adapted.delete(element);
     }
+    updateChoiceLabels(card ? picker : null, request);
     return { prompt, controls: prompt ? controls : [], card, heroId: card ? hero.id : null };
   }
 
@@ -8294,89 +8466,6 @@ html:not([data-m2-active]) .m2-choice-launchers {
     const names = Array.from(summary.querySelectorAll(".m2-summary-identity strong"));
     const nameWidth = Math.max(0, ...names.map((name) => name.getBoundingClientRect().width || name.textContent.length * 6.2));
     summary.style.setProperty("--m2-name-min", Math.ceil(nameWidth + 8) + "px");
-  }
-
-  // src/controls.js
-  var planningActions = null;
-  function updatePlanningActions() {
-    const sources2 = Array.from(
-      document.querySelectorAll(c("takeBackBtn") + "," + c("finishPlanningBtn"))
-    ).filter((source) => uiState.mode !== "board" || !source.matches(c("takeBackBtn")));
-    const host = uiState.mode === "board" ? q('[data-m2="board"]') : q('[data-m2="hand-list"]');
-    if (!sources2.length || !host) {
-      if (planningActions) {
-        planningActions.element.remove();
-        extras.delete(planningActions.element);
-      }
-      planningActions = null;
-      return;
-    }
-    if (!planningActions) {
-      const element = document.createElement("div");
-      element.className = "m2-planning-actions";
-      planningActions = { element, sources: [] };
-      addExtra(element);
-    }
-    const state = planningActions;
-    state.element.classList.toggle("m2-on-board", uiState.mode === "board");
-    if (state.element.parentElement !== host) host.append(state.element);
-    if (sources2.length !== state.sources.length || sources2.some((source, i) => source !== state.sources[i])) {
-      state.sources = sources2;
-      state.element.replaceChildren(
-        ...sources2.map((source) => {
-          const button = document.createElement("button");
-          button.type = "button";
-          on(button, "click", () => source.click());
-          return button;
-        })
-      );
-    }
-    sources2.forEach((source, i) => {
-      const button = state.element.children[i];
-      if (button.textContent !== source.textContent) button.textContent = source.textContent;
-      button.disabled = source.disabled;
-    });
-  }
-  function updateChoiceLaunchers(boardControls = []) {
-    const board = q('[data-m2="board"]');
-    if (!board) return;
-    let host = q(".m2-choice-launchers", board);
-    if (!host) {
-      host = document.createElement("div");
-      host.className = "m2-choice-launchers";
-      board.append(host);
-      addExtra(host);
-    }
-    const sources2 = boardControls.length ? [...boardControls].sort((a, b) => Number(/^Undo$/i.test(b.textContent.trim())) - Number(/^Undo$/i.test(a.textContent.trim()))) : Array.from(board.querySelectorAll("button")).filter(
-      (button) => !button.closest(".m2-choice-launchers") && /^(Options|Setup|Upgrades?)$/i.test(button.textContent.trim())
-    );
-    for (const button of /* @__PURE__ */ new Set([...host._sources || [], ...document.querySelectorAll("[data-m2-choice-source]")])) {
-      if (!sources2.includes(button)) button.removeAttribute("data-m2-choice-source");
-    }
-    for (const source of sources2) managedAttribute(source, "data-m2-choice-source", "true");
-    const setup = !!q('[data-m2="setup"]');
-    const key = JSON.stringify([setup, sources2.map((button) => [button.textContent, button.disabled])]);
-    if (host._sources?.length === sources2.length && host._sources.every((source, i) => source === sources2[i]) && host.dataset.key === key) return;
-    host._sources = sources2;
-    host.dataset.key = key;
-    host.replaceChildren();
-    for (const source of sources2) {
-      const button = document.createElement("button");
-      button.type = "button";
-      button.textContent = source.textContent.trim();
-      button.disabled = source.disabled;
-      button.classList.toggle("m2-undo", /^Undo$/i.test(button.textContent));
-      button.onclick = () => source.click();
-      host.append(button);
-    }
-    if (setup && !sources2.some((button) => /^Setup$/i.test(button.textContent.trim()))) {
-      const button = document.createElement("button");
-      button.type = "button";
-      button.textContent = "Setup";
-      button.onclick = () => navigate("setup");
-      host.append(button);
-    }
-    host.hidden = !host.children.length;
   }
 
   // src/header.js
@@ -9505,7 +9594,7 @@ html:not([data-m2-active]) .m2-choice-launchers {
   }
   on(media, "change", schedule);
   window.GOA2Mobile2D = {
-    version: "1.0.1",
+    version: "1.0.2",
     destroy() {
       flushEventHistory();
       uiState.dead = true;
