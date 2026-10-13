@@ -19,6 +19,18 @@ I recommend **Firefox for Android** because it supports browser extensions, unli
 
 5. Reload the GoA2 page.
 
+### Android — Chrome (bookmarklet)
+
+1. In Chrome, bookmark any page (⋮ → ☆), then edit the bookmark and name it **GoA2 Patch**.
+2. Replace the bookmark's URL with:
+
+   `javascript:(()=>{const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/gh/SebastianKrog/goa2-mobile-2d-patch@main/dist/goa2-mobile-2d.user.js';s.onerror=()=>alert('GoA2 patch could not load');document.head.appendChild(s)})()`
+
+3. Open your GoA2 game with `3d=0` in the URL.
+4. Type **GoA2 Patch** in Chrome's address bar and select the bookmark suggestion (not a search result).
+
+Run it again after each page reload. The site's Content Security Policy may prevent loading the script.
+
 ### iPhone / iPad
 
 On iOS, use Safari with the free [Userscripts app](https://apps.apple.com/us/app/userscripts/id1463298887). Enable its Safari extension, then install the script from the URL above.
