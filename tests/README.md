@@ -1,7 +1,7 @@
 # Regression coverage
 
 Run `npm ci` once, then `npm test`. The command rebuilds the userscript and runs
-all 42 `test-*.cjs` files in separate Node processes, each with a 30-second timeout.
+all 45 `test-*.cjs` files in separate Node processes, each with a 30-second timeout.
 Failures retain their assertion stacks; the runner lists failed filenames at the end.
 
 To investigate one file, build first and run it directly:

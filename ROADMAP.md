@@ -4,6 +4,10 @@ Remaining work for the GoA II Mobile 2D patch. Released features and fixes are
 recorded in [CHANGELOG.md](CHANGELOG.md); installation and usage basics are in
 [README.md](README.md).
 
+## Bottom navigation
+
+Offer three options: the current bottom menu, a drawer opened by a button, and no bottom menu. Keep Settings and Log accessible in every mode; Hand and Deck already have Board shortcuts.
+
 ## Tablet layout
 
 Create a layout for tablet-sized screens:

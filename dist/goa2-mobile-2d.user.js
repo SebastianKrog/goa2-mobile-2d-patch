@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GoA II — Mobile 2D
 // @namespace    goa2-mobile-local
-// @version      1.0.2
+// @version      1.0.3
 // @description  Compact 2D HUD, Board/Hand modes, contained setup and utility panels.
 // @match        https://goa2.frontend.pedroliv.dev/game/*
 // @grant        none
@@ -3069,6 +3069,64 @@ window.GOA2Mobile?.destroy();
 }
 /* 7. Board summaries and focus
    Fixed columns and card widths remain stable; individual surfaces float over the board. */
+& #goa2-m2-summary .m2-navigation-shortcut {
+  position: relative;
+}
+/* Only the transparent hit area and border expand. The original dots/icons keep
+   exactly the same layout and alignment as the informational hero groups. */
+& #goa2-m2-summary .m2-shortcut-border {
+  appearance: none;
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: auto;
+  height: auto;
+  box-sizing: border-box;
+  border: 0;
+  border-radius: 5px;
+  background: rgb(190 195 205 / 10%);
+  box-shadow: inset 0 0 0 1px #73777e;
+  color: inherit;
+  font: inherit;
+  line-height: inherit;
+  margin: 0;
+  padding: 0;
+  min-height: 0;
+  min-width: 0;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+& #goa2-m2-summary .m2-shortcut-border:active {
+  background: rgb(190 195 205 / 17%);
+  box-shadow: inset 0 0 0 1px #c0cad8;
+}
+& #goa2-m2-summary > article .m2-shortcut-border {
+  top: 50%;
+  bottom: auto;
+  transform: translateY(-50%);
+  height: 24px;
+}
+& #goa2-m2-summary > article .m2-summary-piles > .m2-shortcut-border {
+  left: -2px;
+}
+& #goa2-m2-summary .m2-hand-reserved-dot {
+  visibility: hidden;
+}
+& #goa2-m2-summary .m2-hand-empty-slot {
+  width: 7px;
+  flex: 0 0 7px;
+}
+& #goa2-m2-summary .m2-history-pile > .m2-shortcut-border {
+  left: -3px;
+  right: -3px;
+}
+& #goa2-m2-summary .m2-hero-upgrades > .m2-shortcut-border {
+  inset: -3px;
+}
+& #goa2-m2-summary .m2-shortcut-border:focus-visible {
+  outline: 2px solid #c0cad8;
+  outline-offset: 1px;
+}
 & #goa2-m2-summary strong {
   display: block;
   font-size: 11px;
@@ -7143,6 +7201,44 @@ html:not([data-m2-active]) .m2-choice-launchers {
   }
   on(close, "click", dismiss);
   var deckMounted = false;
+  var menuHistoryToken = Date.now() + "-" + Math.random();
+  var menuHistoryActive = false;
+  var menuHistoryClosing = false;
+  var navigating = false;
+  var menuSelection = () => uiState.deckOpen ? "deck" : uiState.panel || uiState.mode;
+  function syncMenuHistory() {
+    if (navigating || menuHistoryClosing || uiState.dead) return;
+    const open = menuSelection() !== "board";
+    if (open && !menuHistoryActive) {
+      try {
+        window.history.pushState({ ...window.history.state, goa2Mobile2DMenu: menuHistoryToken }, "", window.location.href);
+        menuHistoryActive = true;
+      } catch {
+      }
+    } else if (!open && menuHistoryActive) {
+      menuHistoryActive = false;
+      if (window.history.state?.goa2Mobile2DMenu === menuHistoryToken) {
+        menuHistoryClosing = true;
+        window.history.back();
+      }
+    }
+  }
+  on(window, "popstate", () => {
+    if (menuHistoryClosing) {
+      menuHistoryClosing = false;
+      syncMenuHistory();
+      return;
+    }
+    if (!menuHistoryActive) return;
+    menuHistoryActive = false;
+    const selected = menuSelection();
+    if (selected !== "board") navigate(selected);
+  });
+  function clearMenuHistory() {
+    if (menuHistoryActive && window.history.state?.goa2Mobile2DMenu === menuHistoryToken)
+      window.history.back();
+    menuHistoryActive = false;
+  }
   function setDeckOpen(open) {
     uiState.deckOpen = open;
     deckMounted = false;
@@ -7155,6 +7251,7 @@ html:not([data-m2-active]) .m2-choice-launchers {
   }
   function navigate(key) {
     if (!key) return;
+    navigating = true;
     const selected = uiState.deckOpen ? "deck" : uiState.panel || uiState.mode;
     const closing = selected === key;
     if (uiState.deckOpen) q('[data-m2="deck"] ' + c("closeBtn"))?.click();
@@ -7172,7 +7269,22 @@ html:not([data-m2-active]) .m2-choice-launchers {
       } else if (key === "setup" || key === "tools" || key === "log") uiState.panel = key;
       else if (key === "hand" || key === "heroes") uiState.mode = key;
     }
+    navigating = false;
     refresh();
+  }
+  function navigationShortcut(content, key, label) {
+    const button = document.createElement("button");
+    button.type = "button";
+    content.classList.add("m2-navigation-shortcut");
+    button.className = "m2-shortcut-border";
+    button.title = label;
+    button.setAttribute("aria-label", label);
+    content.append(button);
+    content.onclick = (event) => {
+      event.stopPropagation();
+      navigate(key);
+    };
+    return content;
   }
   function syncNavigation() {
     const setupButton = q('[data-mode="setup"]', nav);
@@ -7189,6 +7301,7 @@ html:not([data-m2-active]) .m2-choice-launchers {
       if (button.getAttribute("aria-pressed") !== pressed)
         button.setAttribute("aria-pressed", pressed);
     }
+    syncMenuHistory();
   }
   on(nav, "click", (e) => navigate(e.target.closest("button")?.dataset.mode));
   on(document, "pointerdown", (e) => {
@@ -7858,7 +7971,6 @@ html:not([data-m2-active]) .m2-choice-launchers {
     const handGroup = document.createElement("span");
     handGroup.className = "m2-history-pile";
     handGroup.append(document.createTextNode("Hand:"));
-    history.append(handGroup);
     for (const dot of handDots) {
       const marker = document.createElement("span");
       marker.className = "m2-history-marker";
@@ -7866,11 +7978,26 @@ html:not([data-m2-active]) .m2-choice-launchers {
       marker.title = dot.label || "Hand card";
       handGroup.append(marker);
     }
-    if (!handDots.length) handGroup.append(document.createTextNode("—"));
+    const boardShortcuts = !!box.closest("#goa2-m2-summary") && !box.hasAttribute("data-m2-other");
+    if (!handDots.length) {
+      const empty = document.createElement("span");
+      empty.textContent = "—";
+      if (boardShortcuts) empty.className = "m2-hand-empty-slot";
+      handGroup.append(empty);
+    }
+    if (boardShortcuts) {
+      for (let i = Math.max(1, handDots.length); i < 5; i++) {
+        const slot = document.createElement("span");
+        slot.className = "m2-history-marker m2-hand-reserved-dot";
+        slot.setAttribute("aria-hidden", "true");
+        handGroup.append(slot);
+      }
+    }
+    history.append(boardShortcuts ? navigationShortcut(handGroup, "hand", "Open your Hand") : handGroup);
     dashboard.append(history);
     const upgrades = itemUpgradeSymbols(hero.items, "m2-hero-upgrades");
     upgrades.prepend(ultimateIndicator(hero));
-    dashboard.append(upgrades);
+    dashboard.append(boardShortcuts ? navigationShortcut(upgrades, "deck", "Open your Deck") : upgrades);
     function smallCard(card, nano = false, resolved = false) {
       const button = document.createElement("button");
       button.type = "button";
@@ -8431,7 +8558,7 @@ html:not([data-m2-active]) .m2-choice-launchers {
       const resources = document.createElement("span");
       resources.className = "m2-summary-resources";
       resources.append(level, separator(), gold);
-      row.append(turn, identity, resources, piles);
+      row.append(turn, identity, resources, h.isOwn ? navigationShortcut(piles, "hand", "Open your Hand") : piles);
       const currentSlot = document.createElement("span");
       currentSlot.className = "m2-summary-current-slot";
       if (h.currentCard) {
@@ -8455,7 +8582,7 @@ html:not([data-m2-active]) .m2-choice-launchers {
       }
       const upgrades = itemUpgradeSymbols(h.upgrades, "m2-summary-upgrades");
       upgrades.prepend(ultimateIndicator(h, true));
-      row.append(currentSlot, upgrades);
+      row.append(currentSlot, h.isOwn ? navigationShortcut(upgrades, "deck", "Open your Deck") : upgrades);
       summary.append(row);
     }
     const pileWidth = Math.max(26, ...heroes.map((h) => {
@@ -9458,6 +9585,7 @@ html:not([data-m2-active]) .m2-choice-launchers {
         }));
         return {
           id: hero?.id,
+          isOwn: !box.hasAttribute("data-m2-other"),
           level: hero?.level,
           gold: hero?.gold,
           currentCard: hero ? heroTurnCard(box, hero, publicView) : null,
@@ -9594,10 +9722,11 @@ html:not([data-m2-active]) .m2-choice-launchers {
   }
   on(media, "change", schedule);
   window.GOA2Mobile2D = {
-    version: "1.0.2",
+    version: "1.0.3",
     destroy() {
       flushEventHistory();
       uiState.dead = true;
+      clearMenuHistory();
       clearMobileStatus();
       clearActionChoices();
       clearUpgradeTree();

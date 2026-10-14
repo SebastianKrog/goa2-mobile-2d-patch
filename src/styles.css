@@ -3010,6 +3010,64 @@
 }
 /* 7. Board summaries and focus
    Fixed columns and card widths remain stable; individual surfaces float over the board. */
+& #goa2-m2-summary .m2-navigation-shortcut {
+  position: relative;
+}
+/* Only the transparent hit area and border expand. The original dots/icons keep
+   exactly the same layout and alignment as the informational hero groups. */
+& #goa2-m2-summary .m2-shortcut-border {
+  appearance: none;
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: auto;
+  height: auto;
+  box-sizing: border-box;
+  border: 0;
+  border-radius: 5px;
+  background: rgb(190 195 205 / 10%);
+  box-shadow: inset 0 0 0 1px #73777e;
+  color: inherit;
+  font: inherit;
+  line-height: inherit;
+  margin: 0;
+  padding: 0;
+  min-height: 0;
+  min-width: 0;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+& #goa2-m2-summary .m2-shortcut-border:active {
+  background: rgb(190 195 205 / 17%);
+  box-shadow: inset 0 0 0 1px #c0cad8;
+}
+& #goa2-m2-summary > article .m2-shortcut-border {
+  top: 50%;
+  bottom: auto;
+  transform: translateY(-50%);
+  height: 24px;
+}
+& #goa2-m2-summary > article .m2-summary-piles > .m2-shortcut-border {
+  left: -2px;
+}
+& #goa2-m2-summary .m2-hand-reserved-dot {
+  visibility: hidden;
+}
+& #goa2-m2-summary .m2-hand-empty-slot {
+  width: 7px;
+  flex: 0 0 7px;
+}
+& #goa2-m2-summary .m2-history-pile > .m2-shortcut-border {
+  left: -3px;
+  right: -3px;
+}
+& #goa2-m2-summary .m2-hero-upgrades > .m2-shortcut-border {
+  inset: -3px;
+}
+& #goa2-m2-summary .m2-shortcut-border:focus-visible {
+  outline: 2px solid #c0cad8;
+  outline-offset: 1px;
+}
 & #goa2-m2-summary strong {
   display: block;
   font-size: 11px;

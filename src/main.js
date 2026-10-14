@@ -23,7 +23,7 @@ import {
 } from './heroes.js';
 import { eventHistoryTimer, flushEventHistory, updateEventHistory } from './history.js';
 import { cancelDecisionHistory } from './log.js';
-import { syncDeckMount, syncNavigation } from './navigation.js';
+import { clearMenuHistory, syncDeckMount, syncNavigation } from './navigation.js';
 import { committedFiberCache, componentProp } from './react.js';
 import {
   ac,
@@ -243,6 +243,7 @@ function refresh() {
           }));
       return {
         id: hero?.id,
+        isOwn: !box.hasAttribute('data-m2-other'),
         level: hero?.level,
         gold: hero?.gold,
         currentCard: hero ? heroTurnCard(box, hero, publicView) : null,
@@ -401,10 +402,11 @@ on(media, 'change', schedule);
 
 // Public teardown for console installs and upgrades: release observers, timers, and DOM changes.
 window.GOA2Mobile2D = {
-  version: '1.0.2',
+  version: '1.0.3',
   destroy() {
     flushEventHistory();
     uiState.dead = true;
+    clearMenuHistory();
     clearMobileStatus();
     clearActionChoices();
     clearUpgradeTree();

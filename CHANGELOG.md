@@ -2,6 +2,12 @@
 
 Published releases, newest first.
 
+## 1.0.3
+
+- Open Hand from your hand dots or H/P/D indicators on Board; open Deck from your upgrade icons.
+- Add subtle translucent grey shortcut borders without shifting the dots, icons or hero layout. Keep compact buttons at Micro card height and reserve five hand-dot slots in the expanded hero.
+- Device/browser Back closes the selected menu and returns to Board. Switching menus uses one history entry; closing through the footer or native Deck controls clears it.
+
 ## 1.0.2
 
 - Tapping your current card on Board reopens Options while its action choice is pending.

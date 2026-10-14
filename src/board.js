@@ -10,6 +10,7 @@ import {
 } from './cards.js';
 import { inspectHeroCard, updateHeroDashboard, updateTurnPortrait } from './heroes.js';
 import { refresh } from './main.js';
+import { navigationShortcut } from './navigation.js';
 import { componentProp } from './react.js';
 import { c, q, root, uiState } from './runtime.js';
 import { clearHeroCard, summary } from './ui.js';
@@ -211,7 +212,7 @@ function renderSummary(heroes, upgradeRequest = null) {
     const resources = document.createElement('span');
     resources.className = 'm2-summary-resources';
     resources.append(level, separator(), gold);
-    row.append(turn, identity, resources, piles);
+    row.append(turn, identity, resources, h.isOwn ? navigationShortcut(piles, 'hand', 'Open your Hand') : piles);
     // Keep a just-resolved card in its fixed column, with a subdued appearance.
     const currentSlot = document.createElement('span');
     currentSlot.className = 'm2-summary-current-slot';
@@ -233,7 +234,7 @@ function renderSummary(heroes, upgradeRequest = null) {
     }
     const upgrades = itemUpgradeSymbols(h.upgrades, 'm2-summary-upgrades');
     upgrades.prepend(ultimateIndicator(h, true));
-    row.append(currentSlot, upgrades);
+    row.append(currentSlot, h.isOwn ? navigationShortcut(upgrades, 'deck', 'Open your Deck') : upgrades);
     summary.append(row);
   }
   // Share one compact pile width across every row. Reserve only what the largest

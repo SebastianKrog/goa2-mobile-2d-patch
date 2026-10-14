@@ -14,6 +14,7 @@ import {
 } from './cards.js';
 import { rememberDeckTreeChoices } from './deck-tree.js';
 import { renderedCard } from './deck.js';
+import { navigationShortcut } from './navigation.js';
 import { componentProp } from './react.js';
 import { c, q, uiState, tag } from './runtime.js';
 import { addExtra, clearHeroCard, heroPanel } from './ui.js';
@@ -207,7 +208,6 @@ function updateHeroDashboard(box, view, suppliedHero = null, upgradeRequest = nu
   const handGroup = document.createElement('span');
   handGroup.className = 'm2-history-pile';
   handGroup.append(document.createTextNode('Hand:'));
-  history.append(handGroup);
   for (const dot of handDots) {
     const marker = document.createElement('span');
     marker.className = 'm2-history-marker';
@@ -215,11 +215,26 @@ function updateHeroDashboard(box, view, suppliedHero = null, upgradeRequest = nu
     marker.title = dot.label || 'Hand card';
     handGroup.append(marker);
   }
-  if (!handDots.length) handGroup.append(document.createTextNode('—'));
+  const boardShortcuts = !!box.closest('#goa2-m2-summary') && !box.hasAttribute('data-m2-other');
+  if (!handDots.length) {
+    const empty = document.createElement('span');
+    empty.textContent = '—';
+    if (boardShortcuts) empty.className = 'm2-hand-empty-slot';
+    handGroup.append(empty);
+  }
+  if (boardShortcuts) {
+    for (let i = Math.max(1, handDots.length); i < 5; i++) {
+      const slot = document.createElement('span');
+      slot.className = 'm2-history-marker m2-hand-reserved-dot';
+      slot.setAttribute('aria-hidden', 'true');
+      handGroup.append(slot);
+    }
+  }
+  history.append(boardShortcuts ? navigationShortcut(handGroup, 'hand', 'Open your Hand') : handGroup);
   dashboard.append(history);
   const upgrades = itemUpgradeSymbols(hero.items, 'm2-hero-upgrades');
   upgrades.prepend(ultimateIndicator(hero));
-  dashboard.append(upgrades);
+  dashboard.append(boardShortcuts ? navigationShortcut(upgrades, 'deck', 'Open your Deck') : upgrades);
   // The header card and five history slots replace separate active-effect badges.
   // Only the source card glows, including defense-only discard Nano cards.
   function smallCard(card, nano = false, resolved = false) {
