@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GoA II — Mobile 2D
 // @namespace    goa2-mobile-local
-// @version      1.0.3
+// @version      1.0.4
 // @description  Compact 2D HUD, Board/Hand modes, contained setup and utility panels.
 // @match        https://goa2.frontend.pedroliv.dev/game/*
 // @grant        none
@@ -7772,6 +7772,11 @@ html:not([data-m2-active]) .m2-choice-launchers {
       button.disabled = source.disabled;
     });
   }
+  function choiceControlLabel(source) {
+    const copy = source.cloneNode(true);
+    copy.querySelectorAll("kbd").forEach((hint) => hint.remove());
+    return copy.textContent.replace(/\s+/g, " ").trim();
+  }
   function updateChoiceLaunchers(boardControls = []) {
     const board = q('[data-m2="board"]');
     if (!board) return;
@@ -7782,15 +7787,15 @@ html:not([data-m2-active]) .m2-choice-launchers {
       board.append(host);
       addExtra(host);
     }
-    const sources2 = boardControls.length ? [...boardControls].sort((a, b) => Number(/^Undo$/i.test(b.textContent.trim())) - Number(/^Undo$/i.test(a.textContent.trim()))) : Array.from(board.querySelectorAll("button")).filter(
-      (button) => !button.closest(".m2-choice-launchers") && /^(Options|Setup|Upgrades?)$/i.test(button.textContent.trim())
+    const sources2 = boardControls.length ? [...boardControls].sort((a, b) => Number(/^Undo$/i.test(choiceControlLabel(b))) - Number(/^Undo$/i.test(choiceControlLabel(a)))) : Array.from(board.querySelectorAll("button")).filter(
+      (button) => !button.closest(".m2-choice-launchers") && /^(Options|Setup|Upgrades?)$/i.test(choiceControlLabel(button))
     );
     for (const button of /* @__PURE__ */ new Set([...host._sources || [], ...document.querySelectorAll("[data-m2-choice-source]")])) {
       if (!sources2.includes(button)) button.removeAttribute("data-m2-choice-source");
     }
     for (const source of sources2) managedAttribute(source, "data-m2-choice-source", "true");
     const setup = !!q('[data-m2="setup"]');
-    const key = JSON.stringify([setup, sources2.map((button) => [button.textContent, button.disabled])]);
+    const key = JSON.stringify([setup, sources2.map((button) => [choiceControlLabel(button), button.disabled])]);
     if (host._sources?.length === sources2.length && host._sources.every((source, i) => source === sources2[i]) && host.dataset.key === key) return;
     host._sources = sources2;
     host.dataset.key = key;
@@ -7798,13 +7803,13 @@ html:not([data-m2-active]) .m2-choice-launchers {
     for (const source of sources2) {
       const button = document.createElement("button");
       button.type = "button";
-      button.textContent = source.textContent.trim();
+      button.textContent = choiceControlLabel(source);
       button.disabled = source.disabled;
       button.classList.toggle("m2-undo", /^Undo$/i.test(button.textContent));
       button.onclick = () => source.click();
       host.append(button);
     }
-    if (setup && !sources2.some((button) => /^Setup$/i.test(button.textContent.trim()))) {
+    if (setup && !sources2.some((button) => /^Setup$/i.test(choiceControlLabel(button)))) {
       const button = document.createElement("button");
       button.type = "button";
       button.textContent = "Setup";
@@ -9722,7 +9727,7 @@ html:not([data-m2-active]) .m2-choice-launchers {
   }
   on(media, "change", schedule);
   window.GOA2Mobile2D = {
-    version: "1.0.3",
+    version: "1.0.4",
     destroy() {
       flushEventHistory();
       uiState.dead = true;

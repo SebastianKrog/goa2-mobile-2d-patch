@@ -135,7 +135,7 @@ test('board instructions replace status; Undo and Skip stay live on the left, th
   const banner = d.createElement('div');
   banner.className = '_banner_test';
   banner.innerHTML =
-    'Select Movement Destination (Range 2)<button id="skip">Skip</button><button id="boardUndo">Undo</button>';
+    'Select Movement Destination (Range 2)<button id="skip">Skip</button><button id="boardUndo">Undo <kbd>U</kbd></button>';
   request.type = 'SELECT_HEX';
   request.prompt = 'Select Movement Destination (Range 2)';
   banner.__reactFiber$t = { memoizedProps: { inputRequest: request } };
@@ -153,12 +153,29 @@ test('board instructions replace status; Undo and Skip stay live on the left, th
     buttons.map((x) => x.textContent),
     ['Undo', 'Skip'],
   );
+  assert(
+    buttons[0].classList.contains('m2-undo'),
+    'Undo retains amber styling with a keyboard hint',
+  );
+  assert.equal(
+    sources[1].querySelector('kbd').textContent,
+    'U',
+    'native keyboard hint is untouched',
+  );
   buttons[0].click();
   buttons[1].click();
   assert.equal(undos, 1);
   assert.equal(skips, 1);
   w.testUI.refresh();
   assert.equal(d.querySelector('.m2-choice-launchers button'), buttons[0]);
+  sources[0].remove();
+  w.testUI.refresh();
+  const undoOnly = d.querySelector('.m2-choice-launchers button');
+  assert.equal(d.querySelectorAll('.m2-choice-launchers button').length, 1);
+  assert.equal(undoOnly.textContent, 'Undo');
+  assert(undoOnly.classList.contains('m2-undo'));
+  undoOnly.click();
+  assert.equal(undos, 2, 'sole Undo still calls its native handler directly');
   sources[1].disabled = true;
   w.testUI.refresh();
   assert(d.querySelector('.m2-choice-launchers button').disabled);

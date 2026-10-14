@@ -2,6 +2,10 @@
 
 Published releases, newest first.
 
+## 1.0.4
+
+- Remove native keyboard hints from Board button labels, so Undo appears as “Undo” instead of “Undo U” and retains its amber styling and position. Preserve native availability and rollback handlers.
+
 ## 1.0.3
 
 - Open Hand from your hand dots or H/P/D indicators on Board; open Deck from your upgrade icons.
