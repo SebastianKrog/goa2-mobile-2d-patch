@@ -2,6 +2,10 @@
 
 Published releases, newest first.
 
+## 1.0.6
+
+- Give active H/P/D dots a slightly larger breathing glow with a 10% minimum intensity, and breathe their colour to 20% lighter at the peak. Preserve reduced-motion behaviour.
+
 ## 1.0.5
 
 - Back also dismisses card views and decision dialogs, using native Board-peek/close controls without choosing or undoing a game action.

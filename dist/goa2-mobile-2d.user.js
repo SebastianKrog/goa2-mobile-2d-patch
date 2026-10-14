@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GoA II — Mobile 2D
 // @namespace    goa2-mobile-local
-// @version      1.0.5
+// @version      1.0.6
 // @description  Compact 2D HUD, Board/Hand modes, contained setup and utility panels.
 // @match        https://goa2.frontend.pedroliv.dev/game/*
 // @grant        none
@@ -438,6 +438,9 @@ window.GOA2Mobile?.destroy();
 }
 & .m2-effect-active {
   animation: m2-effect-breathe 2.8s ease-in-out infinite;
+}
+& .m2-summary-piles i.m2-effect-active {
+  animation-name: m2-active-dot-breathe;
 }
 & [class*="_takeBackBtn_"],
 & [class*="_finishPlanningBtn_"] {
@@ -3921,6 +3924,17 @@ html:not([data-m2-active]) .m2-choice-launchers {
     box-shadow: 0 0 7px var(--effect-color, #bbab73);
   }
 }
+@keyframes m2-active-dot-breathe {
+  0%,
+  100% {
+    background-color: var(--effect-color, #bbab73);
+    box-shadow: 0 0 3px 1px color-mix(in srgb, var(--effect-color, #bbab73) 10%, transparent);
+  }
+  50% {
+    background-color: color-mix(in srgb, var(--effect-color, #bbab73) 80%, white);
+    box-shadow: 0 0 8px 1px var(--effect-color, #bbab73);
+  }
+}
 @keyframes m2-ultimate-breathe {
   0%,
   100% {
@@ -3933,7 +3947,8 @@ html:not([data-m2-active]) .m2-choice-launchers {
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  & .m2-effect-active {
+  & .m2-effect-active,
+  & .m2-summary-piles i.m2-effect-active {
     animation: none;
     box-shadow: 0 0 3px var(--effect-color, #bbab73);
   }
@@ -9901,7 +9916,7 @@ html:not([data-m2-active]) .m2-choice-launchers {
   }
   on(media, "change", schedule);
   window.GOA2Mobile2D = {
-    version: "1.0.5",
+    version: "1.0.6",
     destroy() {
       flushEventHistory();
       uiState.dead = true;
