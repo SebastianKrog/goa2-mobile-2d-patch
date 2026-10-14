@@ -4,6 +4,18 @@ A mobile userscript for [Guards of Atlantis II](https://goa2.frontend.pedroliv.d
 Open your game with `3d=0` in the URL. Supports portrait and phone landscape;
 the website handles game rules and actions.
 
+## Screenshots
+
+Examples from **v1.02**. Click an image to view it full size.
+
+<p>
+  <a href="docs/screenshots/v1.02-board-expanded.jpg"><img src="docs/screenshots/v1.02-board-expanded.jpg" alt="Board with expanded hero details" width="150"></a>
+  <a href="docs/screenshots/v1.02-board-compact.jpg"><img src="docs/screenshots/v1.02-board-compact.jpg" alt="Board with compact hero list" width="150"></a>
+  <a href="docs/screenshots/v1.02-heroes.jpg"><img src="docs/screenshots/v1.02-heroes.jpg" alt="Heroes view" width="150"></a>
+  <a href="docs/screenshots/v1.02-hand.jpg"><img src="docs/screenshots/v1.02-hand.jpg" alt="Hand view" width="150"></a>
+  <a href="docs/screenshots/v1.02-deck.jpg"><img src="docs/screenshots/v1.02-deck.jpg" alt="Deck upgrade tree and card preview" width="150"></a>
+</p>
+
 ## Install
 
 ### Android — Firefox
