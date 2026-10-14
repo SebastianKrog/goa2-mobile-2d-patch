@@ -10,6 +10,7 @@ import {
 } from './cards.js';
 import { renderedCard } from './deck.js';
 import { c, q } from './runtime.js';
+import { handCardSize } from './settings.js';
 import { addExtra } from './ui.js';
 
 function updateCardRow(row, card, knownItems) {
@@ -18,9 +19,10 @@ function updateCardRow(row, card, knownItems) {
   // Only Hand's Small rows get this artwork treatment. Hero/Deck Mini rows
   // share the renderer but keep their existing compact presentation.
   const small = !!row.closest('[data-m2="hand-list"]');
+  const tiny = small && handCardSize() === 'tiny';
   if (small) trackCardSource(row, card, 'hand');
   const owner = small ? cardHero(card, row)?.id : null;
-  const key = JSON.stringify([card, items, small, owner]);
+  const key = JSON.stringify([card, items, small, owner, tiny]);
   let view = q(':scope>.m2-list-card', row);
   // React replaces className when selection changes, even if card props are unchanged.
   if (!row.classList.contains('m2-adapted-row')) row.classList.add('m2-adapted-row');
@@ -32,8 +34,9 @@ function updateCardRow(row, card, knownItems) {
     addExtra(view);
   }
   view.dataset.key = key;
-  view.classList.toggle('m2-small-card', small);
-  view.classList.toggle('m2-mini-card', !small);
+  view.classList.toggle('m2-small-card', small && !tiny);
+  view.classList.toggle('m2-mini-card', !small || tiny);
+  view.classList.toggle('m2-tiny-hand-card', tiny);
   view.replaceChildren();
   row.classList.add('m2-adapted-row');
   const ultimate = card.tier === 'IV' || card.color === 'PURPLE';

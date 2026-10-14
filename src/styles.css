@@ -10,7 +10,7 @@
   --m2-card-display-height: clamp(206px, 32.96dvh, 278.1px);
   --m2-board-pane-height: 43%;
 }
-&:is([data-m2-mode="hand"], [data-m2-mode="heroes"]) {
+&:is([data-m2-mode="hand"], [data-m2-mode="heroes"], [data-m2-deck-open]) {
   --m2-board-pane-height: calc(var(--m2-card-display-height) + 8px);
 }
 & body {
@@ -257,7 +257,7 @@
 & [data-m2-deck-ready] > [class*="_tierGroup_"] {
   display: none !important;
 }
-& [data-m2-deck-ready]:has(.m2-deck-browser:is([data-view="compact"], [data-view="tree"])) {
+& [data-m2-deck-ready] {
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -279,21 +279,23 @@
 }
 & .m2-sort-switch {
   display: flex;
+  flex-direction: column;
   justify-content: center;
   align-items: center;
-  gap: 7px;
+  gap: 2px;
 }
 & .m2-sort-switch > span {
   display: flex;
-  flex-direction: column;
+  justify-content: space-between;
+  width: 58px;
   font-size: 10px;
-  line-height: 15px;
+  line-height: 10px;
 }
 & .m2-sort-switch > i {
   position: relative;
   display: block;
-  width: 15px;
-  height: 29px;
+  width: 54px;
+  height: 15px;
   border-radius: 9px;
   background: #101823;
   border: 1px solid #8796aa;
@@ -310,7 +312,7 @@
   transition: transform 0.12s;
 }
 & .m2-sort-switch[aria-checked="true"] > i:after {
-  transform: translateY(14px);
+  transform: translateX(39px);
 }
 & [data-m2="deck"] > [class*="_header_"] {
   display: none !important;
@@ -319,7 +321,8 @@
   box-sizing: border-box;
   overscroll-behavior: contain;
   position: fixed !important;
-  inset: 0 0 calc(var(--m2-nav) + var(--m2-offset, 0px)) !important;
+  inset: calc(var(--m2-head) + var(--m2-board-pane-height)) 0
+    calc(var(--m2-nav) + var(--m2-offset, 0px)) !important;
   width: 100% !important;
   max-width: none !important;
   height: auto !important;
@@ -327,9 +330,10 @@
   margin: 0 !important;
   border: 0 !important;
   border-radius: 0 !important;
-  padding: 0 8px 6px !important;
+  padding: 0 8px calc(var(--m2-deck-options-height, 38px) + 6px) !important;
 }
 & [class*="_backdrop_"]:has([data-m2="deck"]) {
+  top: calc(var(--m2-head) + var(--m2-board-pane-height)) !important;
   bottom: calc(var(--m2-nav) + var(--m2-offset, 0px)) !important;
 }
 &:not([data-m2-deck-open]) [class*="_backdrop_"]:has([data-m2="deck"]),
@@ -380,7 +384,13 @@
 & [class*="_finishPlanningBtn_"] {
   display: none !important;
 }
-&:is([data-m2-mode="hand"], [data-m2-mode="heroes"], [data-m2-panel="tools"], [data-m2-panel="log"])
+&:is(
+    [data-m2-mode="hand"],
+    [data-m2-mode="heroes"],
+    [data-m2-deck-open],
+    [data-m2-panel="tools"],
+    [data-m2-panel="log"]
+  )
   [data-m2="board"] {
   visibility: visible;
   position: relative !important;
@@ -632,7 +642,7 @@
   min-height: 44px;
 }
 &[data-m2-deck-open] [data-m2="board"] {
-  display: none !important;
+  display: block !important;
 }
 &[data-m2-deck-open] [data-m2="sidebar"] {
   display: block !important;
@@ -646,6 +656,65 @@
 }
 &[data-m2-mode="hand"] [data-m2="hand-list"] {
   order: -1;
+}
+& [data-m2="hand-list"] > [class*="_label_"] {
+  display: none !important;
+}
+& .m2-hand-size-setting {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+}
+& .m2-hand-size-setting select {
+  color: #e0e6ed;
+  background: #202936;
+  border: 1px solid #637b9d;
+  border-radius: 6px;
+  padding: 6px 10px;
+}
+&[data-m2-hand-cards="tiny"] [data-m2="hand-list"] [class*="_row_"]:has(> .m2-list-card) {
+  min-height: 30px;
+}
+& [data-m2="hand-list"] .m2-tiny-hand-card {
+  min-height: 28px;
+}
+& [data-m2="hand-list"] .m2-tiny-hand-card .m2-symbol img {
+  width: 19px;
+  height: 19px;
+}
+& [data-m2="hand-list"] .m2-tiny-hand-card > .m2-symbol {
+  flex-basis: 24px;
+}
+& [data-m2="hand-list"] .m2-tiny-hand-card .m2-list-secondary {
+  flex-basis: 46px;
+  min-width: 46px;
+  gap: 2px;
+}
+& [data-m2="hand-list"] .m2-tiny-hand-card .m2-list-band > .m2-card-art {
+  position: absolute;
+  z-index: 0;
+}
+& [data-m2="hand-list"] [class*="_waiting_"]:has(> .m2-planning-actions) {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: center;
+  column-gap: 0;
+}
+& [data-m2="hand-list"] [class*="_waiting_"]:has(> .m2-planning-actions) > span {
+  grid-column: 1;
+  text-align: center;
+  justify-self: center;
+  min-width: 0;
+}
+& [data-m2="hand-list"] [class*="_waiting_"] > .m2-planning-actions {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  align-self: center;
+  justify-content: center;
+  margin: 0;
+  min-width: 0;
 }
 &[data-m2-mode="board"] #goa2-m2-hero-display:not(:empty) {
   display: block !important;
@@ -1872,7 +1941,7 @@
    Preserve native card canvases and hide them only after the generated browser is ready. */
 & .m2-deck-controls button {
   box-sizing: border-box;
-  min-height: 36px;
+  min-height: 28px;
   border: 1px solid #536179;
   border-radius: 7px;
   background: #233046;
@@ -1954,16 +2023,25 @@
 }
 & .m2-deck-controls {
   box-sizing: border-box;
-  height: var(--m2-head);
-  position: sticky;
-  z-index: 3;
+  height: 38px;
+  position: fixed;
+  z-index: 10001;
+  left: 8px;
+  right: calc(var(--m2-nav-width, 0px) + 8px);
+  bottom: calc(var(--m2-nav) + var(--m2-offset, 0px));
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr)) 54px;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) 104px;
   gap: 4px;
   background: var(--bg-secondary, #111722);
-  top: 0 !important;
-  margin: 0 0 5px;
-  padding: 2px 0;
+  top: auto !important;
+  margin: 0;
+  padding: 4px 0;
+}
+&[data-m2-hide-deck-options] {
+  --m2-deck-options-height: 0px;
+}
+&[data-m2-hide-deck-options] .m2-deck-controls {
+  display: none;
 }
 & .m2-deck-controls button:not(.m2-sort-switch) {
   border-radius: var(--m2-radius);
@@ -1971,32 +2049,33 @@
   padding: 4px 3px;
   font-size: 12px;
 }
-& .m2-deck-browser:is([data-view="compact"], [data-view="tree"]) {
-  height: auto;
+& .m2-deck-browser {
+  position: relative;
+  height: 100%;
   flex: 1 1 0;
   min-height: 0;
   display: flex;
   flex-direction: column;
 }
 & .m2-deck-preview {
-  position: relative;
-  top: auto;
-  z-index: 3;
+  position: absolute;
+  top: 0;
+  left: 8px;
+  right: 8px;
+  z-index: 90;
   height: var(--m2-card-display-height);
-  min-height: var(--m2-card-display-height);
-  flex: 0 0 var(--m2-card-display-height);
+  min-height: 0;
+  max-height: 100%;
   overflow: auto;
   background: #090c11;
   border-radius: 8px;
-  margin: 5px 0 10px;
+  margin: 0;
 }
-& .m2-deck-preview:empty:after {
-  content: "Select a card to view details";
-  display: grid;
-  place-items: center;
-  height: 100%;
-  color: #97a2b3;
-  font: 13px system-ui;
+& .m2-deck-preview:not(.m2-upgrade-details):empty {
+  display: none;
+}
+&:not([data-m2-deck-open]) .m2-deck-preview:not(.m2-upgrade-details) {
+  display: none;
 }
 & .m2-deck-preview > .m2-text-card {
   min-height: 100%;
@@ -2186,12 +2265,13 @@
 & .m2-tree-build-title > b {
   grid-column: 1;
   grid-row: 1;
-  text-align: left;
+  text-align: center;
+  justify-self: center;
 }
 & .m2-tree-build-title button {
   grid-column: 3;
   grid-row: 1;
-  justify-self: end;
+  justify-self: center;
   padding: 2px 6px;
   border: 1px solid #536179;
   border-radius: 5px;
@@ -2346,7 +2426,23 @@
   outline-offset: 2px;
 }
 & .m2-upgrade-details {
+  display: block;
+  position: relative;
+  inset: auto;
+  height: var(--m2-card-display-height);
+  min-height: var(--m2-card-display-height);
+  max-height: none;
+  flex: 0 0 var(--m2-card-display-height);
+  z-index: 3;
   margin: 0;
+}
+& .m2-upgrade-details:empty:after {
+  content: "Select a card to view details";
+  display: grid;
+  place-items: center;
+  height: 100%;
+  color: #97a2b3;
+  font: 13px system-ui;
 }
 & .m2-upgrade-content {
   display: flex;
@@ -3847,6 +3943,7 @@ html:not([data-m2-active]) .m2-choice-launchers {
       [data-m2-mode="board"],
       [data-m2-mode="hand"],
       [data-m2-mode="heroes"],
+      [data-m2-deck-open],
       [data-m2-panel="tools"],
       [data-m2-panel="log"]
     )
@@ -3968,13 +4065,27 @@ html:not([data-m2-active]) .m2-choice-launchers {
     width: var(--m2-list-width) !important;
     max-height: none !important;
   }
-  & [data-m2="deck"],
+  /* Header icons protrude below their row; keep them above the native Deck modal. */
+  &[data-m2-deck-open] [data-m2="header"] {
+    z-index: 10002;
+  }
+  & [data-m2="deck"] {
+    inset: calc(var(--m2-head) + 8px) var(--m2-nav-width) var(--m2-offset, 0px) auto !important;
+    width: var(--m2-list-width) !important;
+    padding: 6px 6px calc(var(--m2-deck-options-height, 38px) + 6px) !important;
+  }
   & [data-m2-upgrade-tree] {
     inset: var(--m2-head) var(--m2-nav-width) var(--m2-offset, 0px) env(safe-area-inset-left, 0px) !important;
     width: auto !important;
     padding: 6px !important;
   }
-  & [class*="_backdrop_"]:has([data-m2="deck"]),
+  & [class*="_backdrop_"]:has([data-m2="deck"]) {
+    top: calc(var(--m2-head) + 8px) !important;
+    left: auto !important;
+    right: var(--m2-nav-width) !important;
+    bottom: var(--m2-offset, 0px) !important;
+    width: var(--m2-list-width) !important;
+  }
   & [class*="_overlayUpgrade_"]:has([data-m2-upgrade-tree]) {
     top: var(--m2-head) !important;
     right: var(--m2-nav-width) !important;
@@ -3987,48 +4098,29 @@ html:not([data-m2-active]) .m2-choice-launchers {
   }
   & .m2-deck-browser,
   & .m2-deck-browser:is([data-view="compact"], [data-view="tree"]) {
-    display: grid;
+    display: flex;
+    flex-direction: column;
     flex: 1 1 0;
     min-height: 0;
-    grid-template-columns: minmax(0, 1fr) var(--m2-list-width);
-    grid-template-rows: var(--m2-head) minmax(0, 1fr) auto;
-    gap: 6px;
-  }
-  & .m2-deck-controls {
-    grid-column: 2;
-    grid-row: 1;
-    margin: 0;
-    position: static;
-  }
-  & .m2-deck-preview {
-    grid-column: 1;
-    grid-row: 1 / -1;
-    min-width: 0;
-    margin: 0;
   }
   & .m2-deck-row-list {
-    grid-column: 2;
-    grid-row: 2;
     min-width: 0;
     overscroll-behavior: contain;
+  }
+  & .m2-deck-preview {
+    top: 6px;
+    left: 6px;
+    right: calc(var(--m2-list-width) + 6px);
+  }
+  & .m2-deck-controls {
+    left: auto;
+    width: calc(var(--m2-list-width) - 12px);
+    right: calc(var(--m2-nav-width) + 6px);
   }
   & .m2-tree-build {
     grid-column: 2;
     grid-row: 3;
     max-height: none;
-  }
-  & .m2-deck-browser[data-view="grid"]:before {
-    content: "Select a card to view details";
-    grid-column: 1;
-    grid-row: 1 / -1;
-    display: grid;
-    place-items: center;
-    min-width: 0;
-    background: #090c11;
-    border-radius: 8px;
-    color: #97a2b3;
-    font: 13px system-ui;
-    text-align: center;
   }
   & .m2-deck-zoom:not([hidden]) {
     inset: calc(var(--m2-head) + 6px) calc(var(--m2-nav-width) + var(--m2-list-width) + 18px)
@@ -4059,6 +4151,12 @@ html:not([data-m2-active]) .m2-choice-launchers {
   }
   & .m2-upgrade-content {
     display: contents;
+  }
+  & .m2-upgrade-details {
+    inset: auto;
+    grid-column: 1;
+    grid-row: 1 / -1;
+    min-width: 0;
   }
   & .m2-upgrade-content > .m2-deck-row-list {
     grid-column: 2;

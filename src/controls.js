@@ -41,7 +41,10 @@ function updatePlanningActions() {
   const sources = Array.from(
     document.querySelectorAll(c('takeBackBtn') + ',' + c('finishPlanningBtn')),
   ).filter(source => uiState.mode !== 'board' || !source.matches(c('takeBackBtn')));
-  const host = uiState.mode === 'board' ? q('[data-m2="board"]') : q('[data-m2="hand-list"]');
+  const hand = q('[data-m2="hand-list"]');
+  const waiting = hand && q(c('waiting'), hand);
+  const host = uiState.mode === 'board' ? q('[data-m2="board"]') :
+    sources.some(source => source.matches(c('takeBackBtn'))) && waiting ? waiting : hand;
   if (!sources.length || !host) {
     if (planningActions) {
       planningActions.element.remove();

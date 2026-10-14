@@ -402,7 +402,7 @@ on(media, 'change', schedule);
 
 // Public teardown for console installs and upgrades: release observers, timers, and DOM changes.
 window.GOA2Mobile2D = {
-  version: '1.0.4',
+  version: '1.0.5',
   destroy() {
     flushEventHistory();
     uiState.dead = true;
@@ -470,6 +470,8 @@ window.GOA2Mobile2D = {
     for (const n of [
       'data-m2-hide-cursors',
       'data-m2-no-card-art',
+      'data-m2-hand-cards',
+      'data-m2-hide-deck-options',
       'data-m2-deck-open',
       'data-m2-active',
       'data-m2-mode',

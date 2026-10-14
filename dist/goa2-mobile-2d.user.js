@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GoA II — Mobile 2D
 // @namespace    goa2-mobile-local
-// @version      1.0.4
+// @version      1.0.5
 // @description  Compact 2D HUD, Board/Hand modes, contained setup and utility panels.
 // @match        https://goa2.frontend.pedroliv.dev/game/*
 // @grant        none
@@ -69,7 +69,7 @@ window.GOA2Mobile?.destroy();
   --m2-card-display-height: clamp(206px, 32.96dvh, 278.1px);
   --m2-board-pane-height: 43%;
 }
-&:is([data-m2-mode="hand"], [data-m2-mode="heroes"]) {
+&:is([data-m2-mode="hand"], [data-m2-mode="heroes"], [data-m2-deck-open]) {
   --m2-board-pane-height: calc(var(--m2-card-display-height) + 8px);
 }
 & body {
@@ -316,7 +316,7 @@ window.GOA2Mobile?.destroy();
 & [data-m2-deck-ready] > [class*="_tierGroup_"] {
   display: none !important;
 }
-& [data-m2-deck-ready]:has(.m2-deck-browser:is([data-view="compact"], [data-view="tree"])) {
+& [data-m2-deck-ready] {
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -338,21 +338,23 @@ window.GOA2Mobile?.destroy();
 }
 & .m2-sort-switch {
   display: flex;
+  flex-direction: column;
   justify-content: center;
   align-items: center;
-  gap: 7px;
+  gap: 2px;
 }
 & .m2-sort-switch > span {
   display: flex;
-  flex-direction: column;
+  justify-content: space-between;
+  width: 58px;
   font-size: 10px;
-  line-height: 15px;
+  line-height: 10px;
 }
 & .m2-sort-switch > i {
   position: relative;
   display: block;
-  width: 15px;
-  height: 29px;
+  width: 54px;
+  height: 15px;
   border-radius: 9px;
   background: #101823;
   border: 1px solid #8796aa;
@@ -369,7 +371,7 @@ window.GOA2Mobile?.destroy();
   transition: transform 0.12s;
 }
 & .m2-sort-switch[aria-checked="true"] > i:after {
-  transform: translateY(14px);
+  transform: translateX(39px);
 }
 & [data-m2="deck"] > [class*="_header_"] {
   display: none !important;
@@ -378,7 +380,8 @@ window.GOA2Mobile?.destroy();
   box-sizing: border-box;
   overscroll-behavior: contain;
   position: fixed !important;
-  inset: 0 0 calc(var(--m2-nav) + var(--m2-offset, 0px)) !important;
+  inset: calc(var(--m2-head) + var(--m2-board-pane-height)) 0
+    calc(var(--m2-nav) + var(--m2-offset, 0px)) !important;
   width: 100% !important;
   max-width: none !important;
   height: auto !important;
@@ -386,9 +389,10 @@ window.GOA2Mobile?.destroy();
   margin: 0 !important;
   border: 0 !important;
   border-radius: 0 !important;
-  padding: 0 8px 6px !important;
+  padding: 0 8px calc(var(--m2-deck-options-height, 38px) + 6px) !important;
 }
 & [class*="_backdrop_"]:has([data-m2="deck"]) {
+  top: calc(var(--m2-head) + var(--m2-board-pane-height)) !important;
   bottom: calc(var(--m2-nav) + var(--m2-offset, 0px)) !important;
 }
 &:not([data-m2-deck-open]) [class*="_backdrop_"]:has([data-m2="deck"]),
@@ -439,7 +443,13 @@ window.GOA2Mobile?.destroy();
 & [class*="_finishPlanningBtn_"] {
   display: none !important;
 }
-&:is([data-m2-mode="hand"], [data-m2-mode="heroes"], [data-m2-panel="tools"], [data-m2-panel="log"])
+&:is(
+    [data-m2-mode="hand"],
+    [data-m2-mode="heroes"],
+    [data-m2-deck-open],
+    [data-m2-panel="tools"],
+    [data-m2-panel="log"]
+  )
   [data-m2="board"] {
   visibility: visible;
   position: relative !important;
@@ -691,7 +701,7 @@ window.GOA2Mobile?.destroy();
   min-height: 44px;
 }
 &[data-m2-deck-open] [data-m2="board"] {
-  display: none !important;
+  display: block !important;
 }
 &[data-m2-deck-open] [data-m2="sidebar"] {
   display: block !important;
@@ -705,6 +715,65 @@ window.GOA2Mobile?.destroy();
 }
 &[data-m2-mode="hand"] [data-m2="hand-list"] {
   order: -1;
+}
+& [data-m2="hand-list"] > [class*="_label_"] {
+  display: none !important;
+}
+& .m2-hand-size-setting {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+}
+& .m2-hand-size-setting select {
+  color: #e0e6ed;
+  background: #202936;
+  border: 1px solid #637b9d;
+  border-radius: 6px;
+  padding: 6px 10px;
+}
+&[data-m2-hand-cards="tiny"] [data-m2="hand-list"] [class*="_row_"]:has(> .m2-list-card) {
+  min-height: 30px;
+}
+& [data-m2="hand-list"] .m2-tiny-hand-card {
+  min-height: 28px;
+}
+& [data-m2="hand-list"] .m2-tiny-hand-card .m2-symbol img {
+  width: 19px;
+  height: 19px;
+}
+& [data-m2="hand-list"] .m2-tiny-hand-card > .m2-symbol {
+  flex-basis: 24px;
+}
+& [data-m2="hand-list"] .m2-tiny-hand-card .m2-list-secondary {
+  flex-basis: 46px;
+  min-width: 46px;
+  gap: 2px;
+}
+& [data-m2="hand-list"] .m2-tiny-hand-card .m2-list-band > .m2-card-art {
+  position: absolute;
+  z-index: 0;
+}
+& [data-m2="hand-list"] [class*="_waiting_"]:has(> .m2-planning-actions) {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: center;
+  column-gap: 0;
+}
+& [data-m2="hand-list"] [class*="_waiting_"]:has(> .m2-planning-actions) > span {
+  grid-column: 1;
+  text-align: center;
+  justify-self: center;
+  min-width: 0;
+}
+& [data-m2="hand-list"] [class*="_waiting_"] > .m2-planning-actions {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  align-self: center;
+  justify-content: center;
+  margin: 0;
+  min-width: 0;
 }
 &[data-m2-mode="board"] #goa2-m2-hero-display:not(:empty) {
   display: block !important;
@@ -1931,7 +2000,7 @@ window.GOA2Mobile?.destroy();
    Preserve native card canvases and hide them only after the generated browser is ready. */
 & .m2-deck-controls button {
   box-sizing: border-box;
-  min-height: 36px;
+  min-height: 28px;
   border: 1px solid #536179;
   border-radius: 7px;
   background: #233046;
@@ -2013,16 +2082,25 @@ window.GOA2Mobile?.destroy();
 }
 & .m2-deck-controls {
   box-sizing: border-box;
-  height: var(--m2-head);
-  position: sticky;
-  z-index: 3;
+  height: 38px;
+  position: fixed;
+  z-index: 10001;
+  left: 8px;
+  right: calc(var(--m2-nav-width, 0px) + 8px);
+  bottom: calc(var(--m2-nav) + var(--m2-offset, 0px));
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr)) 54px;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) 104px;
   gap: 4px;
   background: var(--bg-secondary, #111722);
-  top: 0 !important;
-  margin: 0 0 5px;
-  padding: 2px 0;
+  top: auto !important;
+  margin: 0;
+  padding: 4px 0;
+}
+&[data-m2-hide-deck-options] {
+  --m2-deck-options-height: 0px;
+}
+&[data-m2-hide-deck-options] .m2-deck-controls {
+  display: none;
 }
 & .m2-deck-controls button:not(.m2-sort-switch) {
   border-radius: var(--m2-radius);
@@ -2030,32 +2108,33 @@ window.GOA2Mobile?.destroy();
   padding: 4px 3px;
   font-size: 12px;
 }
-& .m2-deck-browser:is([data-view="compact"], [data-view="tree"]) {
-  height: auto;
+& .m2-deck-browser {
+  position: relative;
+  height: 100%;
   flex: 1 1 0;
   min-height: 0;
   display: flex;
   flex-direction: column;
 }
 & .m2-deck-preview {
-  position: relative;
-  top: auto;
-  z-index: 3;
+  position: absolute;
+  top: 0;
+  left: 8px;
+  right: 8px;
+  z-index: 90;
   height: var(--m2-card-display-height);
-  min-height: var(--m2-card-display-height);
-  flex: 0 0 var(--m2-card-display-height);
+  min-height: 0;
+  max-height: 100%;
   overflow: auto;
   background: #090c11;
   border-radius: 8px;
-  margin: 5px 0 10px;
+  margin: 0;
 }
-& .m2-deck-preview:empty:after {
-  content: "Select a card to view details";
-  display: grid;
-  place-items: center;
-  height: 100%;
-  color: #97a2b3;
-  font: 13px system-ui;
+& .m2-deck-preview:not(.m2-upgrade-details):empty {
+  display: none;
+}
+&:not([data-m2-deck-open]) .m2-deck-preview:not(.m2-upgrade-details) {
+  display: none;
 }
 & .m2-deck-preview > .m2-text-card {
   min-height: 100%;
@@ -2245,12 +2324,13 @@ window.GOA2Mobile?.destroy();
 & .m2-tree-build-title > b {
   grid-column: 1;
   grid-row: 1;
-  text-align: left;
+  text-align: center;
+  justify-self: center;
 }
 & .m2-tree-build-title button {
   grid-column: 3;
   grid-row: 1;
-  justify-self: end;
+  justify-self: center;
   padding: 2px 6px;
   border: 1px solid #536179;
   border-radius: 5px;
@@ -2405,7 +2485,23 @@ window.GOA2Mobile?.destroy();
   outline-offset: 2px;
 }
 & .m2-upgrade-details {
+  display: block;
+  position: relative;
+  inset: auto;
+  height: var(--m2-card-display-height);
+  min-height: var(--m2-card-display-height);
+  max-height: none;
+  flex: 0 0 var(--m2-card-display-height);
+  z-index: 3;
   margin: 0;
+}
+& .m2-upgrade-details:empty:after {
+  content: "Select a card to view details";
+  display: grid;
+  place-items: center;
+  height: 100%;
+  color: #97a2b3;
+  font: 13px system-ui;
 }
 & .m2-upgrade-content {
   display: flex;
@@ -3906,6 +4002,7 @@ html:not([data-m2-active]) .m2-choice-launchers {
       [data-m2-mode="board"],
       [data-m2-mode="hand"],
       [data-m2-mode="heroes"],
+      [data-m2-deck-open],
       [data-m2-panel="tools"],
       [data-m2-panel="log"]
     )
@@ -4027,13 +4124,27 @@ html:not([data-m2-active]) .m2-choice-launchers {
     width: var(--m2-list-width) !important;
     max-height: none !important;
   }
-  & [data-m2="deck"],
+  /* Header icons protrude below their row; keep them above the native Deck modal. */
+  &[data-m2-deck-open] [data-m2="header"] {
+    z-index: 10002;
+  }
+  & [data-m2="deck"] {
+    inset: calc(var(--m2-head) + 8px) var(--m2-nav-width) var(--m2-offset, 0px) auto !important;
+    width: var(--m2-list-width) !important;
+    padding: 6px 6px calc(var(--m2-deck-options-height, 38px) + 6px) !important;
+  }
   & [data-m2-upgrade-tree] {
     inset: var(--m2-head) var(--m2-nav-width) var(--m2-offset, 0px) env(safe-area-inset-left, 0px) !important;
     width: auto !important;
     padding: 6px !important;
   }
-  & [class*="_backdrop_"]:has([data-m2="deck"]),
+  & [class*="_backdrop_"]:has([data-m2="deck"]) {
+    top: calc(var(--m2-head) + 8px) !important;
+    left: auto !important;
+    right: var(--m2-nav-width) !important;
+    bottom: var(--m2-offset, 0px) !important;
+    width: var(--m2-list-width) !important;
+  }
   & [class*="_overlayUpgrade_"]:has([data-m2-upgrade-tree]) {
     top: var(--m2-head) !important;
     right: var(--m2-nav-width) !important;
@@ -4046,48 +4157,29 @@ html:not([data-m2-active]) .m2-choice-launchers {
   }
   & .m2-deck-browser,
   & .m2-deck-browser:is([data-view="compact"], [data-view="tree"]) {
-    display: grid;
+    display: flex;
+    flex-direction: column;
     flex: 1 1 0;
     min-height: 0;
-    grid-template-columns: minmax(0, 1fr) var(--m2-list-width);
-    grid-template-rows: var(--m2-head) minmax(0, 1fr) auto;
-    gap: 6px;
-  }
-  & .m2-deck-controls {
-    grid-column: 2;
-    grid-row: 1;
-    margin: 0;
-    position: static;
-  }
-  & .m2-deck-preview {
-    grid-column: 1;
-    grid-row: 1 / -1;
-    min-width: 0;
-    margin: 0;
   }
   & .m2-deck-row-list {
-    grid-column: 2;
-    grid-row: 2;
     min-width: 0;
     overscroll-behavior: contain;
+  }
+  & .m2-deck-preview {
+    top: 6px;
+    left: 6px;
+    right: calc(var(--m2-list-width) + 6px);
+  }
+  & .m2-deck-controls {
+    left: auto;
+    width: calc(var(--m2-list-width) - 12px);
+    right: calc(var(--m2-nav-width) + 6px);
   }
   & .m2-tree-build {
     grid-column: 2;
     grid-row: 3;
     max-height: none;
-  }
-  & .m2-deck-browser[data-view="grid"]:before {
-    content: "Select a card to view details";
-    grid-column: 1;
-    grid-row: 1 / -1;
-    display: grid;
-    place-items: center;
-    min-width: 0;
-    background: #090c11;
-    border-radius: 8px;
-    color: #97a2b3;
-    font: 13px system-ui;
-    text-align: center;
   }
   & .m2-deck-zoom:not([hidden]) {
     inset: calc(var(--m2-head) + 6px) calc(var(--m2-nav-width) + var(--m2-list-width) + 18px)
@@ -4118,6 +4210,12 @@ html:not([data-m2-active]) .m2-choice-launchers {
   }
   & .m2-upgrade-content {
     display: contents;
+  }
+  & .m2-upgrade-details {
+    inset: auto;
+    grid-column: 1;
+    grid-row: 1 / -1;
+    min-width: 0;
   }
   & .m2-upgrade-content > .m2-deck-row-list {
     grid-column: 2;
@@ -4525,6 +4623,181 @@ html:not([data-m2-active]) .m2-choice-launchers {
     }
     state.sync();
   }
+
+  // src/navigation.js
+  function dismiss() {
+    const tip = q('[data-m2="tip"]');
+    if (tip) {
+      uiState.dismissedTip = tip;
+      tip.setAttribute("data-m2-dismissed", "");
+    }
+    refresh();
+  }
+  on(close, "click", dismiss);
+  var deckMounted = false;
+  var menuHistoryToken = Date.now() + "-" + Math.random();
+  var menuHistoryActive = false;
+  var menuHistoryClosing = false;
+  var navigating = false;
+  var menuSelection = () => uiState.deckOpen ? "deck" : uiState.panel || uiState.mode;
+  function openDecisionDialog() {
+    return q(c("picker") + "," + c("pickerUpgrade") + ',[data-m2="report-dialog"],[data-m2="fix-dialog"]');
+  }
+  function openCardView() {
+    const tip = q('[data-m2="tip"]');
+    return !!uiState.selectedHeroCard || !!heroPanel.firstChild || uiState.mode === "hand" && !!detailsPanel.firstChild || !!tip && tip !== uiState.dismissedTip;
+  }
+  function dismissViews() {
+    const selected = q('[data-m2="hand-list"] ' + c("row") + c("selected"));
+    const tip = q('[data-m2="tip"]');
+    const card = selected && renderedCard(selected) || tip && componentProp(tip, "card");
+    if (card) uiState.hiddenCardKey = JSON.stringify(card);
+    clearHeroCard();
+    detailsPanel.replaceChildren();
+    delete detailsPanel.dataset.key;
+    const dialog = openDecisionDialog();
+    const closeDialog = dialog && (q(c("peekBtn") + "," + c("closeBtn") + ',button[aria-label="Close"]', dialog) || Array.from(dialog.querySelectorAll("button")).find((button) => /^(Board|Close|Cancel|×|✕|X)$/i.test(button.textContent.trim())));
+    if (closeDialog && !closeDialog.disabled) closeDialog.click();
+    if (tip) {
+      uiState.dismissedTip = tip;
+      tip.setAttribute("data-m2-dismissed", "");
+    }
+  }
+  function syncMenuHistory() {
+    if (navigating || menuHistoryClosing || uiState.dead) return;
+    const open = root.hasAttribute("data-m2-active") && (menuSelection() !== "board" || openCardView() || !!openDecisionDialog());
+    if (open && !menuHistoryActive) {
+      try {
+        window.history.pushState({ ...window.history.state, goa2Mobile2DMenu: menuHistoryToken }, "", window.location.href);
+        menuHistoryActive = true;
+      } catch {
+      }
+    } else if (!open && menuHistoryActive) {
+      menuHistoryActive = false;
+      if (window.history.state?.goa2Mobile2DMenu === menuHistoryToken) {
+        menuHistoryClosing = true;
+        window.history.back();
+      }
+    }
+  }
+  on(window, "popstate", () => {
+    if (menuHistoryClosing) {
+      menuHistoryClosing = false;
+      syncMenuHistory();
+      return;
+    }
+    if (!menuHistoryActive) return;
+    menuHistoryActive = false;
+    navigating = true;
+    dismissViews();
+    navigating = false;
+    const selected = menuSelection();
+    if (selected !== "board") navigate(selected);
+    else refresh();
+  });
+  function clearMenuHistory() {
+    if (menuHistoryActive && window.history.state?.goa2Mobile2DMenu === menuHistoryToken)
+      window.history.back();
+    menuHistoryActive = false;
+  }
+  function setDeckOpen(open) {
+    uiState.deckOpen = open;
+    deckMounted = false;
+    if (open) retryBasicArtwork();
+    root.toggleAttribute("data-m2-deck-open", open);
+  }
+  function syncDeckMount(nativeDeck) {
+    if (uiState.deckOpen && nativeDeck) deckMounted = true;
+    else if (uiState.deckOpen && deckMounted) setDeckOpen(false);
+  }
+  function navigate(key) {
+    if (!key) return;
+    navigating = true;
+    const selected = uiState.deckOpen ? "deck" : uiState.panel || uiState.mode;
+    const closing = selected === key;
+    if (uiState.deckOpen) q('[data-m2="deck"] ' + c("closeBtn"))?.click();
+    setDeckOpen(false);
+    uiState.panel = "";
+    uiState.focusedHeroId = null;
+    uiState.mode = "board";
+    clearHeroCard();
+    dismiss();
+    if (!closing) {
+      if (key === "deck") {
+        setDeckOpen(true);
+        if (!q('[data-m2="deck"]'))
+          q('[data-m2="hero"]:not([data-m2-other]) ' + c("viewDeckBtn"))?.click();
+      } else if (key === "setup" || key === "tools" || key === "log") uiState.panel = key;
+      else if (key === "hand" || key === "heroes") uiState.mode = key;
+    }
+    navigating = false;
+    refresh();
+  }
+  function navigationShortcut(content, key, label) {
+    const button = document.createElement("button");
+    button.type = "button";
+    content.classList.add("m2-navigation-shortcut");
+    button.className = "m2-shortcut-border";
+    button.title = label;
+    button.setAttribute("aria-label", label);
+    content.append(button);
+    content.onclick = (event) => {
+      event.stopPropagation();
+      navigate(key);
+    };
+    return content;
+  }
+  function syncNavigation() {
+    const setupButton = q('[data-mode="setup"]', nav);
+    const setupAvailable = !!q('[aria-label="Starting position"]');
+    setupButton.hidden = !setupAvailable;
+    nav.style.gridTemplateColumns = "repeat(" + (setupAvailable ? 6 : 5) + ",minmax(0,1fr))";
+    if (!setupAvailable && uiState.panel === "setup") {
+      uiState.panel = "";
+      root.dataset.m2Panel = "";
+    }
+    const selected = uiState.deckOpen ? "deck" : uiState.panel || uiState.mode;
+    for (const button of nav.children) {
+      const pressed = String(button.dataset.mode === selected);
+      if (button.getAttribute("aria-pressed") !== pressed)
+        button.setAttribute("aria-pressed", pressed);
+    }
+    syncMenuHistory();
+  }
+  on(nav, "click", (e) => navigate(e.target.closest("button")?.dataset.mode));
+  on(document, "pointerdown", (e) => {
+    if (e.target.closest?.('[data-m2="sidebar"] ' + c("row"))) {
+      clearHeroCard();
+      uiState.dismissedTip?.removeAttribute("data-m2-dismissed");
+      uiState.dismissedTip = null;
+      uiState.hiddenCardKey = "";
+      uiState.panel = "";
+      schedule();
+    }
+  });
+  on(
+    document,
+    "click",
+    (e) => {
+      if (!root.hasAttribute("data-m2-active")) return;
+      if (uiState.deckOpen && e.target.closest?.('[data-m2="deck"] ' + c("closeBtn"))) {
+        setDeckOpen(false);
+        uiState.mode = "board";
+        schedule();
+      }
+      if (e.target.closest?.('[data-m2="hand-list"] ' + c("row"))) clearHeroCard();
+    },
+    { capture: true }
+  );
+  on(document, "keydown", (e) => {
+    if (e.key === "Escape") {
+      uiState.focusedHeroId = null;
+      uiState.panel = "";
+      clearHeroCard();
+      dismiss();
+      return;
+    }
+  });
 
   // src/cards.js
   var cardColors = {
@@ -4979,9 +5252,10 @@ html:not([data-m2-active]) .m2-choice-launchers {
     const items = knownItems || cardUpgrades(card, row);
     const symbol = (key2, value2) => upgradedSymbol(items, key2, value2);
     const small = !!row.closest('[data-m2="hand-list"]');
+    const tiny = small && handCardSize() === "tiny";
     if (small) trackCardSource(row, card, "hand");
     const owner = small ? cardHero(card, row)?.id : null;
-    const key = JSON.stringify([card, items, small, owner]);
+    const key = JSON.stringify([card, items, small, owner, tiny]);
     let view = q(":scope>.m2-list-card", row);
     if (!row.classList.contains("m2-adapted-row")) row.classList.add("m2-adapted-row");
     if (view?.dataset.key === key) return;
@@ -4992,8 +5266,9 @@ html:not([data-m2-active]) .m2-choice-launchers {
       addExtra(view);
     }
     view.dataset.key = key;
-    view.classList.toggle("m2-small-card", small);
-    view.classList.toggle("m2-mini-card", !small);
+    view.classList.toggle("m2-small-card", small && !tiny);
+    view.classList.toggle("m2-mini-card", !small || tiny);
+    view.classList.toggle("m2-tiny-hand-card", tiny);
     view.replaceChildren();
     row.classList.add("m2-adapted-row");
     const ultimate = card.tier === "IV" || card.color === "PURPLE";
@@ -6842,6 +7117,7 @@ html:not([data-m2-active]) .m2-choice-launchers {
     } catch {
     }
     deckUpdate();
+    schedule();
   }
   loadDeckPreferences();
   function renderedCard(element) {
@@ -6924,6 +7200,7 @@ html:not([data-m2-active]) .m2-choice-launchers {
     if (!uiState.deckState) return;
     uiState.deckState.watchers?.forEach((stop) => stop());
     uiState.deckState.host.remove();
+    uiState.deckState.preview?.remove();
     uiState.deckState.zoom.remove();
     uiState.deckState.modal.removeAttribute("data-m2-deck-ready");
     uiState.deckState = null;
@@ -6993,6 +7270,10 @@ html:not([data-m2-active]) .m2-choice-launchers {
     highlightViewedCard("deck");
     state.zoom.replaceChildren();
     state.host.replaceChildren();
+    if (state.preview) {
+      state.preview.remove();
+      extras.delete(state.preview);
+    }
     state.host.dataset.view = uiState.deckView;
     const controls = document.createElement("div");
     controls.className = "m2-deck-controls";
@@ -7015,8 +7296,12 @@ html:not([data-m2-active]) .m2-choice-launchers {
         b.setAttribute("aria-label", "Sort by color instead of tier");
         b.setAttribute("aria-checked", String(uiState.deckSort === "color"));
         b.textContent = "";
+        const tier = document.createElement("span"), color = document.createElement("span");
+        tier.textContent = "Tier";
+        color.textContent = "Color";
         const labels = document.createElement("span");
-        labels.innerHTML = "<span>Tier</span><span>Color</span>";
+        labels.className = "m2-sort-labels";
+        labels.append(tier, color);
         const track = document.createElement("i");
         b.append(labels, track);
       }
@@ -7024,14 +7309,12 @@ html:not([data-m2-active]) .m2-choice-launchers {
       controls.append(b);
     }
     state.host.append(controls);
-    const hasPreview = uiState.deckView === "compact" || uiState.deckView === "tree";
-    let preview;
-    if (hasPreview) {
-      preview = document.createElement("section");
-      preview.className = "m2-deck-preview";
-      preview.setAttribute("aria-label", "Selected deck card");
-      state.host.append(preview);
-    }
+    const preview = document.createElement("section");
+    preview.className = "m2-deck-preview";
+    preview.setAttribute("aria-label", "Selected deck card");
+    (q('[data-m2="board"]') || state.host).append(preview);
+    state.preview = preview;
+    addExtra(preview);
     function selectPreview(card) {
       state.selectedCard = card;
       highlightViewedCard("deck", card, hero?.id || "");
@@ -7092,23 +7375,6 @@ html:not([data-m2-active]) .m2-choice-launchers {
       state.copies.push([entry.canvas, canvas]);
       return canvas;
     }
-    function enlarge(entry) {
-      state.copies = state.copies.filter(([, canvas2]) => !state.zoom.contains(canvas2));
-      state.zoom.replaceChildren();
-      state.dirty = true;
-      const close2 = document.createElement("button");
-      close2.type = "button";
-      close2.textContent = "Close ×";
-      on(close2, "click", () => {
-        state.zoom.hidden = true;
-        highlightViewedCard("deck");
-      });
-      const canvas = image(entry, true);
-      state.zoom.append(close2, canvas);
-      state.zoom.hidden = false;
-      highlightViewedCard("deck", entry.card, hero?.id || "");
-      deckPaint();
-    }
     for (const [title, cards] of groups) {
       const heading = document.createElement("h3");
       heading.textContent = title;
@@ -7120,14 +7386,14 @@ html:not([data-m2-active]) .m2-choice-launchers {
         b.type = "button";
         b.className = "m2-deck-card";
         trackCardSource(b, card, "deck", hero?.id || "");
-        b.setAttribute("aria-label", (uiState.deckView === "compact" ? "View " : "Enlarge ") + card.name);
+        b.setAttribute("aria-label", "View " + card.name);
         if (uiState.deckView === "compact") {
           b.dataset.cardKey = JSON.stringify(card);
           b.setAttribute("aria-pressed", "false");
           on(b, "click", () => selectPreview(card));
           updateCardRow(b, card, {});
         } else b.append(image(entry));
-        if (uiState.deckView !== "compact") on(b, "click", () => enlarge(entry));
+        if (uiState.deckView !== "compact") on(b, "click", () => selectPreview(card));
         group.append(b);
       }
     }
@@ -7190,161 +7456,15 @@ html:not([data-m2-active]) .m2-choice-launchers {
     }
   }
 
-  // src/navigation.js
-  function dismiss() {
-    const tip = q('[data-m2="tip"]');
-    if (tip) {
-      uiState.dismissedTip = tip;
-      tip.setAttribute("data-m2-dismissed", "");
-    }
-    refresh();
-  }
-  on(close, "click", dismiss);
-  var deckMounted = false;
-  var menuHistoryToken = Date.now() + "-" + Math.random();
-  var menuHistoryActive = false;
-  var menuHistoryClosing = false;
-  var navigating = false;
-  var menuSelection = () => uiState.deckOpen ? "deck" : uiState.panel || uiState.mode;
-  function syncMenuHistory() {
-    if (navigating || menuHistoryClosing || uiState.dead) return;
-    const open = menuSelection() !== "board";
-    if (open && !menuHistoryActive) {
-      try {
-        window.history.pushState({ ...window.history.state, goa2Mobile2DMenu: menuHistoryToken }, "", window.location.href);
-        menuHistoryActive = true;
-      } catch {
-      }
-    } else if (!open && menuHistoryActive) {
-      menuHistoryActive = false;
-      if (window.history.state?.goa2Mobile2DMenu === menuHistoryToken) {
-        menuHistoryClosing = true;
-        window.history.back();
-      }
-    }
-  }
-  on(window, "popstate", () => {
-    if (menuHistoryClosing) {
-      menuHistoryClosing = false;
-      syncMenuHistory();
-      return;
-    }
-    if (!menuHistoryActive) return;
-    menuHistoryActive = false;
-    const selected = menuSelection();
-    if (selected !== "board") navigate(selected);
-  });
-  function clearMenuHistory() {
-    if (menuHistoryActive && window.history.state?.goa2Mobile2DMenu === menuHistoryToken)
-      window.history.back();
-    menuHistoryActive = false;
-  }
-  function setDeckOpen(open) {
-    uiState.deckOpen = open;
-    deckMounted = false;
-    if (open) retryBasicArtwork();
-    root.toggleAttribute("data-m2-deck-open", open);
-  }
-  function syncDeckMount(nativeDeck) {
-    if (uiState.deckOpen && nativeDeck) deckMounted = true;
-    else if (uiState.deckOpen && deckMounted) setDeckOpen(false);
-  }
-  function navigate(key) {
-    if (!key) return;
-    navigating = true;
-    const selected = uiState.deckOpen ? "deck" : uiState.panel || uiState.mode;
-    const closing = selected === key;
-    if (uiState.deckOpen) q('[data-m2="deck"] ' + c("closeBtn"))?.click();
-    setDeckOpen(false);
-    uiState.panel = "";
-    uiState.focusedHeroId = null;
-    uiState.mode = "board";
-    clearHeroCard();
-    dismiss();
-    if (!closing) {
-      if (key === "deck") {
-        setDeckOpen(true);
-        if (!q('[data-m2="deck"]'))
-          q('[data-m2="hero"]:not([data-m2-other]) ' + c("viewDeckBtn"))?.click();
-      } else if (key === "setup" || key === "tools" || key === "log") uiState.panel = key;
-      else if (key === "hand" || key === "heroes") uiState.mode = key;
-    }
-    navigating = false;
-    refresh();
-  }
-  function navigationShortcut(content, key, label) {
-    const button = document.createElement("button");
-    button.type = "button";
-    content.classList.add("m2-navigation-shortcut");
-    button.className = "m2-shortcut-border";
-    button.title = label;
-    button.setAttribute("aria-label", label);
-    content.append(button);
-    content.onclick = (event) => {
-      event.stopPropagation();
-      navigate(key);
-    };
-    return content;
-  }
-  function syncNavigation() {
-    const setupButton = q('[data-mode="setup"]', nav);
-    const setupAvailable = !!q('[aria-label="Starting position"]');
-    setupButton.hidden = !setupAvailable;
-    nav.style.gridTemplateColumns = "repeat(" + (setupAvailable ? 6 : 5) + ",minmax(0,1fr))";
-    if (!setupAvailable && uiState.panel === "setup") {
-      uiState.panel = "";
-      root.dataset.m2Panel = "";
-    }
-    const selected = uiState.deckOpen ? "deck" : uiState.panel || uiState.mode;
-    for (const button of nav.children) {
-      const pressed = String(button.dataset.mode === selected);
-      if (button.getAttribute("aria-pressed") !== pressed)
-        button.setAttribute("aria-pressed", pressed);
-    }
-    syncMenuHistory();
-  }
-  on(nav, "click", (e) => navigate(e.target.closest("button")?.dataset.mode));
-  on(document, "pointerdown", (e) => {
-    if (e.target.closest?.('[data-m2="sidebar"] ' + c("row"))) {
-      clearHeroCard();
-      uiState.dismissedTip?.removeAttribute("data-m2-dismissed");
-      uiState.dismissedTip = null;
-      uiState.hiddenCardKey = "";
-      uiState.panel = "";
-      schedule();
-    }
-  });
-  on(
-    document,
-    "click",
-    (e) => {
-      if (!root.hasAttribute("data-m2-active")) return;
-      if (uiState.deckOpen && e.target.closest?.('[data-m2="deck"] ' + c("closeBtn"))) {
-        setDeckOpen(false);
-        uiState.mode = "board";
-        schedule();
-      }
-      if (e.target.closest?.('[data-m2="hand-list"] ' + c("row"))) clearHeroCard();
-    },
-    { capture: true }
-  );
-  on(document, "keydown", (e) => {
-    if (e.key === "Escape") {
-      uiState.focusedHeroId = null;
-      uiState.panel = "";
-      clearHeroCard();
-      dismiss();
-      return;
-    }
-  });
-
   // src/settings.js
   var displayPreferencesKey = "goa2-mobile-display";
-  var displayPreferences = { cardArt: true, boardTexture: true, fontStep: 0 }, cursorsVisible = true, soundsEnabled = true, soundVolume = 100, gameSettingsDirty = false, appliedFontStep = 0;
+  var displayPreferences = { cardArt: true, boardTexture: true, fontStep: 0, handCards: "small", deckOptions: true }, cursorsVisible = true, soundsEnabled = true, soundVolume = 100, gameSettingsDirty = false, appliedFontStep = 0;
   try {
     const saved = JSON.parse(localStorage.getItem(displayPreferencesKey) || "{}");
     if (typeof saved?.cardArt === "boolean") displayPreferences.cardArt = saved.cardArt;
     if (typeof saved?.boardTexture === "boolean") displayPreferences.boardTexture = saved.boardTexture;
+    if (["small", "tiny"].includes(saved?.handCards)) displayPreferences.handCards = saved.handCards;
+    if (typeof saved?.deckOptions === "boolean") displayPreferences.deckOptions = saved.deckOptions;
     if (Number.isInteger(saved?.fontStep) && saved.fontStep >= -4 && saved.fontStep <= 4)
       displayPreferences.fontStep = saved.fontStep;
   } catch {
@@ -7359,10 +7479,15 @@ html:not([data-m2-active]) .m2-choice-launchers {
   function boardTextureEnabled() {
     return displayPreferences.boardTexture;
   }
+  function handCardSize() {
+    return displayPreferences.handCards;
+  }
   function fontScale(step) {
     return step < 0 ? 0.95 ** -step : 1.1 ** step;
   }
   function applyDisplayPreferences() {
+    root.toggleAttribute("data-m2-hide-deck-options", !displayPreferences.deckOptions);
+    root.dataset.m2HandCards = displayPreferences.handCards;
     root.toggleAttribute("data-m2-no-card-art", !displayPreferences.cardArt);
     if (appliedFontStep === displayPreferences.fontStep) return;
     appliedFontStep = displayPreferences.fontStep;
@@ -7385,6 +7510,7 @@ html:not([data-m2-active]) .m2-choice-launchers {
     updateSettings();
   }
   var settingHelpText = {
+    "deck-options": "Show the Deck view controls above the bottom menu. You can also choose the Deck view and sort order here. Saved on this device.",
     texture: "Show smaller shaded hexes and light borders at spawn points. On by default. Changes apply immediately and are saved on this device.",
     art: "Use card illustrations behind card text. On by default. Changes apply immediately and are saved on this device.",
     font: "Center is the original size (100%). Each step below center multiplies it by 0.95; each step above multiplies it by 1.10. Default resets the size. Changes apply immediately and are saved on this device.",
@@ -7509,6 +7635,48 @@ html:not([data-m2-active]) .m2-choice-launchers {
       displayPreferences.fontStep = value;
       saveDisplayPreferences();
     }));
+    const handSize = document.createElement("label");
+    handSize.className = "m2-hand-size-setting";
+    handSize.textContent = "Hand cards";
+    const sizeSelect = document.createElement("select");
+    sizeSelect.dataset.setting = "hand-cards";
+    sizeSelect.setAttribute("aria-label", "Hand card size");
+    sizeSelect.innerHTML = '<option value="small">Small</option><option value="tiny">Tiny</option>';
+    on(sizeSelect, "change", () => {
+      displayPreferences.handCards = sizeSelect.value === "tiny" ? "tiny" : "small";
+      saveDisplayPreferences();
+      schedule();
+    });
+    handSize.append(sizeSelect);
+    appearance.append(handSize);
+    appearance.append(settingSwitch("Deck options bar", "deck-options", () => {
+      displayPreferences.deckOptions = !displayPreferences.deckOptions;
+      saveDisplayPreferences();
+      schedule();
+    }));
+    for (const [key, label, options] of [
+      ["deck-view", "Deck view", [["tree", "Tree"], ["compact", "List"], ["grid", "Grid"]]],
+      ["deck-sort", "Deck sort", [["tier", "Tier"], ["color", "Color"]]]
+    ]) {
+      const row = document.createElement("label"), select = document.createElement("select");
+      row.className = "m2-hand-size-setting";
+      row.textContent = label;
+      select.dataset.setting = key;
+      select.setAttribute("aria-label", label);
+      for (const [value, text] of options) {
+        const option = document.createElement("option");
+        option.value = value;
+        option.textContent = text;
+        select.append(option);
+      }
+      on(select, "change", () => {
+        if (key === "deck-view") selectDeckOption(select.value);
+        else if (select.value !== uiState.deckSort) selectDeckOption("sort");
+        updateSettings();
+      });
+      row.append(select);
+      appearance.append(row);
+    }
     const scale = q(".m2-setting-range", appearance), labels = document.createElement("div");
     labels.className = "m2-font-range-labels";
     labels.innerHTML = '<span>Smaller</span><button type="button">Default</button><span>Larger</span>';
@@ -7550,6 +7718,10 @@ html:not([data-m2-active]) .m2-choice-launchers {
     applyDisplayPreferences();
     root.toggleAttribute("data-m2-hide-cursors", !cursorsVisible);
     if (!settingsPanel.firstChild) buildSettings();
+    q('[data-setting="hand-cards"]', settingsPanel).value = displayPreferences.handCards;
+    q('[data-setting="deck-options"]', settingsPanel).setAttribute("aria-checked", String(displayPreferences.deckOptions));
+    q('[data-setting="deck-view"]', settingsPanel).value = uiState.deckView;
+    q('[data-setting="deck-sort"]', settingsPanel).value = uiState.deckSort;
     for (const [key, value] of [
       ["art", displayPreferences.cardArt],
       ["texture", displayPreferences.boardTexture],
@@ -7737,7 +7909,9 @@ html:not([data-m2-active]) .m2-choice-launchers {
     const sources2 = Array.from(
       document.querySelectorAll(c("takeBackBtn") + "," + c("finishPlanningBtn"))
     ).filter((source) => uiState.mode !== "board" || !source.matches(c("takeBackBtn")));
-    const host = uiState.mode === "board" ? q('[data-m2="board"]') : q('[data-m2="hand-list"]');
+    const hand = q('[data-m2="hand-list"]');
+    const waiting = hand && q(c("waiting"), hand);
+    const host = uiState.mode === "board" ? q('[data-m2="board"]') : sources2.some((source) => source.matches(c("takeBackBtn"))) && waiting ? waiting : hand;
     if (!sources2.length || !host) {
       if (planningActions) {
         planningActions.element.remove();
@@ -9727,7 +9901,7 @@ html:not([data-m2-active]) .m2-choice-launchers {
   }
   on(media, "change", schedule);
   window.GOA2Mobile2D = {
-    version: "1.0.4",
+    version: "1.0.5",
     destroy() {
       flushEventHistory();
       uiState.dead = true;
@@ -9795,6 +9969,8 @@ html:not([data-m2-active]) .m2-choice-launchers {
       for (const n of [
         "data-m2-hide-cursors",
         "data-m2-no-card-art",
+        "data-m2-hand-cards",
+        "data-m2-hide-deck-options",
         "data-m2-deck-open",
         "data-m2-active",
         "data-m2-mode",

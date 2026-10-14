@@ -50,8 +50,9 @@ On iOS, use Safari with the free [Userscripts app](https://apps.apple.com/us/app
 ## Use
 
 - Board is the default view. Tap **Heroes**, **Hand**, **Deck**, **Log** or **Settings**; tap the active tab again to return to Board.
-- Your hand dots or H/P/D indicators on Board open **Hand**; your upgrade icons open **Deck**. Device/browser **Back** closes the open menu and returns to Board.
+- Your hand dots or H/P/D indicators on Board open **Hand**; your upgrade icons open **Deck**. Device/browser **Back** closes menus, card views and decision dialogs and returns to Board.
 - Tap a card to inspect it, or a hero name to focus that hero. Your played card appears above action choices.
+- Settings → Appearance offers **Small/Tiny Hand cards** and a **Deck options bar** toggle; Deck view and sort can also be chosen there.
 - Deck offers **Tree**, **List** and **Grid**. Deck plans are previews; level-up choices require **Commit**.
 - Long messages scroll automatically. Tap the message bar to read three rows; tap elsewhere to collapse it.
 - Preferences and received events are saved on this device. Log also retrieves server decision history; local events cannot recover events missed while offline.

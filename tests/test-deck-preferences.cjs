@@ -130,3 +130,35 @@ test('unavailable storage does not prevent Deck rendering or changing preference
   fixture.d.querySelector('.m2-sort-switch').click();
   assertOptions(fixture.d, 'compact', 'color');
 });
+
+test('Deck controls float above footer; hiding the bar retains Settings view/sort controls', (t) => {
+  const { w, d, install } = setup(t);
+  install();
+  d.querySelector('[data-mode="deck"]').click();
+  const controls = d.querySelector('.m2-deck-controls');
+  assert.equal(w.getComputedStyle(controls).position, 'fixed');
+  assert.equal(w.getComputedStyle(controls).height, '38px');
+  const toggle = d.querySelector('.m2-sort-switch');
+  assert.deepEqual(
+    [...toggle.children].map((node) => node.tagName),
+    ['SPAN', 'I'],
+  );
+  assert.equal(toggle.children[0].children[0].textContent, 'Tier');
+  assert.equal(toggle.children[0].children[1].textContent, 'Color');
+  assert.equal(w.getComputedStyle(d.querySelector('.m2-deck-preview')).display, 'none');
+  d.querySelector('[data-mode="tools"]').click();
+  d.querySelector('[data-setting="deck-options"]').click();
+  assert.equal(w.getComputedStyle(controls).display, 'none');
+  assert.equal(JSON.parse(w.localStorage.getItem('goa2-mobile-display')).deckOptions, false);
+  const view = d.querySelector('[data-setting="deck-view"]');
+  view.value = 'grid';
+  view.dispatchEvent(new w.Event('change'));
+  assert.equal(d.querySelector('.m2-deck-browser').dataset.view, 'grid');
+  const sort = d.querySelector('[data-setting="deck-sort"]');
+  sort.value = 'color';
+  sort.dispatchEvent(new w.Event('change'));
+  assert.equal(JSON.parse(w.localStorage.getItem(storageKey)).sort, 'color');
+  assert.equal(JSON.parse(w.localStorage.getItem(storageKey)).view, 'grid');
+  d.querySelector('[data-setting="deck-options"]').click();
+  assert(!d.documentElement.hasAttribute('data-m2-hide-deck-options'));
+});

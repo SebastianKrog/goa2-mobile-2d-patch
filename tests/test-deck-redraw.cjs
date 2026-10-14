@@ -56,13 +56,13 @@ const wait = () => new Promise((r) => setTimeout(r, 100));
     assert(draws > before + 1);
     for (let i = 0; i < 10; i++) {
       doc.querySelector('.m2-deck-card').click();
-      doc.querySelector('.m2-deck-zoom button').click();
+      doc.querySelector('.m2-deck-preview .m2-card-dismiss').click();
     }
     assert(w.__deck().copies.length <= 2);
     w.GOA2Mobile2D.destroy();
     assert.equal(src.getContext('2d').drawImage, original);
     console.log(
-      'PASS: no idle redraws, source paint triggers copy, zoom retention bounded, context restored',
+      'PASS: no idle redraws, source paint triggers copy, card-view retention bounded, context restored',
     );
   } finally {
     w.close();

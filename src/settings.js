@@ -1,4 +1,5 @@
 import { boardRotation } from './camera.js';
+import { selectDeckOption } from './deck.js';
 import { isGeneratedNode, schedule } from './main.js';
 import { navigate } from './navigation.js';
 import { css, inactiveCss, q, root, uiState, style } from './runtime.js';
@@ -7,7 +8,7 @@ import { on, settingsPanel } from './ui.js';
 // Appearance preferences are adapter-owned. Game preferences use the website's
 // existing keys; its sound/pointer state is initialized at load, so apply by reload.
 const displayPreferencesKey = 'goa2-mobile-display';
-let displayPreferences = { cardArt: true, boardTexture: true, fontStep: 0 },
+let displayPreferences = { cardArt: true, boardTexture: true, fontStep: 0, handCards: 'small', deckOptions: true },
   cursorsVisible = true,
   soundsEnabled = true,
   soundVolume = 100,
@@ -17,6 +18,8 @@ try {
   const saved = JSON.parse(localStorage.getItem(displayPreferencesKey) || '{}');
   if (typeof saved?.cardArt === 'boolean') displayPreferences.cardArt = saved.cardArt;
   if (typeof saved?.boardTexture === 'boolean') displayPreferences.boardTexture = saved.boardTexture;
+  if (['small', 'tiny'].includes(saved?.handCards)) displayPreferences.handCards = saved.handCards;
+  if (typeof saved?.deckOptions === 'boolean') displayPreferences.deckOptions = saved.deckOptions;
   if (Number.isInteger(saved?.fontStep) && saved.fontStep >= -4 && saved.fontStep <= 4)
     displayPreferences.fontStep = saved.fontStep;
 } catch {}
@@ -30,11 +33,14 @@ try {
 export function boardTextureEnabled() {
   return displayPreferences.boardTexture;
 }
+export function handCardSize() { return displayPreferences.handCards; }
 
 function fontScale(step) {
   return step < 0 ? 0.95 ** -step : 1.1 ** step;
 }
 function applyDisplayPreferences() {
+  root.toggleAttribute('data-m2-hide-deck-options', !displayPreferences.deckOptions);
+  root.dataset.m2HandCards = displayPreferences.handCards;
   root.toggleAttribute('data-m2-no-card-art', !displayPreferences.cardArt);
   if (appliedFontStep === displayPreferences.fontStep) return;
   appliedFontStep = displayPreferences.fontStep;
@@ -55,6 +61,7 @@ function saveDisplayPreferences() {
 }
 
 const settingHelpText = {
+  'deck-options': 'Show the Deck view controls above the bottom menu. You can also choose the Deck view and sort order here. Saved on this device.',
   texture: 'Show smaller shaded hexes and light borders at spawn points. On by default. Changes apply immediately and are saved on this device.',
   art: 'Use card illustrations behind card text. On by default. Changes apply immediately and are saved on this device.',
   font: 'Center is the original size (100%). Each step below center multiplies it by 0.95; each step above multiplies it by 1.10. Default resets the size. Changes apply immediately and are saved on this device.',
@@ -183,6 +190,48 @@ function buildSettings() {
     displayPreferences.fontStep = value;
     saveDisplayPreferences();
   }));
+  const handSize = document.createElement('label');
+  handSize.className = 'm2-hand-size-setting';
+  handSize.textContent = 'Hand cards';
+  const sizeSelect = document.createElement('select');
+  sizeSelect.dataset.setting = 'hand-cards';
+  sizeSelect.setAttribute('aria-label', 'Hand card size');
+  sizeSelect.innerHTML = '<option value="small">Small</option><option value="tiny">Tiny</option>';
+  on(sizeSelect, 'change', () => {
+    displayPreferences.handCards = sizeSelect.value === 'tiny' ? 'tiny' : 'small';
+    saveDisplayPreferences();
+    schedule();
+  });
+  handSize.append(sizeSelect);
+  appearance.append(handSize);
+  appearance.append(settingSwitch('Deck options bar', 'deck-options', () => {
+    displayPreferences.deckOptions = !displayPreferences.deckOptions;
+    saveDisplayPreferences();
+    schedule();
+  }));
+  for (const [key, label, options] of [
+    ['deck-view', 'Deck view', [['tree', 'Tree'], ['compact', 'List'], ['grid', 'Grid']]],
+    ['deck-sort', 'Deck sort', [['tier', 'Tier'], ['color', 'Color']]],
+  ]) {
+    const row = document.createElement('label'), select = document.createElement('select');
+    row.className = 'm2-hand-size-setting';
+    row.textContent = label;
+    select.dataset.setting = key;
+    select.setAttribute('aria-label', label);
+    for (const [value, text] of options) {
+      const option = document.createElement('option');
+      option.value = value;
+      option.textContent = text;
+      select.append(option);
+    }
+    on(select, 'change', () => {
+      if (key === 'deck-view') selectDeckOption(select.value);
+      else if (select.value !== uiState.deckSort) selectDeckOption('sort');
+      updateSettings();
+    });
+    row.append(select);
+    appearance.append(row);
+  }
   const scale = q('.m2-setting-range', appearance), labels = document.createElement('div');
   labels.className = 'm2-font-range-labels';
   labels.innerHTML = '<span>Smaller</span><button type="button">Default</button><span>Larger</span>';
@@ -224,6 +273,10 @@ function updateSettings() {
   applyDisplayPreferences();
   root.toggleAttribute('data-m2-hide-cursors', !cursorsVisible);
   if (!settingsPanel.firstChild) buildSettings();
+  q('[data-setting="hand-cards"]', settingsPanel).value = displayPreferences.handCards;
+  q('[data-setting="deck-options"]', settingsPanel).setAttribute('aria-checked', String(displayPreferences.deckOptions));
+  q('[data-setting="deck-view"]', settingsPanel).value = uiState.deckView;
+  q('[data-setting="deck-sort"]', settingsPanel).value = uiState.deckSort;
   for (const [key, value] of [['art', displayPreferences.cardArt], ['texture', displayPreferences.boardTexture], ['cursors', cursorsVisible],
       ['sounds', soundsEnabled], ['fullscreen', !!document.fullscreenElement]])
     q('[data-setting="' + key + '"]', settingsPanel).setAttribute('aria-checked', String(value));

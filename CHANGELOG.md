@@ -2,6 +2,13 @@
 
 Published releases, newest first.
 
+## 1.0.5
+
+- Back also dismisses card views and decision dialogs, using native Board-peek/close controls without choosing or undoing a game action.
+- Add saved Small/Tiny Hand-card sizes, remove the Hand heading, and centre the committed message and Take back button in equal-width sections. Keep Commit in place.
+- Give Deck the same header and Board/list layout as Hand and Heroes in portrait and landscape. Inspect cards over the Board in every Deck mode; keep the landscape list clear of the header.
+- Move Tree/List/Grid controls into a shorter bottom bar with Tier/Color labels above a horizontal switch. Add a saved bar visibility setting and view/sort choices in Settings. Centre Preview and Reset within their sections.
+
 ## 1.0.4
 
 - Remove native keyboard hints from Board button labels, so Undo appears as “Undo” instead of “Undo U” and retains its amber styling and position. Preserve native availability and rollback handlers.

@@ -96,14 +96,14 @@ test('Tree uses six printed slots, correct card grants, and standard/alternate t
   assert.equal(d.querySelectorAll('.m2-deck-controls > button').length, 4);
   assert.equal(
     w.getComputedStyle(d.querySelector('.m2-deck-controls')).gridTemplateColumns,
-    'repeat(3, minmax(0, 1fr)) 54px',
+    'repeat(3, minmax(0, 1fr)) 104px',
   );
   const controls = w.getComputedStyle(d.querySelector('.m2-deck-controls'));
-  assert.equal(controls.height, 'var(--m2-head)', 'Deck controls share the main header height');
+  assert.equal(controls.height, '38px', 'Deck controls use a shorter bottom bar');
   assert.equal(controls.boxSizing, 'border-box');
-  assert.equal(controls.paddingTop, '2px');
-  assert.equal(controls.paddingBottom, '2px');
-  assert.equal(w.getComputedStyle(d.querySelector('[data-m2="deck"]')).paddingTop, '0px');
+  assert.equal(controls.paddingTop, '4px');
+  assert.equal(controls.paddingBottom, '4px');
+  assert.equal(parseFloat(w.getComputedStyle(d.querySelector('[data-m2="deck"]')).paddingTop), 0);
   assert(!d.querySelector('.m2-deck-title'));
   assert(!d.querySelector('.m2-deck-tree h3'));
   for (const color of ['RED', 'BLUE', 'GREEN']) {
@@ -411,7 +411,7 @@ test('five card states distinguish current pools, actual item alternatives and r
   );
 });
 
-test('Preview uses one row with its label on the left and centered icons; basics keep a compact ultimate and wrap extras', (t) => {
+test('Preview centres its label, icons and Reset within one row; basics keep a compact ultimate and wrap extras', (t) => {
   const { w, d, hero } = setup(t);
   assert.equal(d.querySelector('.m2-tree-build-title b').textContent, 'Preview');
   assert.equal(d.querySelector('.m2-tree-build-title button').textContent, 'Reset');
@@ -426,7 +426,7 @@ test('Preview uses one row with its label on the left and centered icons; basics
     assert.equal(style.gridColumn, column);
     assert.equal(style.gridRow, '1', 'label, icons and Reset occupy the same row');
   }
-  assert.equal(w.getComputedStyle(d.querySelector('.m2-tree-build-title b')).textAlign, 'left');
+  assert.equal(w.getComputedStyle(d.querySelector('.m2-tree-build-title b')).textAlign, 'center');
   assert.equal(
     w.getComputedStyle(d.querySelector('.m2-tree-build-choices')).justifyContent,
     'center',
@@ -640,7 +640,9 @@ test('all viewers reference the same height, including the short-screen rule', (
     '#goa2-m2-hero-display:not(:empty)',
     '.m2-deck-preview',
   ]) {
-    const viewers = rules.filter((rule) => rule.selectorText?.endsWith(selector));
+    const viewers = rules.filter(
+      (rule) => rule.selectorText?.endsWith(selector) && rule.style.getPropertyValue('height'),
+    );
     assert(viewers.length);
     for (const rule of viewers)
       assert.equal(rule.style.getPropertyValue('height'), 'var(--m2-card-display-height)');

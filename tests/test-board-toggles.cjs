@@ -46,7 +46,7 @@ try {
       assert.equal(w.getComputedStyle(d.querySelector('#goa2-m2-hero-display')).display, 'none');
     }
     if (key === 'deck') {
-      assert.equal(w.getComputedStyle(d.querySelector('[data-m2="board"]')).display, 'none');
+      assert.equal(w.getComputedStyle(d.querySelector('[data-m2="board"]')).display, 'block');
       assert.notEqual(
         w.getComputedStyle(d.querySelector('[data-m2="sidebar"]')).display,
         'none',

@@ -8,7 +8,7 @@ import { m2Painter } from './painter.js';
 import { componentProp } from './react.js';
 import { c, deckPreferencesKey, q, root, uiState } from './runtime.js';
 import { deckCardIdentity, deckTreePool } from './tree-model.js';
-import { addExtra, on } from './ui.js';
+import { addExtra, extras, on } from './ui.js';
 
 // 6. Deck browser and canvas synchronization
 // Read view/sort before rendering so opening Deck does not flash the wrong layout.
@@ -28,6 +28,7 @@ function selectDeckOption(value) {
     localStorage.setItem(deckPreferencesKey, JSON.stringify({ view: uiState.deckView, sort: uiState.deckSort }));
   } catch {}
   deckUpdate();
+  schedule();
 }
 loadDeckPreferences();
 // Single entry point for card props on a rendered native component.
@@ -123,6 +124,7 @@ function clearDeckState() {
   if (!uiState.deckState) return;
   uiState.deckState.watchers?.forEach(stop => stop());
   uiState.deckState.host.remove();
+  uiState.deckState.preview?.remove();
   uiState.deckState.zoom.remove();
   uiState.deckState.modal.removeAttribute('data-m2-deck-ready');
   uiState.deckState = null;
@@ -183,6 +185,10 @@ function deckUpdate(upgradeRequest) {
   highlightViewedCard('deck');
   state.zoom.replaceChildren();
   state.host.replaceChildren();
+  if (state.preview) {
+    state.preview.remove();
+    extras.delete(state.preview);
+  }
   state.host.dataset.view = uiState.deckView;
   const controls = document.createElement('div');
   controls.className = 'm2-deck-controls';
@@ -205,8 +211,12 @@ function deckUpdate(upgradeRequest) {
       b.setAttribute('aria-label', 'Sort by color instead of tier');
       b.setAttribute('aria-checked', String(uiState.deckSort === 'color'));
       b.textContent = '';
+      const tier = document.createElement('span'), color = document.createElement('span');
+      tier.textContent = 'Tier';
+      color.textContent = 'Color';
       const labels = document.createElement('span');
-      labels.innerHTML = '<span>Tier</span><span>Color</span>';
+      labels.className = 'm2-sort-labels';
+      labels.append(tier, color);
       const track = document.createElement('i');
       b.append(labels, track);
     }
@@ -214,15 +224,13 @@ function deckUpdate(upgradeRequest) {
     controls.append(b);
   }
   state.host.append(controls);
-  // List (stored as compact for compatibility) and Tree share the Large Deck viewer.
-  const hasPreview = uiState.deckView === 'compact' || uiState.deckView === 'tree';
-  let preview;
-  if (hasPreview) {
-    preview = document.createElement('section');
-    preview.className = 'm2-deck-preview';
-    preview.setAttribute('aria-label', 'Selected deck card');
-    state.host.append(preview);
-  }
+  // All Deck modes inspect cards in a floating overlay; no empty viewer reserves space.
+  const preview = document.createElement('section');
+  preview.className = 'm2-deck-preview';
+  preview.setAttribute('aria-label', 'Selected deck card');
+  (q('[data-m2="board"]') || state.host).append(preview);
+  state.preview = preview;
+  addExtra(preview);
   function selectPreview(card) {
     state.selectedCard = card;
     highlightViewedCard('deck', card, hero?.id || '');
@@ -245,8 +253,7 @@ function deckUpdate(upgradeRequest) {
       row.setAttribute('aria-pressed', String(row.dataset.cardKey === JSON.stringify(card)));
   }
 
-  // All modes have an independently scrollable card area. Landscape places it
-  // beside the viewer, including Grid's existing enlarged image surface.
+  // All modes share an independently scrollable list beneath the card overlay.
   const listHost = document.createElement('div');
   listHost.className = 'm2-deck-row-list';
   state.host.append(listHost);
@@ -295,24 +302,6 @@ function deckUpdate(upgradeRequest) {
     state.copies.push([entry.canvas, canvas]);
     return canvas;
   }
-  // Keep the enlarged canvas in the same copy registry, replacing the prior zoom view.
-  function enlarge(entry) {
-    state.copies = state.copies.filter(([, canvas]) => !state.zoom.contains(canvas));
-    state.zoom.replaceChildren();
-    state.dirty = true;
-    const close = document.createElement('button');
-    close.type = 'button';
-    close.textContent = 'Close ×';
-    on(close, 'click', () => {
-      state.zoom.hidden = true;
-      highlightViewedCard('deck');
-    });
-    const canvas = image(entry, true);
-    state.zoom.append(close, canvas);
-    state.zoom.hidden = false;
-    highlightViewedCard('deck', entry.card, hero?.id || '');
-    deckPaint();
-  }
   for (const [title, cards] of groups) {
     const heading = document.createElement('h3');
     heading.textContent = title;
@@ -325,14 +314,14 @@ function deckUpdate(upgradeRequest) {
       b.type = 'button';
       b.className = 'm2-deck-card';
       trackCardSource(b, card, 'deck', hero?.id || '');
-      b.setAttribute('aria-label', (uiState.deckView === 'compact' ? 'View ' : 'Enlarge ') + card.name);
+      b.setAttribute('aria-label', 'View ' + card.name);
       if (uiState.deckView === 'compact') {
         b.dataset.cardKey = JSON.stringify(card);
         b.setAttribute('aria-pressed', 'false');
         on(b, 'click', () => selectPreview(card));
         updateCardRow(b, card, {});
       } else b.append(image(entry));
-      if (uiState.deckView !== 'compact') on(b, 'click', () => enlarge(entry));
+      if (uiState.deckView !== 'compact') on(b, 'click', () => selectPreview(card));
       group.append(b);
     }
   }
@@ -399,4 +388,4 @@ function deckPaint() {
   }
 }
 
-export { basicCanvases, deckPaint, deckUpdate, renderedCard, retryBasicArtwork };
+export { basicCanvases, deckPaint, deckUpdate, renderedCard, retryBasicArtwork, selectDeckOption };

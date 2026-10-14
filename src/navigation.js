@@ -1,7 +1,8 @@
-import { retryBasicArtwork } from './deck.js';
+import { renderedCard, retryBasicArtwork } from './deck.js';
+import { componentProp } from './react.js';
 import { refresh, schedule } from './main.js';
 import { c, q, root, uiState } from './runtime.js';
-import { clearHeroCard, close, nav, on } from './ui.js';
+import { clearHeroCard, close, detailsPanel, heroPanel, nav, on } from './ui.js';
 
 // Hide the current native tooltip without changing the website’s selected card.
 function dismiss() {
@@ -19,9 +20,39 @@ let menuHistoryActive = false;
 let menuHistoryClosing = false;
 let navigating = false;
 const menuSelection = () => uiState.deckOpen ? 'deck' : uiState.panel || uiState.mode;
+function openDecisionDialog() {
+  return q(c('picker') + ',' + c('pickerUpgrade') + ',[data-m2="report-dialog"],[data-m2="fix-dialog"]');
+}
+function openCardView() {
+  const tip = q('[data-m2="tip"]');
+  return !!uiState.selectedHeroCard || !!heroPanel.firstChild ||
+    (uiState.mode === 'hand' && !!detailsPanel.firstChild) ||
+    (!!tip && tip !== uiState.dismissedTip);
+}
+function dismissViews() {
+  const selected = q('[data-m2="hand-list"] ' + c('row') + c('selected'));
+  const tip = q('[data-m2="tip"]');
+  const card = selected && renderedCard(selected) || tip && componentProp(tip, 'card');
+  if (card) uiState.hiddenCardKey = JSON.stringify(card);
+  clearHeroCard();
+  detailsPanel.replaceChildren();
+  delete detailsPanel.dataset.key;
+  const dialog = openDecisionDialog();
+  // Board peek dismisses presentation while leaving the pending decision intact.
+  // Never use Undo/Skip/Confirm to close a decision dialog.
+  const closeDialog = dialog && (q(c('peekBtn') + ',' + c('closeBtn') + ',button[aria-label="Close"]', dialog) ||
+    Array.from(dialog.querySelectorAll('button')).find(button =>
+      /^(Board|Close|Cancel|×|✕|X)$/i.test(button.textContent.trim())));
+  if (closeDialog && !closeDialog.disabled) closeDialog.click();
+  if (tip) {
+    uiState.dismissedTip = tip;
+    tip.setAttribute('data-m2-dismissed', '');
+  }
+}
 function syncMenuHistory() {
   if (navigating || menuHistoryClosing || uiState.dead) return;
-  const open = menuSelection() !== 'board';
+  const open = root.hasAttribute('data-m2-active') &&
+    (menuSelection() !== 'board' || openCardView() || !!openDecisionDialog());
   if (open && !menuHistoryActive) {
     try {
       window.history.pushState({ ...window.history.state, goa2Mobile2DMenu: menuHistoryToken }, '', window.location.href);
@@ -44,8 +75,12 @@ on(window, 'popstate', () => {
   }
   if (!menuHistoryActive) return;
   menuHistoryActive = false;
+  navigating = true;
+  dismissViews();
+  navigating = false;
   const selected = menuSelection();
   if (selected !== 'board') navigate(selected);
+  else refresh();
 });
 function clearMenuHistory() {
   if (menuHistoryActive && window.history.state?.goa2Mobile2DMenu === menuHistoryToken)

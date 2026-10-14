@@ -458,22 +458,24 @@ test('Settings, Log and starting-position controls occupy the right pane above t
   assert.equal(css('#goa2-m2-nav').bottom, 'var(--m2-offset, 0px)');
 });
 
-test('Deck Tree/List use a left viewer; Grid keeps its cards and image enlargement in separate panes', (t) => {
+test('Deck modes share a floating left card overlay and compact bottom controls', (t) => {
   const { d, css, navigate } = setup(t);
   navigate('deck');
-  assert.equal(css('.m2-deck-browser').display, 'grid');
-  assert.equal(css('.m2-deck-preview').gridColumn, '1');
-  assert.equal(css('.m2-deck-preview').gridRow, '1 / -1');
-  assert.equal(css('.m2-deck-row-list').gridColumn, '2');
+  assert.equal(css('.m2-deck-browser').display, 'flex');
+  assert.equal(css('.m2-deck-preview').position, 'absolute');
+  assert.equal(css('.m2-deck-preview').display, 'none');
+  assert.equal(css('.m2-deck-controls').position, 'fixed');
   assert.equal(css('.m2-tree-build').gridRow, '3');
   d.querySelector('.m2-tree-card').click();
   assert(d.querySelector('.m2-tree-card[data-m2-viewed]'));
   assert(d.querySelector('.m2-deck-preview .m2-text-card'));
+  assert.equal(d.querySelector('.m2-deck-preview').parentElement.dataset.m2, 'board');
+  assert.equal(css('[data-m2="deck"]').width, 'var(--m2-list-width)');
   const options = () => [...d.querySelectorAll('.m2-deck-controls button')];
   options()
     .find((button) => button.textContent === 'List')
     .click();
-  assert.equal(css('.m2-deck-preview').gridColumn, '1');
+  assert.equal(css('.m2-deck-preview').position, 'absolute');
   assert(d.querySelector('.m2-deck-row-list .m2-deck-compact'));
   assert(
     d.querySelector('.m2-deck-compact [data-m2-viewed]'),
@@ -487,15 +489,15 @@ test('Deck Tree/List use a left viewer; Grid keeps its cards and image enlargeme
     .find((button) => button.textContent === 'Grid')
     .click();
   assert(d.querySelector('.m2-deck-row-list .m2-deck-grid'));
-  assert(!d.querySelector('[data-m2-viewed]'), 'Grid starts with the image viewer closed');
+  assert(
+    d.querySelector('.m2-deck-preview .m2-text-card'),
+    'Grid shares the retained card overlay',
+  );
   d.querySelector('.m2-deck-grid button').click();
-  const zoom = d.querySelector('.m2-deck-zoom');
-  assert.equal(zoom.hidden, false);
   assert(d.querySelector('.m2-deck-grid [data-m2-viewed]'));
-  assert(css('.m2-deck-zoom').inset.includes('var(--m2-list-width)'));
-  assert.equal(css('.m2-deck-zoom canvas').objectFit, 'contain');
-  zoom.querySelector('button').click();
-  assert.equal(zoom.hidden, true);
+  assert(css('.m2-deck-preview').right.includes('var(--m2-list-width)'));
+  d.querySelector('.m2-deck-preview .m2-card-dismiss').click();
+  assert.equal(css('.m2-deck-preview').display, 'none');
   assert(!d.querySelector('[data-m2-viewed]'));
 });
 
