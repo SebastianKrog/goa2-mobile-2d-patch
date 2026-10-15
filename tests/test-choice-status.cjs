@@ -37,8 +37,11 @@ w.eval(
 try {
   assert.deepEqual(
     [...d.querySelectorAll('.m2-summary-turn')].map((x) => x.getAttribute('aria-label')),
-    ['Selecting', 'Done'],
+    ['Upgrading', 'Committed'],
   );
+  assert.equal(d.querySelector('.m2-selection-status').textContent, 'Upgrading...');
+  assert.equal(d.querySelectorAll('.m2-selection-status')[1].textContent, 'Committed ✓');
+  assert(d.querySelector('.m2-summary-turn .m2-selecting-dots'));
   const proxy = d.querySelector('.m2-choice-launchers button');
   proxy.click();
   assert.equal(clicks, 1);
@@ -46,11 +49,47 @@ try {
   assert.equal(d.querySelector('.m2-choice-launchers button'), proxy);
   request.players.hanu.remaining = 0;
   w.testRefresh();
-  assert.equal(d.querySelector('.m2-summary-turn').getAttribute('aria-label'), 'Done');
+  assert.equal(d.querySelector('.m2-summary-turn').getAttribute('aria-label'), 'Committed');
   assert(!d.querySelector('.m2-summary-turn .m2-selecting-dots'));
+  assert.equal(d.querySelector('.m2-selection-status').textContent, 'Committed ✓');
   delete request.players.hanu;
   w.testRefresh();
-  assert.equal(d.querySelector('.m2-summary-turn').getAttribute('aria-label'), 'Waiting');
+  assert.equal(d.querySelector('.m2-summary-turn').getAttribute('aria-label'), 'Upgrading');
+  assert(d.querySelector('.m2-summary-turn .m2-selecting-dots'));
+  assert.equal(d.querySelector('.m2-selection-status').textContent, 'Upgrading...');
+  const sidebarProps = d.querySelector('._sidebar_x').__reactFiber$t.memoizedProps;
+  sidebarProps.myHeroId = 'hanu';
+  sidebarProps.isMyTurn = false;
+  sidebarProps.view.teams = {
+    BLUE: {
+      heroes: [
+        { id: 'hanu', name: 'Hanu' },
+        { id: 'garrus', name: 'Garrus' },
+      ],
+    },
+  };
+  request.type = 'NONE';
+  const logToggle = d.createElement('button');
+  logToggle.className = '_toggle_test';
+  const waiting = ['Garrus'];
+  logToggle.__reactFiber$t = { memoizedProps: { waitingForNames: waiting } };
+  d.body.append(logToggle);
+  w.testRefresh();
+  assert.equal(
+    d.querySelector('.m2-selection-status').textContent,
+    'Committed ✓',
+    'own completion survives disappearance of the private request',
+  );
+  assert.equal(d.querySelectorAll('.m2-selection-status')[1].textContent, 'Upgrading...');
+  waiting[0] = 'Hanu';
+  w.testRefresh();
+  assert.equal(
+    d.querySelectorAll('.m2-selection-status')[1].textContent,
+    'Committed ✓',
+    'public waiting names update other heroes without their private offers',
+  );
+  assert.equal(d.querySelectorAll('.m2-summary-turn')[1].textContent, '✓');
+  logToggle.remove();
   native.remove();
   w.testRefresh();
   assert(d.querySelector('.m2-choice-launchers').hidden);

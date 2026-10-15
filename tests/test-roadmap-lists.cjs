@@ -266,7 +266,7 @@ try {
   assert(!box.querySelector('.m2-current-card-mini'));
   assert.equal(
     box.querySelector('.m2-current-card-slot .m2-selection-status').textContent,
-    'Selected',
+    'Committed ✓',
   );
   console.log(
     'PASS: Board focus/back and inspection, five history slots, resolved cards, Nano defense glow, ordinal portraits, Razzle figures, inline tokens and privacy',

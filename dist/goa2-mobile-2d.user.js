@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GoA II — Mobile 2D
 // @namespace    goa2-mobile-local
-// @version      1.1.1
+// @version      1.1.2
 // @description  Compact 2D HUD, Board/Hand modes, contained setup and utility panels.
 // @match        https://goa2.frontend.pedroliv.dev/game/*
 // @grant        none
@@ -4381,6 +4381,89 @@ html:not([data-m2-active]) .m2-choice-launchers {
     grid-row: 5;
   }
 }
+
+/* Discard decisions use Hand rows and stage the choice until confirmation. */
+& [data-m2-discard-source] {
+  display: none !important;
+}
+& [data-m2-discard-overlay] {
+  position: fixed !important;
+  inset: calc(var(--m2-viewport-top, 0px) + var(--m2-head) + var(--m2-status-h) + 6px)
+    calc(var(--m2-nav-width, 0px) + 8px) calc(var(--m2-offset, 0px) + var(--m2-nav) + 8px) 8px !important;
+  display: flex !important;
+  align-items: flex-start !important;
+  justify-content: center !important;
+  z-index: 1000 !important;
+  background: #080c12b3;
+}
+& [data-m2-discard-picker] {
+  box-sizing: border-box;
+  width: min(100%, 500px) !important;
+  max-height: 100% !important;
+  overflow-y: auto !important;
+  overscroll-behavior: contain;
+  padding: 8px !important;
+  margin: 0 !important;
+}
+& [data-m2-discard-picker] [class*="_title_"] {
+  font-size: 0 !important;
+}
+& [data-m2-discard-picker] [class*="_title_"]::after {
+  content: "Choose a card to discard";
+  font: 600 14px system-ui;
+}
+& .m2-discard-choices > div:nth-child(2) {
+  display: grid;
+  gap: 5px;
+  margin-top: 8px;
+}
+& .m2-discard-row {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  padding: 0 5px;
+  overflow: hidden;
+  border: 1px solid #ffffff1c;
+  border-radius: 8px;
+  background: #ffffff08;
+  color: #d8dce4;
+  font: inherit;
+  text-align: left;
+}
+& .m2-discard-row[aria-pressed="true"] {
+  border-color: #e9c956;
+  box-shadow: inset 0 0 0 1px #e9c956;
+}
+& .m2-discard-choices .m2-small-card {
+  min-height: 42px;
+}
+& .m2-discard-choices .m2-tiny-hand-card {
+  min-height: 28px;
+}
+& .m2-discard-choices .m2-tiny-hand-card .m2-symbol img {
+  width: 19px;
+  height: 19px;
+}
+& .m2-discard-choices .m2-tiny-hand-card > .m2-symbol {
+  flex-basis: 24px;
+}
+& .m2-discard-choices .m2-tiny-hand-card .m2-list-secondary {
+  gap: 2px;
+}
+& .m2-discard-confirm {
+  display: block;
+  margin: 8px auto 0;
+  min-height: 36px;
+  padding: 6px 18px;
+  border: 1px solid #637b9d;
+  border-radius: 8px;
+  background: #1b2637;
+  color: #a8ccff;
+  font: 600 13px system-ui;
+}
+& .m2-discard-confirm:disabled {
+  opacity: 0.45;
+}
 `;
 
   // src/runtime.js
@@ -4671,48 +4754,48 @@ html:not([data-m2-active]) .m2-choice-launchers {
     return scale ? Number(scale[1]) : null;
   }
   async function centerBoardHero(heroId) {
-    const state = boardRotation;
-    if (!state || uiState.dead || !root.hasAttribute("data-m2-active") || document.hidden) return;
-    state.centerTarget = heroId;
-    if (state.centerPending) return;
-    const live = () => !uiState.dead && boardRotation === state && state.centerTarget && root.hasAttribute("data-m2-active") && !document.hidden;
-    const handlers = () => Object.fromEntries(["onPointerDown", "onPointerMove", "onPointerUp", "onClickCapture"].map((key) => [key, componentProp(state.host, key)]));
+    const state2 = boardRotation;
+    if (!state2 || uiState.dead || !root.hasAttribute("data-m2-active") || document.hidden) return;
+    state2.centerTarget = heroId;
+    if (state2.centerPending) return;
+    const live = () => !uiState.dead && boardRotation === state2 && state2.centerTarget && root.hasAttribute("data-m2-active") && !document.hidden;
+    const handlers = () => Object.fromEntries(["onPointerDown", "onPointerMove", "onPointerUp", "onClickCapture"].map((key) => [key, componentProp(state2.host, key)]));
     const available = (props) => ["onPointerDown", "onPointerMove", "onPointerUp"].every((key) => typeof props[key] === "function");
-    if (!available(handlers()) || !boardHeroPoint(state.svg, heroId)) {
-      state.centerTarget = null;
+    if (!available(handlers()) || !boardHeroPoint(state2.svg, heroId)) {
+      state2.centerTarget = null;
       return;
     }
-    const rect = state.host.getBoundingClientRect(), zoom = nativeBoardZoom(state.svg);
+    const rect = state2.host.getBoundingClientRect(), zoom = nativeBoardZoom(state2.svg);
     if (!rect.width || !rect.height || !zoom) {
-      state.centerTarget = null;
+      state2.centerTarget = null;
       return;
     }
-    state.centerPending = true;
-    state.host.style.removeProperty("--m2-center-x");
-    state.host.style.removeProperty("--m2-center-y");
+    state2.centerPending = true;
+    state2.host.style.removeProperty("--m2-center-x");
+    state2.host.style.removeProperty("--m2-center-y");
     try {
       const midpoint = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
       if (Math.abs(zoom - 2.5) > 1e-4) {
-        state.host.dispatchEvent(new WheelEvent("wheel", {
+        state2.host.dispatchEvent(new WheelEvent("wheel", {
           bubbles: true,
           cancelable: true,
           clientX: midpoint.x,
           clientY: midpoint.y,
           deltaY: -Math.log(2.5 / zoom) / 2e-3
         }));
-        for (let frames = 0; frames < 6 && live() && Math.abs((nativeBoardZoom(state.svg) || 0) - 2.5) > 1e-4; frames++) await boardFrame();
+        for (let frames = 0; frames < 6 && live() && Math.abs((nativeBoardZoom(state2.svg) || 0) - 2.5) > 1e-4; frames++) await boardFrame();
       }
-      if (!live() || Math.abs((nativeBoardZoom(state.svg) || 0) - 2.5) > 1e-4) return;
-      const translate = getComputedStyle(state.svg).translate.split(/\s+/).map(parseFloat);
+      if (!live() || Math.abs((nativeBoardZoom(state2.svg) || 0) - 2.5) > 1e-4) return;
+      const translate = getComputedStyle(state2.svg).translate.split(/\s+/).map(parseFloat);
       const destination = { x: midpoint.x + (translate[0] || 0), y: midpoint.y + (translate[1] || 0) };
-      const point = boardScreenPoint(state.svg, boardHeroPoint(state.svg, state.centerTarget));
+      const point = boardScreenPoint(state2.svg, boardHeroPoint(state2.svg, state2.centerTarget));
       const props = handlers();
       if (!point || !available(props)) return;
       const pointer = {
         pointerId: -250,
         pointerType: "mouse",
         buttons: 1,
-        currentTarget: state.host,
+        currentTarget: state2.host,
         clientX: midpoint.x,
         clientY: midpoint.y,
         stopPropagation() {
@@ -4733,28 +4816,28 @@ html:not([data-m2-active]) .m2-choice-launchers {
       }
       await boardFrame();
       if (!live()) return;
-      const centered = boardScreenPoint(state.svg, boardHeroPoint(state.svg, state.centerTarget));
+      const centered = boardScreenPoint(state2.svg, boardHeroPoint(state2.svg, state2.centerTarget));
       if (!centered) return;
-      state.host.style.setProperty("--m2-center-x", destination.x - centered.x + "px");
-      state.host.style.setProperty("--m2-center-y", destination.y - centered.y + "px");
-      state.sync();
+      state2.host.style.setProperty("--m2-center-x", destination.x - centered.x + "px");
+      state2.host.style.setProperty("--m2-center-y", destination.y - centered.y + "px");
+      state2.sync();
     } catch {
     } finally {
-      state.centerPending = false;
-      state.centerTarget = null;
+      state2.centerPending = false;
+      state2.centerTarget = null;
     }
   }
   function clearBoardRotation() {
     if (!boardRotation) return;
-    const state = boardRotation;
-    state.observer.disconnect();
-    state.resize?.disconnect();
-    state.gestures.abort();
-    state.controls.remove();
-    state.svg.removeAttribute("data-m2-rotate");
-    state.host.removeAttribute("data-m2-rotation-host");
+    const state2 = boardRotation;
+    state2.observer.disconnect();
+    state2.resize?.disconnect();
+    state2.gestures.abort();
+    state2.controls.remove();
+    state2.svg.removeAttribute("data-m2-rotate");
+    state2.host.removeAttribute("data-m2-rotation-host");
     for (const key of ["--m2-native-transform", "--m2-angle", "--m2-rotation-fit", "--m2-center-x", "--m2-center-y"])
-      state.host.style.removeProperty(key);
+      state2.host.style.removeProperty(key);
     boardRotation = null;
   }
   function updateBoardRotation() {
@@ -4771,7 +4854,7 @@ html:not([data-m2-active]) .m2-choice-launchers {
     const host = svg.parentElement, controls = document.createElement("div");
     controls.className = "m2-board-controls";
     controls.setAttribute("aria-label", "Board orientation");
-    const state = {
+    const state2 = {
       svg,
       host,
       controls,
@@ -4781,7 +4864,7 @@ html:not([data-m2-active]) .m2-choice-launchers {
       sync: null,
       gestures: new AbortController()
     };
-    boardRotation = state;
+    boardRotation = state2;
     svg.setAttribute("data-m2-rotate", "");
     host.setAttribute("data-m2-rotation-host", "");
     const put = (key, value) => {
@@ -4793,10 +4876,10 @@ html:not([data-m2-active]) .m2-choice-launchers {
     const fullscreen = document.createElement("button");
     fullscreen.type = "button";
     fullscreen.className = "m2-board-fullscreen";
-    state.sync = () => {
+    state2.sync = () => {
       const native = svg.style.transform || "translate(0px,0px) scale(1)";
       put("--m2-native-transform", native);
-      put("--m2-angle", state.angle + "deg");
+      put("--m2-angle", state2.angle + "deg");
       put("--m2-rotation-fit", "1");
       const nativeReset = q(c("zoomReset"), host), zoom = nativeReset?.textContent.match(/\d+%/)?.[0] || "100%";
       const label = zoom + " · Reset";
@@ -4814,7 +4897,7 @@ html:not([data-m2-active]) .m2-choice-launchers {
       const [a, b] = Array.from(touches.values());
       return Math.atan2(b.y - a.y, b.x - a.x) * 180 / Math.PI;
     };
-    const listen = (event, fn) => host.addEventListener(event, fn, { capture: true, signal: state.gestures.signal });
+    const listen = (event, fn) => host.addEventListener(event, fn, { capture: true, signal: state2.gestures.signal });
     listen("pointerdown", (e) => {
       if (e.pointerType !== "touch" || controls.contains(e.target) || !root.hasAttribute("data-m2-active"))
         return;
@@ -4828,8 +4911,8 @@ html:not([data-m2-active]) .m2-choice-launchers {
       const next = pairAngle();
       if (previousAngle !== null) {
         const delta = (next - previousAngle + 540) % 360 - 180;
-        state.angle = (state.angle + delta + 360) % 360;
-        state.sync();
+        state2.angle = (state2.angle + delta + 360) % 360;
+        state2.sync();
       }
       previousAngle = next;
     });
@@ -4839,14 +4922,14 @@ html:not([data-m2-active]) .m2-choice-launchers {
     };
     for (const event of ["pointerup", "pointercancel", "lostpointercapture"]) listen(event, end);
     on(reset, "click", () => {
-      state.centerTarget = null;
-      state.host.style.removeProperty("--m2-center-x");
-      state.host.style.removeProperty("--m2-center-y");
+      state2.centerTarget = null;
+      state2.host.style.removeProperty("--m2-center-x");
+      state2.host.style.removeProperty("--m2-center-y");
       touches.clear();
       previousAngle = null;
-      state.angle = 0;
+      state2.angle = 0;
       q(c("zoomReset"), host)?.click();
-      state.sync();
+      state2.sync();
     });
     on(fullscreen, "click", toggleFullscreen);
     controls.append(reset, fullscreen);
@@ -4861,14 +4944,73 @@ html:not([data-m2-active]) .m2-choice-launchers {
       on(controls, event, (e) => e.stopPropagation());
     host.append(controls);
     addExtra(controls);
-    state.observer = new MutationObserver(state.sync);
-    state.observer.observe(svg, { attributes: true, attributeFilter: ["style", "viewBox"] });
+    state2.observer = new MutationObserver(state2.sync);
+    state2.observer.observe(svg, { attributes: true, attributeFilter: ["style", "viewBox"] });
     if (typeof ResizeObserver !== "undefined") {
-      state.resize = new ResizeObserver(state.sync);
-      state.resize.observe(svg);
+      state2.resize = new ResizeObserver(state2.sync);
+      state2.resize.observe(svg);
     }
-    state.sync();
+    state2.sync();
   }
+
+  // src/printed-signs.js
+  var printedPrimarySigns = {
+    "close_call": "EXCLAMATION",
+    "narrow_escape": "EXCLAMATION",
+    "vantage_point": "PLUS",
+    "perfect_getaway": "EXCLAMATION",
+    "high_ground": "PLUS",
+    "brynn_high_ground": "PLUS",
+    "elevated_ambush": "PLUS",
+    "peak_precision": "PLUS",
+    "daring_strike": "PLUS",
+    "bold_thrust": "PLUS",
+    "fearless_lunge": "PLUS",
+    "shield_of_decay": "PLUS",
+    "vampiric_shield": "PLUS",
+    "aegis_of_doom": "PLUS",
+    "angry_strike": "PLUS",
+    "poof": "EXCLAMATION",
+    "vanish": "EXCLAMATION",
+    "ruse": "EXCLAMATION",
+    "knife_of_the_living_dead": "PLUS",
+    "crowd_control": "PLUS",
+    "quickdraw": "PLUS",
+    "gunslinger": "PLUS",
+    "dead_shot": "PLUS",
+    "rune_sigils": "PLUS",
+    "oath_of_endurance": "EXCLAMATION",
+    "oath_of_fortitude": "EXCLAMATION",
+    "oath_of_perseverance": "EXCLAMATION",
+    "winter_dagger": "PLUS",
+    "winter_spear": "PLUS",
+    "winter_scepter": "PLUS",
+    "dodge": "EXCLAMATION",
+    "sidestep": "EXCLAMATION",
+    "parry": "EXCLAMATION",
+    "backstab": "PLUS",
+    "evade": "EXCLAMATION",
+    "riposte": "EXCLAMATION",
+    "backstab_with_a_ballista": "PLUS",
+    "makeshift_minigun": "PLUS",
+    "gatling_gun": "PLUS",
+    "supercharged_cannon": "PLUS",
+    "cold_ire": "PLUS",
+    "eyes_of_flame": "PLUS",
+    "stop_projectiles": "EXCLAMATION",
+    "deflect_projectiles": "EXCLAMATION",
+    "reflect_projectiles": "EXCLAMATION",
+    "threatening_slash": "PLUS",
+    "deadly_swipe": "PLUS",
+    "lethal_spin": "PLUS",
+    "sunburst": "PLUS"
+  };
+  var printedModifierSigns = {
+    "long_thrust": "PLUS",
+    "rapid_thrusts": "PLUS",
+    "sunburst": "PLUS",
+    "dimension_door": "PLUS"
+  };
 
   // src/navigation.js
   function dismiss() {
@@ -5143,6 +5285,21 @@ html:not([data-m2-active]) .m2-choice-launchers {
     element.style.setProperty("--m2-card-muted", color + "22");
     element.dataset.tierLines = String(cardTierLines(card));
   }
+  function signedCardValue(value, sign) {
+    if (sign === "EXCLAMATION") return "!";
+    if (sign === "PLUS" && value != null && !String(value).endsWith("+")) return String(value) + "+";
+    return value;
+  }
+  function primaryCardValue(card) {
+    const value = signedCardValue(card.primary_action_value, printedPrimarySigns[card.id]);
+    if (["DEFENSE", "DEFENSE_SKILL"].includes(card.primary_action) && (value == null || String(value) === "0" || String(value) === "!")) return "!";
+    return value != null && String(value) !== "0" ? value : void 0;
+  }
+  function modifierCardValue(card, key) {
+    const value = key === "RADIUS" ? card.radius_value : card.range_value;
+    const modifier = card.radius_value != null ? "RADIUS" : "RANGE";
+    return signedCardValue(value, key === modifier ? printedModifierSigns[card.id] : void 0);
+  }
   function miniatureCard(card, items = {}, includeDefense = false) {
     const mini = document.createElement("span");
     mini.className = "m2-mini-current " + (includeDefense ? "m2-micro-hero" : "m2-micro-board");
@@ -5154,13 +5311,12 @@ html:not([data-m2-active]) .m2-choice-launchers {
       mini.textContent = card ? "?" : "—";
       return mini;
     }
-    const value = card.primary_action_value;
-    const primary = card.primary_action ? upgradedSymbol(items, card.primary_action, value != null && String(value) !== "0" && String(value) !== "!" ? value : void 0) : document.createElement("span");
-    const range = relevantStat(card, "RANGE", card.range_value) ? upgradedSymbol(items, "RANGE", card.range_value) : relevantStat(card, "RADIUS", card.radius_value) ? upgradedSymbol(items, "RADIUS", card.radius_value) : document.createElement("span");
+    const primary = card.primary_action ? upgradedSymbol(items, card.primary_action, primaryCardValue(card)) : document.createElement("span");
+    const range = relevantStat(card, "RANGE", modifierCardValue(card, "RANGE")) ? upgradedSymbol(items, "RANGE", modifierCardValue(card, "RANGE")) : relevantStat(card, "RADIUS", modifierCardValue(card, "RADIUS")) ? upgradedSymbol(items, "RADIUS", modifierCardValue(card, "RADIUS")) : document.createElement("span");
     mini.append(primary, range);
     for (const stat of includeDefense ? ["MOVEMENT", "DEFENSE"] : ["MOVEMENT"]) {
-      const value2 = card.secondary_actions?.[stat];
-      mini.append(stat !== card.primary_action && relevantStat(card, stat, value2) ? upgradedSymbol(items, stat, value2) : document.createElement("span"));
+      const value = card.secondary_actions?.[stat];
+      mini.append(stat !== card.primary_action && relevantStat(card, stat, value) ? upgradedSymbol(items, stat, value) : document.createElement("span"));
     }
     return mini;
   }
@@ -5214,9 +5370,10 @@ html:not([data-m2-active]) .m2-choice-launchers {
     nano.title = card?.is_facedown ? "Hidden card" : card?.name || "Discard";
     if (card?.is_facedown) nano.textContent = "?";
     else {
-      const value = card?.primary_action === "DEFENSE" ? card.primary_action_value : card?.secondary_actions?.DEFENSE;
-      if (relevantStat(card || {}, "DEFENSE", value))
-        nano.append(upgradedSymbol(items, "DEFENSE", value));
+      const primary = ["DEFENSE", "DEFENSE_SKILL"].includes(card?.primary_action);
+      const value = primary ? primaryCardValue(card) : card?.secondary_actions?.DEFENSE;
+      if (primary || relevantStat(card || {}, "DEFENSE", value))
+        nano.append(upgradedSymbol(items, primary ? card.primary_action : "DEFENSE", value));
     }
     return nano;
   }
@@ -5433,21 +5590,20 @@ html:not([data-m2-active]) .m2-choice-launchers {
     head.className = "m2-card-type";
     const basic = ["GOLD", "SILVER"].includes(card.color) && ["ATTACK", "SKILL"].includes(card.primary_action);
     let label = (basic ? "Basic " : "") + (actionNames[card.primary_action] || card.primary_action || "");
-    if (["SKILL", "DEFENSE_SKILL", "ATTACK"].includes(card.primary_action) && (card.is_ranged || relevantStat(card, "RANGE", card.range_value)))
+    if (["SKILL", "DEFENSE_SKILL", "ATTACK"].includes(card.primary_action) && (card.is_ranged || relevantStat(card, "RANGE", modifierCardValue(card, "RANGE"))))
       label += " • Ranged";
     if (ultimate) label = "Ultimate";
-    const val = card.primary_action_value;
     const primary = symbol(
       card.primary_action || "SKILL",
-      val != null && String(val) !== "0" && String(val) !== "!" ? val : void 0
+      primaryCardValue(card)
     );
     const title = document.createElement("b");
     title.textContent = label;
     head.append(ultimate ? document.createElement("span") : primary, title);
-    if (relevantStat(card, "RANGE", card.range_value))
-      head.append(symbol("RANGE", card.range_value));
-    else if (relevantStat(card, "RADIUS", card.radius_value))
-      head.append(symbol("RADIUS", card.radius_value));
+    if (relevantStat(card, "RANGE", modifierCardValue(card, "RANGE")))
+      head.append(symbol("RANGE", modifierCardValue(card, "RANGE")));
+    else if (relevantStat(card, "RADIUS", modifierCardValue(card, "RADIUS")))
+      head.append(symbol("RADIUS", modifierCardValue(card, "RADIUS")));
     const effect = document.createElement("div");
     effect.className = "m2-card-effect";
     appendRulesText(effect, card.effect_text, symbol);
@@ -5494,8 +5650,8 @@ html:not([data-m2-active]) .m2-choice-launchers {
   // src/card-rows.js
   function updateCardRow(row, card, knownItems) {
     const items = knownItems || cardUpgrades(card, row);
-    const symbol = (key2, value2) => upgradedSymbol(items, key2, value2);
-    const small = !!row.closest('[data-m2="hand-list"]');
+    const symbol = (key2, value) => upgradedSymbol(items, key2, value);
+    const small = !!row.closest('[data-m2="hand-list"], .m2-discard-choices');
     const tiny = small && handCardSize() === "tiny";
     if (small) trackCardSource(row, card, "hand");
     const owner = small ? cardHero(card, row)?.id : null;
@@ -5526,11 +5682,10 @@ html:not([data-m2-active]) .m2-choice-launchers {
     band.className = "m2-list-band";
     band.style.setProperty("--card-color", cardColors[card.color] || "#bbc3cf");
     band.style.setProperty("--m2-tier-lines", String(cardTierLines(card)));
-    const value = card.primary_action_value;
     if (!ultimate && card.primary_action) {
       const primary = symbol(
         card.primary_action,
-        value != null && String(value) !== "0" && String(value) !== "!" ? value : void 0
+        primaryCardValue(card)
       );
       primary.classList.add("m2-list-primary");
       band.append(primary);
@@ -5539,7 +5694,7 @@ html:not([data-m2-active]) .m2-choice-launchers {
     name.className = "m2-list-name";
     name.textContent = card.name;
     band.append(name);
-    const utility = relevantStat(card, "RANGE", card.range_value) ? symbol("RANGE", card.range_value) : relevantStat(card, "RADIUS", card.radius_value) ? symbol("RADIUS", card.radius_value) : null;
+    const utility = relevantStat(card, "RANGE", modifierCardValue(card, "RANGE")) ? symbol("RANGE", modifierCardValue(card, "RANGE")) : relevantStat(card, "RADIUS", modifierCardValue(card, "RADIUS")) ? symbol("RADIUS", modifierCardValue(card, "RADIUS")) : null;
     if (utility) {
       utility.classList.add("m2-list-utility");
       band.append(utility);
@@ -5843,13 +5998,13 @@ html:not([data-m2-active]) .m2-choice-launchers {
         const lowerTier = deckTreeTier(card) > 0 && [...build.chosen.keys()].some(
           (key) => key.split(":")[0] === String(card.color).toUpperCase() && Number(key.split(":")[1]) > deckTreeTier(card)
         );
-        const state = pool.has(id) ? "current" : itemCards.has(id) ? "item" : !chosen && planned === id ? "planned" : chosen || planned || lowerTier ? "unavailable" : "standard";
-        const selected = state === "current" || state === "planned";
-        button.dataset.state = state;
-        button.classList.toggle("m2-tree-chosen", state === "current");
-        button.classList.toggle("m2-tree-planned", state === "planned");
-        button.classList.toggle("m2-tree-item", state === "item");
-        button.classList.toggle("m2-tree-unavailable", state === "unavailable");
+        const state2 = pool.has(id) ? "current" : itemCards.has(id) ? "item" : !chosen && planned === id ? "planned" : chosen || planned || lowerTier ? "unavailable" : "standard";
+        const selected = state2 === "current" || state2 === "planned";
+        button.dataset.state = state2;
+        button.classList.toggle("m2-tree-chosen", state2 === "current");
+        button.classList.toggle("m2-tree-planned", state2 === "planned");
+        button.classList.toggle("m2-tree-item", state2 === "item");
+        button.classList.toggle("m2-tree-unavailable", state2 === "unavailable");
         button.setAttribute("aria-pressed", String(selected));
         const status = {
           current: "In current card pool",
@@ -5857,7 +6012,7 @@ html:not([data-m2-active]) .m2-choice-launchers {
           planned: "Planned",
           unavailable: "Not chosen",
           standard: ""
-        }[state];
+        }[state2];
         button.setAttribute("aria-label", "View " + card.name + (status ? ". " + status : ""));
         button.title = card.name + (status ? " · " + status : "");
       }
@@ -5891,7 +6046,25 @@ html:not([data-m2-active]) .m2-choice-launchers {
   }
   function remainingUpgrades(request, heroId) {
     const remaining = request?.players?.[heroId]?.remaining;
-    return typeof remaining === "number" && Number.isFinite(remaining) ? remaining : null;
+    if (typeof remaining === "number" && Number.isFinite(remaining)) return remaining;
+    const sidebar = q('[data-m2="sidebar"]');
+    const view = componentProp(sidebar, "view");
+    if (!/^LEVEL[_ ]UP$/i.test(view?.phase || "")) return null;
+    const ownId = componentProp(sidebar, "myHeroId");
+    if (ownId === heroId) {
+      const isMyTurn = componentProp(sidebar, "isMyTurn");
+      if (typeof isMyTurn === "boolean") return isMyTurn ? 1 : 0;
+    }
+    const heroes = Object.values(view.teams || {}).flatMap((team) => team.heroes || []);
+    const hero = heroes.find((hero2) => hero2.id === heroId);
+    if (!hero || ownId === heroId) return null;
+    for (const node of document.querySelectorAll(c("toggle") + "," + c("picker") + "," + c("pickerUpgrade"))) {
+      const waiting = componentProp(node, "waitingForNames");
+      if (!Array.isArray(waiting) || !waiting.length) continue;
+      if (!waiting.every((name) => heroes.filter((hero2) => hero2.name === name).length === 1)) continue;
+      return waiting.includes(hero.name) ? 1 : 0;
+    }
+    return null;
   }
 
   // src/painter.js
@@ -7329,10 +7502,10 @@ html:not([data-m2-active]) .m2-choice-launchers {
           card.initiative ?? 0,
           primaryType,
           Math.abs(primaryValue),
-          valueSign(primaryValue),
+          printedPrimarySigns[card.id] || (["DEFENSE", "DEFENSE_SKILL"].includes(card.primary_action) && primaryValue === 0 ? ValueSign.EXCLAMATION : valueSign(primaryValue)),
           modifier,
           modifierValue,
-          ValueSign.NONE,
+          printedModifierSigns[card.id] || ValueSign.NONE,
           secondaryMovement,
           secondaryDefense,
           secondaryAttack
@@ -7372,17 +7545,17 @@ html:not([data-m2-active]) .m2-choice-launchers {
   var basicPaintStates = /* @__PURE__ */ new WeakMap();
   function retryBasicArtwork() {
     for (const canvas of basicCanvases.values()) {
-      const state = basicPaintStates.get(canvas);
-      if (state && !state.painted) {
-        state.retryAt = 0;
-        if (state.pending) state.retryRequested = true;
+      const state2 = basicPaintStates.get(canvas);
+      if (state2 && !state2.painted) {
+        state2.retryAt = 0;
+        if (state2.pending) state2.retryRequested = true;
       }
     }
   }
   function paintBasicArtwork(canvas, card, hero, cacheKey) {
-    const state = basicPaintStates.get(canvas);
-    if (state.pending || state.painted || Date.now() < state.retryAt || navigator.onLine === false) return;
-    state.pending = true;
+    const state2 = basicPaintStates.get(canvas);
+    if (state2.pending || state2.painted || Date.now() < state2.retryAt || navigator.onLine === false) return;
+    state2.pending = true;
     (async () => {
       try {
         await m2Painter.ensureCardAssetsReady();
@@ -7396,16 +7569,16 @@ html:not([data-m2-active]) .m2-choice-launchers {
         if (!ctx || !target) return;
         m2Painter.paintCard(staging, ctx, { ...card, is_facedown: false }, background);
         target.drawImage(staging, 0, 0);
-        state.painted = !card.image_id || !!background;
+        state2.painted = !card.image_id || !!background;
       } catch (error) {
         if (!uiState.dead) console.warn("GoA mobile: basic card artwork unavailable", error);
       } finally {
-        state.pending = false;
-        state.retryAt = Date.now() + 5e3;
-        if (state.retryRequested) {
-          state.retryRequested = false;
-          state.retryAt = 0;
-          if (!uiState.dead && !state.painted) schedule();
+        state2.pending = false;
+        state2.retryAt = Date.now() + 5e3;
+        if (state2.retryRequested) {
+          state2.retryRequested = false;
+          state2.retryAt = 0;
+          if (!uiState.dead && !state2.painted) schedule();
         }
       }
     })();
@@ -7487,11 +7660,11 @@ html:not([data-m2-active]) .m2-choice-launchers {
       modal.setAttribute("data-m2-deck-ready", "");
       uiState.deckState = { modal, host, zoom, key: "", copies: [], dirty: true, watchers: [] };
     }
-    const state = uiState.deckState;
+    const state2 = uiState.deckState;
     const hero = componentProp(modal, "hero");
     const ownerKey = JSON.stringify([location.pathname, hero?.id || hero?.name || entries.map((e) => deckCardIdentity(e.card))]);
-    if (state.ownerKey !== ownerKey) state.selectedCard = null;
-    state.ownerKey = ownerKey;
+    if (state2.ownerKey !== ownerKey) state2.selectedCard = null;
+    state2.ownerKey = ownerKey;
     if (upgradeRequest === void 0) upgradeRequest = currentUpgradeRequest();
     rememberDeckTreeChoices(hero, entries.map((e) => e.card), upgradeRequest);
     const build = uiState.deckView === "tree" ? deckTreeBuild(hero, entries.map((e) => e.card)) : null;
@@ -7507,23 +7680,23 @@ html:not([data-m2-active]) .m2-choice-launchers {
         deckTreePool(hero).map(deckCardIdentity)
       ] : null
     ]);
-    if (state.key === key && state.sources?.every((v, i) => v === sources2[i])) return;
-    state.watchers?.forEach((stop) => stop());
-    state.watchers = [];
-    state.key = key;
-    state.sources = sources2;
-    state.copies = [];
-    state.dirty = true;
-    for (const source of entries.map((e) => e.canvas)) watchDeckCanvas(state, source);
-    state.zoom.hidden = true;
+    if (state2.key === key && state2.sources?.every((v, i) => v === sources2[i])) return;
+    state2.watchers?.forEach((stop) => stop());
+    state2.watchers = [];
+    state2.key = key;
+    state2.sources = sources2;
+    state2.copies = [];
+    state2.dirty = true;
+    for (const source of entries.map((e) => e.canvas)) watchDeckCanvas(state2, source);
+    state2.zoom.hidden = true;
     highlightViewedCard("deck");
-    state.zoom.replaceChildren();
-    state.host.replaceChildren();
-    if (state.preview) {
-      state.preview.remove();
-      extras.delete(state.preview);
+    state2.zoom.replaceChildren();
+    state2.host.replaceChildren();
+    if (state2.preview) {
+      state2.preview.remove();
+      extras.delete(state2.preview);
     }
-    state.host.dataset.view = uiState.deckView;
+    state2.host.dataset.view = uiState.deckView;
     const controls = document.createElement("div");
     controls.className = "m2-deck-controls";
     for (const [value, label] of [
@@ -7557,15 +7730,15 @@ html:not([data-m2-active]) .m2-choice-launchers {
       on(b, "click", () => selectDeckOption(value));
       controls.append(b);
     }
-    state.host.append(controls);
+    state2.host.append(controls);
     const preview = document.createElement("section");
     preview.className = "m2-deck-preview";
     preview.setAttribute("aria-label", "Selected deck card");
-    (q('[data-m2="board"]') || state.host).append(preview);
-    state.preview = preview;
+    (q('[data-m2="board"]') || state2.host).append(preview);
+    state2.preview = preview;
     addExtra(preview);
     function selectPreview(card) {
-      state.selectedCard = card;
+      state2.selectedCard = card;
       highlightViewedCard("deck", card, hero?.id || "");
       preview.replaceChildren();
       if (card) {
@@ -7587,15 +7760,15 @@ html:not([data-m2-active]) .m2-choice-launchers {
         foot.append(close2);
         preview.append(display);
       }
-      for (const row of state.host.querySelectorAll(".m2-deck-compact .m2-deck-card"))
+      for (const row of state2.host.querySelectorAll(".m2-deck-compact .m2-deck-card"))
         row.setAttribute("aria-pressed", String(row.dataset.cardKey === JSON.stringify(card)));
     }
     const listHost = document.createElement("div");
     listHost.className = "m2-deck-row-list";
-    state.host.append(listHost);
+    state2.host.append(listHost);
     if (uiState.deckView === "tree") {
       renderDeckTree(listHost, entries, hero, selectPreview);
-      const selected = entries.find((e) => state.selectedCard && deckCardIdentity(e.card) === deckCardIdentity(state.selectedCard));
+      const selected = entries.find((e) => state2.selectedCard && deckCardIdentity(e.card) === deckCardIdentity(state2.selectedCard));
       selectPreview(selected?.card || null);
       deckPaint();
       return;
@@ -7621,7 +7794,7 @@ html:not([data-m2-active]) .m2-choice-launchers {
       canvas.height = Math.round(canvas.width * entry.canvas.height / entry.canvas.width);
       canvas.setAttribute("role", "img");
       canvas.setAttribute("aria-label", entry.card.name);
-      state.copies.push([entry.canvas, canvas]);
+      state2.copies.push([entry.canvas, canvas]);
       return canvas;
     }
     for (const [title, cards] of groups) {
@@ -7647,12 +7820,12 @@ html:not([data-m2-active]) .m2-choice-launchers {
       }
     }
     if (preview) {
-      const selected = entries.find((e) => state.selectedCard && (e.card.id ? e.card.id === state.selectedCard.id : e.card.name === state.selectedCard.name));
+      const selected = entries.find((e) => state2.selectedCard && (e.card.id ? e.card.id === state2.selectedCard.id : e.card.name === state2.selectedCard.name));
       selectPreview(selected?.card || null);
     }
     deckPaint();
   }
-  function watchDeckCanvas(state, canvas) {
+  function watchDeckCanvas(state2, canvas) {
     let ctx;
     try {
       ctx = canvas.getContext("2d");
@@ -7673,7 +7846,7 @@ html:not([data-m2-active]) .m2-choice-launchers {
     ]) {
       let wrapped = function(...args) {
         const result = original.apply(this, args);
-        state.dirty = true;
+        state2.dirty = true;
         schedule();
         return result;
       };
@@ -7682,7 +7855,7 @@ html:not([data-m2-active]) .m2-choice-launchers {
       const own = Object.hasOwn(ctx, method);
       try {
         ctx[method] = wrapped;
-        state.watchers.push(() => {
+        state2.watchers.push(() => {
           if (ctx[method] === wrapped) {
             if (own) ctx[method] = original;
             else delete ctx[method];
@@ -7694,10 +7867,10 @@ html:not([data-m2-active]) .m2-choice-launchers {
   }
   function deckPaint() {
     if (!uiState.deckState || !uiState.deckOpen || !uiState.deckState.dirty) return;
-    const state = uiState.deckState;
-    state.dirty = false;
-    state.copies = state.copies.filter(([, dst]) => dst.isConnected);
-    for (const [src, dst] of state.copies) {
+    const state2 = uiState.deckState;
+    state2.dirty = false;
+    state2.copies = state2.copies.filter(([, dst]) => dst.isConnected);
+    for (const [src, dst] of state2.copies) {
       try {
         dst.getContext("2d").drawImage(src, 0, 0, dst.width, dst.height);
       } catch {
@@ -8130,6 +8303,113 @@ html:not([data-m2-active]) .m2-choice-launchers {
     }
   }
 
+  // src/discard-choices.js
+  var state = null;
+  function clearDiscardChoices() {
+    if (!state) return;
+    for (const button of state.sources) managedAttribute(button, "data-m2-discard-source", null);
+    managedAttribute(state.picker, "data-m2-discard-picker", null);
+    managedAttribute(state.overlay, "data-m2-discard-overlay", null);
+    for (const element of [...extras])
+      if (element === state.root || state.root.contains(element)) extras.delete(element);
+    state.root.remove();
+    state = null;
+  }
+  function requestKey(request) {
+    return JSON.stringify([
+      request?.request_id,
+      request?.type,
+      request?.player_id,
+      request?.prompt,
+      request?.valid_options
+    ]);
+  }
+  function updateDiscardChoices(picker, request, hero) {
+    const ids = request?.valid_options;
+    const cards = Array.isArray(hero?.hand) ? hero.hand : [];
+    const buttons = picker ? Array.from(picker.children).filter((el) => el.tagName === "BUTTON") : [];
+    const sources2 = Array.isArray(ids) ? ids.map((id) => buttons.find((button) => componentProp(button, "onClick") && cards.some((card) => card.id === id && button.textContent.trim() === card.name))) : [];
+    const valid = picker && request?.type === "SELECT_CARD" && /discard/i.test(request.prompt || "") && (!request.player_id || request.player_id === hero?.id) && ids?.length && sources2.every(Boolean) && ids.every((id) => cards.some((card) => card.id === id && !card.is_facedown));
+    if (!valid) {
+      clearDiscardChoices();
+      return false;
+    }
+    const key = requestKey(request);
+    if (state && (state.picker !== picker || state.key !== key || state.sources.some((source, i) => source !== sources2[i]))) clearDiscardChoices();
+    if (!state) {
+      const root2 = document.createElement("section");
+      root2.className = "m2-discard-choices";
+      root2.setAttribute("aria-label", "Choose a card to discard");
+      const detail = document.createElement("div");
+      const list = document.createElement("div");
+      const confirm = document.createElement("button");
+      confirm.type = "button";
+      confirm.className = "m2-discard-confirm";
+      confirm.textContent = "Confirm discard";
+      confirm.disabled = true;
+      root2.append(detail, list, confirm);
+      addExtra(root2);
+      state = {
+        root: root2,
+        detail,
+        list,
+        confirm,
+        picker,
+        overlay: picker.parentElement,
+        key,
+        sources: sources2,
+        selected: null,
+        submitted: false
+      };
+      const offer = state;
+      on(confirm, "click", () => {
+        const current = componentProp(picker, "inputRequest");
+        const index = ids.indexOf(offer.selected);
+        const source = offer.sources[index];
+        if (state !== offer || offer.submitted || requestKey(current) !== key || !source?.isConnected || source.disabled) return;
+        offer.submitted = true;
+        confirm.disabled = true;
+        source.click();
+      });
+      ids.forEach((id, index) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "m2-discard-row";
+        button.setAttribute("aria-pressed", "false");
+        list.append(button);
+        on(button, "click", () => {
+          if (state !== offer || offer.submitted || sources2[index].disabled || requestKey(componentProp(picker, "inputRequest")) !== key) return;
+          offer.selected = id;
+          offer.detailKey = null;
+          renderOffer(offer, cards, hero);
+        });
+      });
+      picker.append(root2);
+    }
+    managedAttribute(picker, "data-m2-discard-picker", "true");
+    managedAttribute(picker.parentElement, "data-m2-discard-overlay", "true");
+    sources2.forEach((button) => managedAttribute(button, "data-m2-discard-source", "true"));
+    renderOffer(state, cards, hero);
+    return true;
+  }
+  function renderOffer(offer, cards, hero) {
+    const ids = JSON.parse(offer.key)[4];
+    [...offer.list.children].forEach((button, index) => {
+      const card = cards.find((card2) => card2.id === ids[index]);
+      button.disabled = offer.submitted || offer.sources[index].disabled;
+      button.setAttribute("aria-label", card.name);
+      button.setAttribute("aria-pressed", String(card.id === offer.selected));
+      updateCardRow(button, card, hero.items || {});
+    });
+    const selected = cards.find((card) => card.id === offer.selected);
+    const key = JSON.stringify([selected, hero.items]);
+    if (key !== offer.detailKey) {
+      offer.detail.replaceChildren(...selected ? [textCard(selected, "hero", null, hero.id)] : []);
+      offer.detailKey = key;
+    }
+    offer.confirm.disabled = offer.submitted || !selected || offer.sources[ids.indexOf(offer.selected)]?.disabled;
+  }
+
   // src/resolution-order.js
   function predictResolutionOrder(entries, coin, actorId = null) {
     if (!entries.length || entries.some((e) => !e.team || !Number.isFinite(Number(e.initiative))))
@@ -8221,12 +8501,12 @@ html:not([data-m2-active]) .m2-choice-launchers {
       planningActions = { element, sources: [] };
       addExtra(element);
     }
-    const state = planningActions;
-    state.element.classList.toggle("m2-on-board", uiState.mode === "board");
-    if (state.element.parentElement !== host) host.append(state.element);
-    if (sources2.length !== state.sources.length || sources2.some((source, i) => source !== state.sources[i])) {
-      state.sources = sources2;
-      state.element.replaceChildren(
+    const state2 = planningActions;
+    state2.element.classList.toggle("m2-on-board", uiState.mode === "board");
+    if (state2.element.parentElement !== host) host.append(state2.element);
+    if (sources2.length !== state2.sources.length || sources2.some((source, i) => source !== state2.sources[i])) {
+      state2.sources = sources2;
+      state2.element.replaceChildren(
         ...sources2.map((source) => {
           const button = document.createElement("button");
           button.type = "button";
@@ -8236,7 +8516,7 @@ html:not([data-m2-active]) .m2-choice-launchers {
       );
     }
     sources2.forEach((source, i) => {
-      const button = state.element.children[i];
+      const button = state2.element.children[i];
       if (button.textContent !== source.textContent) button.textContent = source.textContent;
       button.disabled = source.disabled;
     });
@@ -8361,6 +8641,8 @@ html:not([data-m2-active]) .m2-choice-launchers {
       (dot) => ({ color: dot.style.backgroundColor, label: dot.title })
     );
     const planning = isCardSelection(view);
+    const upgrading = /^LEVEL[_ ]UP$/i.test(view?.phase || "");
+    const upgradeRemaining = upgrading ? remainingUpgrades(upgradeRequest, hero.id) : null;
     const currentCard = visibleCurrentCard(box, hero);
     const key = JSON.stringify([
       currentCard,
@@ -8370,6 +8652,7 @@ html:not([data-m2-active]) .m2-choice-launchers {
       handDots,
       hero.current_turn_card,
       hero.can_commit_second_card,
+      upgradeRemaining,
       hero.played_cards,
       hero.discard_pile,
       hero.items,
@@ -8487,7 +8770,7 @@ html:not([data-m2-active]) .m2-choice-launchers {
     label.className = "m2-hero-played-label";
     label.textContent = "Played:";
     current.append(label);
-    if (currentCard && !currentCard.is_facedown) {
+    if (!upgrading && currentCard && !currentCard.is_facedown) {
       const card = document.createElement("button");
       card.type = "button";
       card.className = "m2-current-card-mini";
@@ -8504,10 +8787,10 @@ html:not([data-m2-active]) .m2-choice-launchers {
       const slot = document.createElement("div");
       slot.className = "m2-current-card-slot";
       const status = document.createElement("span");
-      if (planning) {
+      if (planning || upgrading) {
         status.className = "m2-selection-status";
-        const selected = !!hero.current_turn_card;
-        status.textContent = selected ? hero.can_commit_second_card ? "Selected · choosing second" : "Selected" : "Selecting";
+        const selected = upgrading ? upgradeRemaining === 0 : !!hero.current_turn_card;
+        status.textContent = selected ? !upgrading && hero.can_commit_second_card ? "Committed ✓ · choosing second" : "Committed ✓" : upgrading ? "Upgrading" : "Selecting";
         status.setAttribute("aria-label", status.textContent);
         if (!selected) {
           const dots = document.createElement("span");
@@ -8692,12 +8975,12 @@ html:not([data-m2-active]) .m2-choice-launchers {
   var viewer = null;
   var choiceLabels = /* @__PURE__ */ new Map();
   function clearChoiceLabel(button) {
-    const state = choiceLabels.get(button);
-    if (!state) return;
-    state.label.remove();
-    extras.delete(state.label);
+    const state2 = choiceLabels.get(button);
+    if (!state2) return;
+    state2.label.remove();
+    extras.delete(state2.label);
     managedAttribute(button, "data-m2-action-choice", null);
-    managedAttribute(button, "aria-label", state.ariaLabel);
+    managedAttribute(button, "aria-label", state2.ariaLabel);
     choiceLabels.delete(button);
   }
   function updateChoiceLabels(picker, request) {
@@ -8713,22 +8996,22 @@ html:not([data-m2-active]) .m2-choice-launchers {
         const symbol = ["ATTACK", "MOVEMENT"].includes(key);
         if (symbol ? value === void 0 : value !== void 0 && value !== "0") continue;
         live.add(button);
-        let state = previous;
-        if (!state) {
+        let state2 = previous;
+        if (!state2) {
           const label = document.createElement("span");
           label.className = "m2-action-choice-label";
           label.setAttribute("aria-hidden", "true");
           addExtra(label);
-          state = { label, ariaLabel: button.getAttribute("aria-label"), text: null };
-          choiceLabels.set(button, state);
+          state2 = { label, ariaLabel: button.getAttribute("aria-label"), text: null };
+          choiceLabels.set(button, state2);
         }
-        if (state.text !== text) {
-          state.label.replaceChildren();
-          if (kind) state.label.append(document.createTextNode(kind + ": "));
-          state.label.append(symbol ? cardSymbol(key, value) : document.createTextNode(action));
-          state.text = text;
+        if (state2.text !== text) {
+          state2.label.replaceChildren();
+          if (kind) state2.label.append(document.createTextNode(kind + ": "));
+          state2.label.append(symbol ? cardSymbol(key, value) : document.createTextNode(action));
+          state2.text = text;
         }
-        if (state.label.parentElement !== button) button.append(state.label);
+        if (state2.label.parentElement !== button) button.append(state2.label);
         managedAttribute(button, "data-m2-action-choice", "true");
         managedAttribute(button, "aria-label", (kind ? kind + ": " : "") + action + (symbol ? " " + value : ""));
       }
@@ -8741,6 +9024,7 @@ html:not([data-m2-active]) .m2-choice-launchers {
     adapted.add(element);
   }
   function clearActionChoices() {
+    clearDiscardChoices();
     for (const button of choiceLabels.keys()) clearChoiceLabel(button);
     for (const element of adapted)
       for (const attribute of [
@@ -8771,8 +9055,9 @@ html:not([data-m2-active]) .m2-choice-launchers {
     const myHeroId = picker && (componentProp(picker, "myHeroId") || componentProp(q(c("sidebar")), "myHeroId"));
     const ownBox = Array.from(document.querySelectorAll('[data-m2="sidebar"] [data-m2="hero"]')).find((box) => !box.hasAttribute("data-m2-other") && (!myHeroId || componentProp(box, "hero")?.id === myHeroId));
     const hero = ownBox && componentProp(ownBox, "hero");
+    const discarding = updateDiscardChoices(picker, request, hero);
     const ownAction = request && hero && /^RESOLUTION$/i.test(view?.phase || "") && request.type !== "UPGRADE_PHASE" && request.type !== "SELECT_CARD_OR_PASS" && (!request.player_id || request.player_id === hero.id) && (view.current_actor_id ? view.current_actor_id === hero.id : ["CHOOSE_ACTION", "SELECT_OPTION"].includes(request.type));
-    const candidate = ownAction ? heroTurnCard(ownBox, hero, view) : null;
+    const candidate = ownAction && !discarding ? heroTurnCard(ownBox, hero, view) : null;
     const card = candidate && !candidate.is_facedown ? candidate : null;
     const activeElements = /* @__PURE__ */ new Set();
     const set = (element, attribute, value) => {
@@ -8959,7 +9244,7 @@ html:not([data-m2-active]) .m2-choice-launchers {
       const turn = document.createElement("span");
       turn.className = "m2-summary-turn";
       let status;
-      if (h.clock && (!h.resolving || h.clock.running)) {
+      if (!h.upgrading && h.clock && (!h.resolving || h.clock.running)) {
         row.classList.add("m2-timed-hero");
         turn.classList.add("m2-summary-clock");
         turn.textContent = h.clock.text;
@@ -8972,16 +9257,15 @@ html:not([data-m2-active]) .m2-choice-launchers {
         turn.append(order, cardSymbol("INITIATIVE", h.resolution.initiative));
         status = "Turn " + order.textContent + ", initiative " + h.resolution.initiative;
       } else if (h.upgrading || h.planning) {
-        const selecting = h.upgrading ? h.upgradeRemaining > 0 : !h.committed;
-        const unknown = h.upgrading && h.upgradeRemaining === null;
-        status = unknown ? "Waiting" : selecting ? "Selecting" : h.upgrading ? "Done" : "Selected";
+        const selecting = h.upgrading ? h.upgradeRemaining !== 0 : !h.committed;
+        status = selecting ? h.upgrading ? "Upgrading" : "Selecting" : "Committed";
         if (selecting) {
           const dots = document.createElement("span");
           dots.className = "m2-selecting-dots";
           dots.textContent = "...";
           dots.setAttribute("aria-hidden", "true");
           turn.append(dots);
-        } else turn.textContent = unknown ? "…" : "✓";
+        } else turn.textContent = "✓";
       } else {
         turn.textContent = h.offboard ? "☠" : h.done ? "✓" : "—";
         status = h.offboard ? "Off board" : h.done ? "Turn completed" : "No card played";
@@ -9275,40 +9559,40 @@ html:not([data-m2-active]) .m2-choice-launchers {
       resetDecisionHistory();
       decisionHistory.scope = key;
     }
-    const state = decisionHistory;
-    if (state.request || !force && Date.now() < state.due) return;
+    const state2 = decisionHistory;
+    if (state2.request || !force && Date.now() < state2.due) return;
     const request = new AbortController();
-    state.request = request;
-    state.status = "Loading match history…";
-    state.due = Date.now() + 1e4;
-    state.timer = setTimeout(() => {
-      if (uiState.dead || state !== decisionHistory || state.request !== request) return;
+    state2.request = request;
+    state2.status = "Loading match history…";
+    state2.due = Date.now() + 1e4;
+    state2.timer = setTimeout(() => {
+      if (uiState.dead || state2 !== decisionHistory || state2.request !== request) return;
       request.abort();
-      state.request = null;
-      state.timer = null;
-      state.due = Date.now() + 1e4;
-      state.status = "Match history timed out. Select Refresh to retry.";
+      state2.request = null;
+      state2.timer = null;
+      state2.due = Date.now() + 1e4;
+      state2.status = "Match history timed out. Select Refresh to retry.";
       renderLogPanel();
     }, 15e3);
     const headers = {};
     if (scope.token) headers.Authorization = "Bearer " + scope.token;
-    if (state.etag) headers["If-None-Match"] = state.etag;
+    if (state2.etag) headers["If-None-Match"] = state2.etag;
     fetch("/api/games/" + encodeURIComponent(scope.gameId) + "/overrides/history", {
       method: "GET",
       headers,
       signal: request.signal
     }).then(async (response) => {
-      if (request.signal.aborted || state !== decisionHistory) return;
+      if (request.signal.aborted || state2 !== decisionHistory) return;
       if (response.status === 304) {
-        state.status = "Match decision history";
+        state2.status = "Match decision history";
         return;
       }
       if (!response.ok) {
-        state.due = Date.now() + ([401, 403, 404].includes(response.status) ? 6e4 : 1e4);
+        state2.due = Date.now() + ([401, 403, 404].includes(response.status) ? 6e4 : 1e4);
         throw new Error("History unavailable");
       }
       const data = await response.json();
-      if (request.signal.aborted || state !== decisionHistory) return;
+      if (request.signal.aborted || state2 !== decisionHistory) return;
       if (!Number.isInteger(data?.total) || data.total < 0 || !Array.isArray(data.decisions) || !data.decisions.every(validDecision)) throw new Error("Invalid history");
       const rows = [...new Map(data.decisions.map((row) => [row.index, {
         index: row.index,
@@ -9319,20 +9603,20 @@ html:not([data-m2-active]) .m2-choice-launchers {
         hero_id: row.hero_id,
         superseded: row.superseded === true
       }])).values()].sort((a, b) => a.index - b.index).slice(-EVENT_LIMIT);
-      if (JSON.stringify(rows) !== JSON.stringify(state.rows) || data.total !== state.total) state.revision++;
-      state.rows = rows;
-      state.total = data.total;
-      state.etag = response.headers?.get("ETag") || "";
-      state.status = "Match decision history";
+      if (JSON.stringify(rows) !== JSON.stringify(state2.rows) || data.total !== state2.total) state2.revision++;
+      state2.rows = rows;
+      state2.total = data.total;
+      state2.etag = response.headers?.get("ETag") || "";
+      state2.status = "Match decision history";
       if (!logTabChosen && !savedEvents.length && rows.length) logTab = "decisions";
     }).catch(() => {
-      if (request.signal.aborted || state !== decisionHistory) return;
-      state.status = "Match history unavailable. Saved events are still available.";
+      if (request.signal.aborted || state2 !== decisionHistory) return;
+      state2.status = "Match history unavailable. Saved events are still available.";
     }).finally(() => {
-      if (request.signal.aborted || state !== decisionHistory || state.request !== request) return;
-      clearTimeout(state.timer);
-      state.timer = null;
-      state.request = null;
+      if (request.signal.aborted || state2 !== decisionHistory || state2.request !== request) return;
+      clearTimeout(state2.timer);
+      state2.timer = null;
+      state2.request = null;
       renderLogPanel();
     });
   }
@@ -9348,18 +9632,18 @@ html:not([data-m2-active]) .m2-choice-launchers {
   }
   function renderLogPanel() {
     if (!logPanel.firstChild) buildLogPanel();
-    const state = decisionHistory, entries = q(".m2-log-entries", logPanel), key = JSON.stringify([logTab, historyRevision, state.revision, historyError]);
+    const state2 = decisionHistory, entries = q(".m2-log-entries", logPanel), key = JSON.stringify([logTab, historyRevision, state2.revision, historyError]);
     for (const button of logPanel.querySelectorAll("[data-log-tab]"))
       button.setAttribute("aria-pressed", String(button.dataset.logTab === logTab));
-    q(".m2-panel-title button", logPanel).disabled = !!state.request;
-    q(".m2-log-status", logPanel).textContent = logTab === "decisions" ? state.status || "Match history is fetched when Log opens." : historyError || "Events received on this device · " + savedEvents.length;
+    q(".m2-panel-title button", logPanel).disabled = !!state2.request;
+    q(".m2-log-status", logPanel).textContent = logTab === "decisions" ? state2.status || "Match history is fetched when Log opens." : historyError || "Events received on this device · " + savedEvents.length;
     if (logPanel.dataset.key === key) return;
     logPanel.dataset.key = key;
     const open = new Set([...entries.querySelectorAll("details[open]")].map((row) => row.dataset.key));
     const atBottom = entries.scrollHeight - entries.clientHeight - entries.scrollTop < 30;
     const oldScroll = entries.scrollTop;
     entries.replaceChildren();
-    const rows = logTab === "decisions" ? state.rows : savedEvents;
+    const rows = logTab === "decisions" ? state2.rows : savedEvents;
     if (!rows.length) {
       const empty = document.createElement("p");
       empty.className = "m2-log-empty";
@@ -9560,12 +9844,12 @@ html:not([data-m2-active]) .m2-choice-launchers {
   var upgradeColors = ["RED", "BLUE", "GREEN"];
   function clearUpgradeTree() {
     highlightViewedCard("upgrade");
-    const state = upgradeTreeState;
-    if (!state) return;
-    clearTimeout(state.timer);
-    state.picker.removeAttribute("data-m2-upgrade-tree");
-    state.host.remove();
-    extras.delete(state.host);
+    const state2 = upgradeTreeState;
+    if (!state2) return;
+    clearTimeout(state2.timer);
+    state2.picker.removeAttribute("data-m2-upgrade-tree");
+    state2.host.remove();
+    extras.delete(state2.host);
     upgradeTreeState = null;
   }
   function upgradeSource() {
@@ -9620,8 +9904,8 @@ html:not([data-m2-active]) .m2-choice-launchers {
     }
     return null;
   }
-  function upgradeSelectionValid(state) {
-    const source = state.source, tiers = { ...source.tiers }, choices = [...state.selected.values()].map((id) => state.catalog.get(id)).sort((a, b) => deckTreeTier(a) - deckTreeTier(b));
+  function upgradeSelectionValid(state2) {
+    const source = state2.source, tiers = { ...source.tiers }, choices = [...state2.selected.values()].map((id) => state2.catalog.get(id)).sort((a, b) => deckTreeTier(a) - deckTreeTier(b));
     if (choices.length !== source.player.remaining) return false;
     for (const card of choices) {
       if (!card) return false;
@@ -9632,181 +9916,181 @@ html:not([data-m2-active]) .m2-choice-launchers {
     }
     return true;
   }
-  function upgradeSelectable(state, card) {
-    if (state.busy || state.uncertain) return false;
-    const source = state.source, tier = deckTreeTier(card);
+  function upgradeSelectable(state2, card) {
+    if (state2.busy || state2.uncertain) return false;
+    const source = state2.source, tier = deckTreeTier(card);
     if (tier === 2) return source.required2 > 0 && source.tiers[card.color] === 1 && source.eligible.has(card.id);
-    const all2 = [...state.selected.keys()].filter((key) => key.endsWith(":2")).length === source.required2;
-    return tier === 3 && source.required3 > 0 && all2 && source.tiers[card.color] < 3 && (source.tiers[card.color] === 2 || state.selected.has(card.color + ":2")) && (source.required2 > 0 || source.eligible.has(card.id));
+    const all2 = [...state2.selected.keys()].filter((key) => key.endsWith(":2")).length === source.required2;
+    return tier === 3 && source.required3 > 0 && all2 && source.tiers[card.color] < 3 && (source.tiers[card.color] === 2 || state2.selected.has(card.color + ":2")) && (source.required2 > 0 || source.eligible.has(card.id));
   }
-  function pauseUpgradeCommit(state, message, uncertain = false) {
-    clearTimeout(state.timer);
-    state.busy = false;
-    state.uncertain = uncertain;
-    if (!uncertain) state.pending = null;
-    state.message = message;
-    renderUpgradeTreeState(state);
+  function pauseUpgradeCommit(state2, message, uncertain = false) {
+    clearTimeout(state2.timer);
+    state2.busy = false;
+    state2.uncertain = uncertain;
+    if (!uncertain) state2.pending = null;
+    state2.message = message;
+    renderUpgradeTreeState(state2);
   }
-  function sendNextUpgrade(state) {
-    if (state !== upgradeTreeState || !state.busy || state.pending || uiState.dead || !root.hasAttribute("data-m2-active") || document.visibilityState === "hidden") return;
+  function sendNextUpgrade(state2) {
+    if (state2 !== upgradeTreeState || !state2.busy || state2.pending || uiState.dead || !root.hasAttribute("data-m2-active") || document.visibilityState === "hidden") return;
     const source = upgradeSource();
-    if (!source || source.owner !== state.source.owner || source.signature !== state.source.signature || !upgradeSelectionValid(state)) {
-      pauseUpgradeCommit(state, "Upgrade choices changed. Review the remaining selections.");
+    if (!source || source.owner !== state2.source.owner || source.signature !== state2.source.signature || !upgradeSelectionValid(state2)) {
+      pauseUpgradeCommit(state2, "Upgrade choices changed. Review the remaining selections.");
       return;
     }
-    const card = [...state.selected.values()].map((id) => state.catalog.get(id)).sort((a, b) => deckTreeTier(a) - deckTreeTier(b) || upgradeColors.indexOf(a.color) - upgradeColors.indexOf(b.color))[0];
+    const card = [...state2.selected.values()].map((id) => state2.catalog.get(id)).sort((a, b) => deckTreeTier(a) - deckTreeTier(b) || upgradeColors.indexOf(a.color) - upgradeColors.indexOf(b.color))[0];
     if (!card || !source.eligible.has(card.id)) {
-      pauseUpgradeCommit(state, "This upgrade is not currently allowed. Review your choices.");
+      pauseUpgradeCommit(state2, "This upgrade is not currently allowed. Review your choices.");
       return;
     }
-    state.pending = { id: card.id, group: deckTreeGroup(card), before: source.player.remaining };
-    state.message = "Committing " + card.name + "…";
-    state.timer = setTimeout(() => {
-      if (state === upgradeTreeState && state.pending)
-        pauseUpgradeCommit(state, "Waiting for acknowledgement. No more upgrades will be sent until this choice is confirmed.", true);
+    state2.pending = { id: card.id, group: deckTreeGroup(card), before: source.player.remaining };
+    state2.message = "Committing " + card.name + "…";
+    state2.timer = setTimeout(() => {
+      if (state2 === upgradeTreeState && state2.pending)
+        pauseUpgradeCommit(state2, "Waiting for acknowledgement. No more upgrades will be sent until this choice is confirmed.", true);
     }, 15e3);
-    renderUpgradeTreeState(state);
+    renderUpgradeTreeState(state2);
     try {
       const result = source.onSelect({ hero_id: source.heroId, card_id: card.id });
       Promise.resolve(result).catch(() => {
-        if (state === upgradeTreeState && state.pending?.id === card.id)
-          pauseUpgradeCommit(state, "The upgrade could not be confirmed. Waiting for the game to update.", true);
+        if (state2 === upgradeTreeState && state2.pending?.id === card.id)
+          pauseUpgradeCommit(state2, "The upgrade could not be confirmed. Waiting for the game to update.", true);
       });
     } catch {
-      pauseUpgradeCommit(state, "The upgrade could not be confirmed. Waiting for the game to update.", true);
+      pauseUpgradeCommit(state2, "The upgrade could not be confirmed. Waiting for the game to update.", true);
     }
   }
-  function selectUpgradeTreeCard(state, card) {
-    if (state.busy || state.uncertain) return;
+  function selectUpgradeTreeCard(state2, card) {
+    if (state2.busy || state2.uncertain) return;
     const group = deckTreeGroup(card), id = card.id;
-    state.message = "";
-    if (state.previewMode) {
-      if (deckTreeTier(card) >= 2 && !state.acquired.has(group)) {
-        if (state.preview.get(group) === id) state.preview.delete(group);
-        else state.preview.set(group, id);
+    state2.message = "";
+    if (state2.previewMode) {
+      if (deckTreeTier(card) >= 2 && !state2.acquired.has(group)) {
+        if (state2.preview.get(group) === id) state2.preview.delete(group);
+        else state2.preview.set(group, id);
       }
-    } else if (upgradeSelectable(state, card)) {
+    } else if (upgradeSelectable(state2, card)) {
       if (deckTreeTier(card) === 2) {
-        for (const key of state.selected.keys()) if (key.endsWith(":3")) state.selected.delete(key);
+        for (const key of state2.selected.keys()) if (key.endsWith(":3")) state2.selected.delete(key);
       }
-      if (state.selected.get(group) === id) state.selected.delete(group);
+      if (state2.selected.get(group) === id) state2.selected.delete(group);
       else {
-        const tier = deckTreeTier(card), required = tier === 2 ? state.source.required2 : state.source.required3, sameTier = [...state.selected.keys()].filter((key) => key.endsWith(":" + tier));
-        if (!state.selected.has(group) && sameTier.length >= required) state.selected.delete(sameTier.at(-1));
-        state.selected.set(group, id);
+        const tier = deckTreeTier(card), required = tier === 2 ? state2.source.required2 : state2.source.required3, sameTier = [...state2.selected.keys()].filter((key) => key.endsWith(":" + tier));
+        if (!state2.selected.has(group) && sameTier.length >= required) state2.selected.delete(sameTier.at(-1));
+        state2.selected.set(group, id);
       }
-    } else state.message = deckTreeTier(card) === 3 && state.source.required2 ? "Select all required Tier 2 upgrades first, or enable Preview to plan ahead." : "This card is not an available upgrade for this level-up.";
-    state.detailCard = id;
-    showUpgradeDetails(state);
-    renderUpgradeTreeState(state);
+    } else state2.message = deckTreeTier(card) === 3 && state2.source.required2 ? "Select all required Tier 2 upgrades first, or enable Preview to plan ahead." : "This card is not an available upgrade for this level-up.";
+    state2.detailCard = id;
+    showUpgradeDetails(state2);
+    renderUpgradeTreeState(state2);
   }
-  function showUpgradeDetails(state) {
-    state.details.replaceChildren();
-    const card = state.catalog.get(state.detailCard);
-    highlightViewedCard("upgrade", card, state.source.heroId);
+  function showUpgradeDetails(state2) {
+    state2.details.replaceChildren();
+    const card = state2.catalog.get(state2.detailCard);
+    highlightViewedCard("upgrade", card, state2.source.heroId);
     if (!card) return;
     const display = textCard(
       card,
       "deck",
       null,
-      state.source.heroId,
-      cardGrantedItem(card, [...state.catalog.values()])
+      state2.source.heroId,
+      cardGrantedItem(card, [...state2.catalog.values()])
     ), close2 = document.createElement("button");
     close2.type = "button";
     close2.className = "m2-card-dismiss";
     close2.textContent = "×";
     close2.setAttribute("aria-label", "Close card details");
     on(close2, "click", () => {
-      state.detailCard = null;
-      showUpgradeDetails(state);
+      state2.detailCard = null;
+      showUpgradeDetails(state2);
     });
     const foot = q(".m2-card-foot", display);
     foot.classList.add("m2-has-dismiss");
     foot.append(close2);
-    state.details.append(display);
+    state2.details.append(display);
   }
-  function buildUpgradeTree(state) {
-    const host = state.host;
+  function buildUpgradeTree(state2) {
+    const host = state2.host;
     host.replaceChildren();
     host.innerHTML = '<h2 class="m2-upgrade-heading">Upgrades</h2>';
-    state.details = document.createElement("section");
-    state.details.className = "m2-deck-preview m2-upgrade-details";
-    state.details.setAttribute("aria-label", "Selected upgrade card");
+    state2.details = document.createElement("section");
+    state2.details.className = "m2-deck-preview m2-upgrade-details";
+    state2.details.setAttribute("aria-label", "Selected upgrade card");
     const scroll = document.createElement("div");
     scroll.className = "m2-deck-row-list";
-    state.content = document.createElement("div");
-    state.content.className = "m2-upgrade-content";
-    state.content.append(state.details, scroll);
+    state2.content = document.createElement("div");
+    state2.content.className = "m2-upgrade-content";
+    state2.content.append(state2.details, scroll);
     const { tree, headings } = createTreeView("Level-up upgrade paths");
     headings.children[1].dataset.upgradeTier = "2";
     headings.children[2].dataset.upgradeTier = "3";
     scroll.append(tree);
-    state.buttons = [];
-    const catalog = [...state.catalog.values()];
+    state2.buttons = [];
+    const catalog = [...state2.catalog.values()];
     for (const color of upgradeColors) {
       const tiers = new Map([1, 2, 3].map((tier) => [
         tier,
         catalog.filter((card) => card.color === color && deckTreeTier(card) === tier)
       ]));
       appendTreePath(tree, color, tiers, (card) => {
-        const button = createTreeCard(card, catalog, () => selectUpgradeTreeCard(state, card));
-        trackCardSource(button, card, "upgrade", state.source.heroId);
-        state.buttons.push({ card, button });
+        const button = createTreeCard(card, catalog, () => selectUpgradeTreeCard(state2, card));
+        trackCardSource(button, card, "upgrade", state2.source.heroId);
+        state2.buttons.push({ card, button });
         return button;
       });
     }
-    state.totals = document.createElement("div");
-    state.totals.className = "m2-tree-build-stats m2-upgrade-totals";
-    state.totals.setAttribute("aria-label", "Item totals after selected upgrades");
+    state2.totals = document.createElement("div");
+    state2.totals.className = "m2-tree-build-stats m2-upgrade-totals";
+    state2.totals.setAttribute("aria-label", "Item totals after selected upgrades");
     const controls = document.createElement("div");
     controls.className = "m2-upgrade-controls";
     controls.innerHTML = '<button type="button" class="m2-upgrade-preview-toggle" role="switch">Preview</button><button type="button" class="m2-upgrade-reset">Reset</button>';
-    controls.insertBefore(state.totals, controls.lastElementChild);
-    state.status = document.createElement("p");
-    state.status.className = "m2-upgrade-status";
-    state.status.setAttribute("role", "status");
+    controls.insertBefore(state2.totals, controls.lastElementChild);
+    state2.status = document.createElement("p");
+    state2.status.className = "m2-upgrade-status";
+    state2.status.setAttribute("role", "status");
     const actions = document.createElement("div");
     actions.className = "m2-upgrade-actions";
     actions.innerHTML = '<button type="button" class="m2-upgrade-commit">Commit upgrades</button>';
-    host.append(state.content, state.status, controls, actions);
+    host.append(state2.content, state2.status, controls, actions);
     on(q(".m2-upgrade-preview-toggle", host), "click", () => {
-      if (state.busy || state.uncertain) return;
-      state.previewMode = !state.previewMode;
-      state.preview.clear();
-      state.message = "";
-      renderUpgradeTreeState(state);
+      if (state2.busy || state2.uncertain) return;
+      state2.previewMode = !state2.previewMode;
+      state2.preview.clear();
+      state2.message = "";
+      renderUpgradeTreeState(state2);
     });
     on(q(".m2-upgrade-reset", host), "click", () => {
-      if (state.busy || state.uncertain) return;
-      state.selected.clear();
-      state.preview.clear();
-      state.previewMode = false;
-      state.message = "";
-      renderUpgradeTreeState(state);
+      if (state2.busy || state2.uncertain) return;
+      state2.selected.clear();
+      state2.preview.clear();
+      state2.previewMode = false;
+      state2.message = "";
+      renderUpgradeTreeState(state2);
     });
     on(q(".m2-upgrade-commit", host), "click", () => {
-      if (state.busy || state.uncertain || state.previewMode || state.preview.size || !upgradeSelectionValid(state)) return;
-      state.busy = true;
-      sendNextUpgrade(state);
+      if (state2.busy || state2.uncertain || state2.previewMode || state2.preview.size || !upgradeSelectionValid(state2)) return;
+      state2.busy = true;
+      sendNextUpgrade(state2);
     });
-    showUpgradeDetails(state);
+    showUpgradeDetails(state2);
   }
-  function renderUpgradeTreeState(state) {
-    const source = state.source, pool = new Set(deckTreePool(source.hero).map((card) => card.id));
-    state.acquired = new Map(state.observed);
+  function renderUpgradeTreeState(state2) {
+    const source = state2.source, pool = new Set(deckTreePool(source.hero).map((card) => card.id));
+    state2.acquired = new Map(state2.observed);
     for (const card of deckTreePool(source.hero))
       if (deckTreeTier(card) >= 2) {
-        state.acquired.set(deckTreeGroup(card), card.id);
-        state.observed.set(deckTreeGroup(card), card.id);
+        state2.acquired.set(deckTreeGroup(card), card.id);
+        state2.observed.set(deckTreeGroup(card), card.id);
       }
     for (const tier of [2, 3]) {
-      const required = tier === 2 ? source.required2 : source.required3, selected = [...state.selected.keys()].filter((key) => key.endsWith(":" + tier)).length;
-      for (const label of state.host.querySelectorAll('[data-upgrade-tier="' + tier + '"]'))
+      const required = tier === 2 ? source.required2 : source.required3, selected = [...state2.selected.keys()].filter((key) => key.endsWith(":" + tier)).length;
+      for (const label of state2.host.querySelectorAll('[data-upgrade-tier="' + tier + '"]'))
         label.textContent = "Tier " + tier + " · " + selected + "/" + required;
     }
-    for (const { card, button } of state.buttons) {
-      const group = deckTreeGroup(card), picked = state.selected.get(group), planned2 = state.preview.get(group), selected = picked === card.id || planned2 === card.id, eligible = upgradeSelectable(state, card), pair = state.acquired.get(group), isItem = pair && pair !== card.id && !pool.has(pair) && !!card.item;
-      const unavailable = !selected && !pool.has(card.id) && !isItem && (!!picked || !!planned2 || !!pair || deckTreeTier(card) < source.tiers[card.color] || !state.previewMode && !eligible);
+    for (const { card, button } of state2.buttons) {
+      const group = deckTreeGroup(card), picked = state2.selected.get(group), planned2 = state2.preview.get(group), selected = picked === card.id || planned2 === card.id, eligible = upgradeSelectable(state2, card), pair = state2.acquired.get(group), isItem = pair && pair !== card.id && !pool.has(pair) && !!card.item;
+      const unavailable = !selected && !pool.has(card.id) && !isItem && (!!picked || !!planned2 || !!pair || deckTreeTier(card) < source.tiers[card.color] || !state2.previewMode && !eligible);
       button.dataset.state = pool.has(card.id) ? "current" : selected ? "planned" : isItem ? "item" : unavailable ? "unavailable" : "standard";
       button.dataset.eligible = String(eligible);
       button.classList.toggle("m2-tree-chosen", pool.has(card.id));
@@ -9815,27 +10099,27 @@ html:not([data-m2-active]) .m2-choice-launchers {
       button.classList.toggle("m2-tree-item", !!isItem);
       button.classList.toggle("m2-tree-unavailable", unavailable);
       button.setAttribute("aria-pressed", String(selected));
-      button.disabled = state.busy || state.uncertain;
+      button.disabled = state2.busy || state2.uncertain;
       button.title = card.name + (planned2 === card.id ? " · Preview only" : picked === card.id ? " · Selected upgrade" : eligible ? " · Available upgrade" : " · View card");
       button.setAttribute("aria-label", button.title);
     }
-    const future = {}, planned = new Map(state.selected);
-    for (const [group, id] of state.preview) planned.set(group, id);
+    const future = {}, planned = new Map(state2.selected);
+    for (const [group, id] of state2.preview) planned.set(group, id);
     for (const id of planned.values()) {
-      const item = cardGrantedItem(state.catalog.get(id), [...state.catalog.values()]), stat = item === "AREA" ? "RADIUS" : item;
+      const item = cardGrantedItem(state2.catalog.get(id), [...state2.catalog.values()]), stat = item === "AREA" ? "RADIUS" : item;
       if (stat) future[stat] = (future[stat] || 0) + 1;
     }
-    state.totals.replaceChildren(deckTreeItemTotals(source.hero.items || {}, future));
-    state.host.dataset.preview = String(state.previewMode);
-    const complete = upgradeSelectionValid(state), locked = state.busy || state.uncertain;
-    state.status.textContent = state.message || (state.previewMode ? "Preview only. Turn Preview off before committing." : complete ? "All upgrades selected. Ready to commit." : "Select all " + source.player.remaining + " upgrades before committing.");
-    const toggle = q(".m2-upgrade-preview-toggle", state.host);
-    toggle.setAttribute("aria-checked", String(state.previewMode));
+    state2.totals.replaceChildren(deckTreeItemTotals(source.hero.items || {}, future));
+    state2.host.dataset.preview = String(state2.previewMode);
+    const complete = upgradeSelectionValid(state2), locked = state2.busy || state2.uncertain;
+    state2.status.textContent = state2.message || (state2.previewMode ? "Preview only. Turn Preview off before committing." : complete ? "All upgrades selected. Ready to commit." : "Select all " + source.player.remaining + " upgrades before committing.");
+    const toggle = q(".m2-upgrade-preview-toggle", state2.host);
+    toggle.setAttribute("aria-checked", String(state2.previewMode));
     toggle.disabled = locked;
-    q(".m2-upgrade-reset", state.host).disabled = locked || !state.selected.size && !state.preview.size;
-    const commit = q(".m2-upgrade-commit", state.host);
-    commit.disabled = locked || state.previewMode || state.preview.size > 0 || !complete;
-    commit.textContent = state.busy ? "Committing…" : "Commit " + source.player.remaining + (source.player.remaining === 1 ? " upgrade" : " upgrades");
+    q(".m2-upgrade-reset", state2.host).disabled = locked || !state2.selected.size && !state2.preview.size;
+    const commit = q(".m2-upgrade-commit", state2.host);
+    commit.disabled = locked || state2.previewMode || state2.preview.size > 0 || !complete;
+    commit.textContent = state2.busy ? "Committing…" : "Commit " + source.player.remaining + (source.player.remaining === 1 ? " upgrade" : " upgrades");
   }
   function updateUpgradeTree() {
     if (!root.hasAttribute("data-m2-active") || uiState.dead) {
@@ -9848,13 +10132,13 @@ html:not([data-m2-active]) .m2-choice-launchers {
       return;
     }
     if (upgradeTreeState?.source.owner !== source.owner) clearUpgradeTree();
-    let state = upgradeTreeState;
-    if (!state) {
+    let state2 = upgradeTreeState;
+    if (!state2) {
       const host = document.createElement("section");
       host.className = "m2-upgrade-browser";
       host.setAttribute("aria-label", "Choose level-up upgrades");
       addExtra(host);
-      state = upgradeTreeState = {
+      state2 = upgradeTreeState = {
         host,
         picker: source.picker,
         source,
@@ -9871,42 +10155,42 @@ html:not([data-m2-active]) .m2-choice-launchers {
         timer: null,
         detailCard: null
       };
-      buildUpgradeTree(state);
+      buildUpgradeTree(state2);
     }
-    const oldSource = state.source;
-    if (state.pending && source.player.remaining !== state.pending.before) {
-      const acknowledged = source.player.remaining === state.pending.before - 1 && deckTreePool(source.hero).some((card) => card.id === state.pending.id);
+    const oldSource = state2.source;
+    if (state2.pending && source.player.remaining !== state2.pending.before) {
+      const acknowledged = source.player.remaining === state2.pending.before - 1 && deckTreePool(source.hero).some((card) => card.id === state2.pending.id);
       if (acknowledged) {
-        clearTimeout(state.timer);
-        const build = deckTreeBuild(source.hero, [...state.catalog.values()]);
-        build.chosen.set(state.pending.group, state.pending.id);
-        build.planned.delete(state.pending.group);
+        clearTimeout(state2.timer);
+        const build = deckTreeBuild(source.hero, [...state2.catalog.values()]);
+        build.chosen.set(state2.pending.group, state2.pending.id);
+        build.planned.delete(state2.pending.group);
         saveDeckTreeBuild(build);
-        state.selected.delete(state.pending.group);
-        state.pending = null;
-        state.uncertain = false;
-        state.message = "";
+        state2.selected.delete(state2.pending.group);
+        state2.pending = null;
+        state2.uncertain = false;
+        state2.message = "";
       } else {
-        state.observed.clear();
-        state.selected.clear();
-        pauseUpgradeCommit(state, "Upgrade state changed. Review the remaining choices.");
+        state2.observed.clear();
+        state2.selected.clear();
+        pauseUpgradeCommit(state2, "Upgrade state changed. Review the remaining choices.");
       }
     } else if (source.signature !== oldSource.signature) {
-      state.observed.clear();
-      state.selected.clear();
-      state.preview.clear();
-      state.previewMode = false;
-      pauseUpgradeCommit(state, "Upgrade choices changed. Select the remaining upgrades again.");
+      state2.observed.clear();
+      state2.selected.clear();
+      state2.preview.clear();
+      state2.previewMode = false;
+      pauseUpgradeCommit(state2, "Upgrade choices changed. Select the remaining upgrades again.");
     }
-    state.source = source;
-    if (state.picker !== source.picker) {
-      state.picker.removeAttribute("data-m2-upgrade-tree");
-      state.picker = source.picker;
+    state2.source = source;
+    if (state2.picker !== source.picker) {
+      state2.picker.removeAttribute("data-m2-upgrade-tree");
+      state2.picker = source.picker;
     }
-    if (!source.picker.contains(state.host)) source.picker.append(state.host);
+    if (!source.picker.contains(state2.host)) source.picker.append(state2.host);
     managedAttribute(source.picker, "data-m2-upgrade-tree", "");
-    renderUpgradeTreeState(state);
-    if (state.busy && !state.pending) sendNextUpgrade(state);
+    renderUpgradeTreeState(state2);
+    if (state2.busy && !state2.pending) sendNextUpgrade(state2);
   }
   on(document, "visibilitychange", () => {
     if (document.visibilityState === "hidden" && upgradeTreeState?.busy)
@@ -10221,7 +10505,7 @@ html:not([data-m2-active]) .m2-choice-launchers {
   }
   on(media, "change", schedule);
   window.GOA2Mobile2D = {
-    version: "1.1.1",
+    version: "1.1.2",
     destroy() {
       flushEventHistory();
       uiState.dead = true;

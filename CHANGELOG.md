@@ -2,6 +2,14 @@
 
 Published releases, newest first.
 
+## 1.1.2
+
+- Present discard decisions as Hand-style cards with a separate confirmation button, preserving native submission and Board-peek controls.
+- Show printed + and ! notation for primary card values and range/radius modifiers across card sizes. Apply known item upgrades without losing the printed suffix; Nano discards use the appropriate defense or skill/defense icon.
+- Show animated dots while upgrading and checkmarks when committed. Hero boards show Upgrading... or Committed ✓ in the status slot, and replace Selected with Committed ✓ during planning.
+- Keep upgrade completion current when private offers disappear, using native turn eligibility and unambiguous public waiting names where available.
+- Record planned Gydion spell displays and shared hero-specific/marker areas in the roadmap.
+
 ## 1.1.1
 
 - Keep same-initiative heroes grouped by team during resolution. Show each team's earliest predicted position on one hero and TIE on their teammates; later groups still account for every tied hero.

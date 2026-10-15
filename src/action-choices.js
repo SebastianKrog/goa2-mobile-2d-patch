@@ -1,4 +1,5 @@
 import { cardSymbol, textCard } from './cards.js';
+import { clearDiscardChoices, updateDiscardChoices } from './discard-choices.js';
 import { heroTurnCard } from './heroes.js';
 import { componentProp } from './react.js';
 import { c, managedAttribute, q } from './runtime.js';
@@ -63,6 +64,7 @@ function mark(element, attribute, value = 'true') {
   adapted.add(element);
 }
 function clearActionChoices() {
+  clearDiscardChoices();
   for (const button of choiceLabels.keys()) clearChoiceLabel(button);
   for (const element of adapted)
     for (const attribute of ['data-m2-action-picker', 'data-m2-action-overlay',
@@ -90,12 +92,13 @@ function updateActionChoices() {
     .find(box => !box.hasAttribute('data-m2-other') &&
       (!myHeroId || componentProp(box, 'hero')?.id === myHeroId));
   const hero = ownBox && componentProp(ownBox, 'hero');
+  const discarding = updateDiscardChoices(picker, request, hero);
   const ownAction = request && hero && /^RESOLUTION$/i.test(view?.phase || '') &&
     request.type !== 'UPGRADE_PHASE' && request.type !== 'SELECT_CARD_OR_PASS' &&
     (!request.player_id || request.player_id === hero.id) &&
     (view.current_actor_id ? view.current_actor_id === hero.id :
       ['CHOOSE_ACTION', 'SELECT_OPTION'].includes(request.type));
-  const candidate = ownAction ? heroTurnCard(ownBox, hero, view) : null;
+  const candidate = ownAction && !discarding ? heroTurnCard(ownBox, hero, view) : null;
   const card = candidate && !candidate.is_facedown ? candidate : null;
   const activeElements = new Set();
   const set = (element, attribute, value) => {

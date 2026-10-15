@@ -38,7 +38,11 @@ async function assetRecovery() {
   };
   vm.createContext(scope);
   vm.runInContext(
-    fs.readFileSync('src/painter.js', 'utf8').replace(/^export \{ m2Painter \};$/m, '') +
+    fs.readFileSync('src/printed-signs.js', 'utf8').replace(/^export .*$/m, '') +
+      fs
+        .readFileSync('src/painter.js', 'utf8')
+        .replace(/^import .*$/m, '')
+        .replace(/^export \{ m2Painter \};$/m, '') +
       ';globalThis.painter=m2Painter;',
     scope,
   );
@@ -82,7 +86,11 @@ async function assetRecovery() {
   vm.createContext(second);
   failFont = true;
   vm.runInContext(
-    fs.readFileSync('src/painter.js', 'utf8').replace(/^export \{ m2Painter \};$/m, '') +
+    fs.readFileSync('src/printed-signs.js', 'utf8').replace(/^export .*$/m, '') +
+      fs
+        .readFileSync('src/painter.js', 'utf8')
+        .replace(/^import .*$/m, '')
+        .replace(/^export \{ m2Painter \};$/m, '') +
       ';globalThis.painter=m2Painter;',
     second,
   );

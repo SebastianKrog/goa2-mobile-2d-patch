@@ -6,6 +6,8 @@ import {
   cardTierLines,
   cardUpgrades,
   relevantStat,
+  primaryCardValue,
+  modifierCardValue,
   upgradedSymbol,
 } from './cards.js';
 import { renderedCard } from './deck.js';
@@ -16,9 +18,9 @@ import { addExtra } from './ui.js';
 function updateCardRow(row, card, knownItems) {
   const items = knownItems || cardUpgrades(card, row);
   const symbol = (key, value) => upgradedSymbol(items, key, value);
-  // Only Hand's Small rows get this artwork treatment. Hero/Deck Mini rows
+  // Hand and discard choices share artwork. Hero/Deck Mini rows
   // share the renderer but keep their existing compact presentation.
-  const small = !!row.closest('[data-m2="hand-list"]');
+  const small = !!row.closest('[data-m2="hand-list"], .m2-discard-choices');
   const tiny = small && handCardSize() === 'tiny';
   if (small) trackCardSource(row, card, 'hand');
   const owner = small ? cardHero(card, row)?.id : null;
@@ -54,11 +56,10 @@ function updateCardRow(row, card, knownItems) {
   // Small and Mini rows share stripe counts. Each size reserves its own
   // three-stripe gutter so basic and tiered cards keep their icons aligned.
   band.style.setProperty('--m2-tier-lines', String(cardTierLines(card)));
-  const value = card.primary_action_value;
   if (!ultimate && card.primary_action) {
     const primary = symbol(
       card.primary_action,
-      value != null && String(value) !== '0' && String(value) !== '!' ? value : undefined,
+      primaryCardValue(card),
     );
     primary.classList.add('m2-list-primary');
     band.append(primary);
@@ -67,9 +68,9 @@ function updateCardRow(row, card, knownItems) {
   name.className = 'm2-list-name';
   name.textContent = card.name;
   band.append(name);
-  const utility = relevantStat(card, 'RANGE', card.range_value)
-    ? symbol('RANGE', card.range_value)
-    : relevantStat(card, 'RADIUS', card.radius_value) ? symbol('RADIUS', card.radius_value) : null;
+  const utility = relevantStat(card, 'RANGE', modifierCardValue(card, 'RANGE'))
+    ? symbol('RANGE', modifierCardValue(card, 'RANGE'))
+    : relevantStat(card, 'RADIUS', modifierCardValue(card, 'RADIUS')) ? symbol('RADIUS', modifierCardValue(card, 'RADIUS')) : null;
   if (utility) {
     utility.classList.add('m2-list-utility');
     band.append(utility);

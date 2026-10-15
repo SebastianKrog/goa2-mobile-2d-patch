@@ -55,9 +55,10 @@ async function renderer(path) {
       return { _id: label, getContext: () => ctx };
     },
   };
+  const printed = fs.readFileSync('src/printed-signs.js', 'utf8').replace(/^export .*$/m, '');
   const scope = { document, Image, HTMLImageElement: Image, console };
   vm.createContext(scope);
-  vm.runInContext(source.slice(begin, end) + ';globalThis.painter=m2Painter;', scope);
+  vm.runInContext(printed + source.slice(begin, end) + ';globalThis.painter=m2Painter;', scope);
   await scope.painter.ensureCardAssetsReady();
   return (card) => {
     log = [];
@@ -85,10 +86,17 @@ async function renderer(path) {
           effect_text: 'Test card text.',
           item: 'DEFENSE',
         };
-        assert.deepStrictEqual(after(card), before(card), color + ' ' + type + ' ' + value);
+        if (type === 'DEFENSE' && value === 0 && color !== 'PURPLE') {
+          assert(
+            after(card).some((command) => command.includes('!')),
+            'zero-value defense paints !',
+          );
+        } else assert.deepStrictEqual(after(card), before(card), color + ' ' + type + ' ' + value);
         count++;
       }
-  console.log(`PASS: identical canvas drawing commands for ${count} card variants.`);
+  console.log(
+    `PASS: canvas drawing preserved for ${count} variants except intended defense ! notation.`,
+  );
 })().catch((e) => {
   console.error(e);
   process.exitCode = 1;

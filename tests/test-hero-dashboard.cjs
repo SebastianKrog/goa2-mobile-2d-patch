@@ -75,7 +75,7 @@ setTimeout(() => {
   try {
     assert.equal(
       doc.querySelector('.m2-current-card-slot .m2-selection-status').textContent,
-      'Selected',
+      'Committed ✓',
     );
     assert(!doc.querySelector('.m2-current-card-slot .m2-selecting-dots'));
     assert(!doc.querySelector('.m2-offboard-label'));

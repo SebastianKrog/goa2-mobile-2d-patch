@@ -1,3 +1,4 @@
+import { printedPrimarySigns, printedModifierSigns } from './printed-signs.js';
 import { dismiss } from './navigation.js';
 import { componentProp } from './react.js';
 import { q, uiState } from './runtime.js';
@@ -114,6 +115,24 @@ function setMicroColor(element, card) {
   element.style.setProperty('--m2-card-muted', color + '22');
   element.dataset.tierLines = String(cardTierLines(card));
 }
+// Printed signs describe the card, never predict the outcome of an action.
+function signedCardValue(value, sign) {
+  if (sign === 'EXCLAMATION') return '!';
+  if (sign === 'PLUS' && value != null && !String(value).endsWith('+')) return String(value) + '+';
+  return value;
+}
+function primaryCardValue(card) {
+  const value = signedCardValue(card.primary_action_value, printedPrimarySigns[card.id]);
+  if (['DEFENSE', 'DEFENSE_SKILL'].includes(card.primary_action) &&
+      (value == null || String(value) === '0' || String(value) === '!')) return '!';
+  return value != null && String(value) !== '0' ? value : undefined;
+}
+function modifierCardValue(card, key) {
+  const value = key === 'RADIUS' ? card.radius_value : card.range_value;
+  // The printed modifier is the radius when present, otherwise the range.
+  const modifier = card.radius_value != null ? 'RADIUS' : 'RANGE';
+  return signedCardValue(value, key === modifier ? printedModifierSigns[card.id] : undefined);
+}
 // Three fixed cells keep the miniature recognizable without a title or initiative.
 // Facedown cards show only a colored back, never stats read from hidden props.
 function miniatureCard(card, items = {}, includeDefense = false) {
@@ -127,14 +146,13 @@ function miniatureCard(card, items = {}, includeDefense = false) {
     mini.textContent = card ? '?' : '—';
     return mini;
   }
-  const value = card.primary_action_value;
   const primary = card.primary_action
-    ? upgradedSymbol(items, card.primary_action, value != null && String(value) !== '0' && String(value) !== '!' ? value : undefined)
+    ? upgradedSymbol(items, card.primary_action, primaryCardValue(card))
     : document.createElement('span');
-  const range = relevantStat(card, 'RANGE', card.range_value)
-    ? upgradedSymbol(items, 'RANGE', card.range_value)
-    : relevantStat(card, 'RADIUS', card.radius_value)
-      ? upgradedSymbol(items, 'RADIUS', card.radius_value)
+  const range = relevantStat(card, 'RANGE', modifierCardValue(card, 'RANGE'))
+    ? upgradedSymbol(items, 'RANGE', modifierCardValue(card, 'RANGE'))
+    : relevantStat(card, 'RADIUS', modifierCardValue(card, 'RADIUS'))
+      ? upgradedSymbol(items, 'RADIUS', modifierCardValue(card, 'RADIUS'))
       : document.createElement('span');
   mini.append(primary, range);
   for (const stat of includeDefense ? ['MOVEMENT', 'DEFENSE'] : ['MOVEMENT']) {
@@ -203,10 +221,10 @@ function nanoCard(card, items = {}) {
   nano.title = card?.is_facedown ? 'Hidden card' : card?.name || 'Discard';
   if (card?.is_facedown) nano.textContent = '?';
   else {
-    const value = card?.primary_action === 'DEFENSE'
-      ? card.primary_action_value : card?.secondary_actions?.DEFENSE;
-    if (relevantStat(card || {}, 'DEFENSE', value))
-      nano.append(upgradedSymbol(items, 'DEFENSE', value));
+    const primary = ['DEFENSE', 'DEFENSE_SKILL'].includes(card?.primary_action);
+    const value = primary ? primaryCardValue(card) : card?.secondary_actions?.DEFENSE;
+    if (primary || relevantStat(card || {}, 'DEFENSE', value))
+      nano.append(upgradedSymbol(items, primary ? card.primary_action : 'DEFENSE', value));
   }
   return nano;
 }
@@ -441,22 +459,21 @@ function textCard(card, context, tip, heroId, grantedItem) {
     (basic ? 'Basic ' : '') + (actionNames[card.primary_action] || card.primary_action || '');
   if (
     ['SKILL', 'DEFENSE_SKILL', 'ATTACK'].includes(card.primary_action) &&
-    (card.is_ranged || relevantStat(card, 'RANGE', card.range_value))
+    (card.is_ranged || relevantStat(card, 'RANGE', modifierCardValue(card, 'RANGE')))
   )
     label += ' • Ranged';
   if (ultimate) label = 'Ultimate';
-  const val = card.primary_action_value;
   const primary = symbol(
     card.primary_action || 'SKILL',
-    val != null && String(val) !== '0' && String(val) !== '!' ? val : undefined,
+    primaryCardValue(card),
   );
   const title = document.createElement('b');
   title.textContent = label;
   head.append(ultimate ? document.createElement('span') : primary, title);
-  if (relevantStat(card, 'RANGE', card.range_value))
-    head.append(symbol('RANGE', card.range_value));
-  else if (relevantStat(card, 'RADIUS', card.radius_value))
-    head.append(symbol('RADIUS', card.radius_value));
+  if (relevantStat(card, 'RANGE', modifierCardValue(card, 'RANGE')))
+    head.append(symbol('RANGE', modifierCardValue(card, 'RANGE')));
+  else if (relevantStat(card, 'RADIUS', modifierCardValue(card, 'RADIUS')))
+    head.append(symbol('RADIUS', modifierCardValue(card, 'RADIUS')));
   const effect = document.createElement('div');
   effect.className = 'm2-card-effect';
   appendRulesText(effect, card.effect_text, symbol);
@@ -513,6 +530,8 @@ export {
   itemUpgradeSymbols,
   miniatureCard,
   nanoCard,
+  primaryCardValue,
+  modifierCardValue,
   relevantStat,
   syncHandActions,
   textCard,

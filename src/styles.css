@@ -4322,3 +4322,86 @@ html:not([data-m2-active]) .m2-choice-launchers {
     grid-row: 5;
   }
 }
+
+/* Discard decisions use Hand rows and stage the choice until confirmation. */
+& [data-m2-discard-source] {
+  display: none !important;
+}
+& [data-m2-discard-overlay] {
+  position: fixed !important;
+  inset: calc(var(--m2-viewport-top, 0px) + var(--m2-head) + var(--m2-status-h) + 6px)
+    calc(var(--m2-nav-width, 0px) + 8px) calc(var(--m2-offset, 0px) + var(--m2-nav) + 8px) 8px !important;
+  display: flex !important;
+  align-items: flex-start !important;
+  justify-content: center !important;
+  z-index: 1000 !important;
+  background: #080c12b3;
+}
+& [data-m2-discard-picker] {
+  box-sizing: border-box;
+  width: min(100%, 500px) !important;
+  max-height: 100% !important;
+  overflow-y: auto !important;
+  overscroll-behavior: contain;
+  padding: 8px !important;
+  margin: 0 !important;
+}
+& [data-m2-discard-picker] [class*="_title_"] {
+  font-size: 0 !important;
+}
+& [data-m2-discard-picker] [class*="_title_"]::after {
+  content: "Choose a card to discard";
+  font: 600 14px system-ui;
+}
+& .m2-discard-choices > div:nth-child(2) {
+  display: grid;
+  gap: 5px;
+  margin-top: 8px;
+}
+& .m2-discard-row {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  padding: 0 5px;
+  overflow: hidden;
+  border: 1px solid #ffffff1c;
+  border-radius: 8px;
+  background: #ffffff08;
+  color: #d8dce4;
+  font: inherit;
+  text-align: left;
+}
+& .m2-discard-row[aria-pressed="true"] {
+  border-color: #e9c956;
+  box-shadow: inset 0 0 0 1px #e9c956;
+}
+& .m2-discard-choices .m2-small-card {
+  min-height: 42px;
+}
+& .m2-discard-choices .m2-tiny-hand-card {
+  min-height: 28px;
+}
+& .m2-discard-choices .m2-tiny-hand-card .m2-symbol img {
+  width: 19px;
+  height: 19px;
+}
+& .m2-discard-choices .m2-tiny-hand-card > .m2-symbol {
+  flex-basis: 24px;
+}
+& .m2-discard-choices .m2-tiny-hand-card .m2-list-secondary {
+  gap: 2px;
+}
+& .m2-discard-confirm {
+  display: block;
+  margin: 8px auto 0;
+  min-height: 36px;
+  padding: 6px 18px;
+  border: 1px solid #637b9d;
+  border-radius: 8px;
+  background: #1b2637;
+  color: #a8ccff;
+  font: 600 13px system-ui;
+}
+& .m2-discard-confirm:disabled {
+  opacity: 0.45;
+}

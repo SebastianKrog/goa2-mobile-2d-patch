@@ -38,10 +38,10 @@ const tick = () => new Promise((r) => setTimeout(r, 50));
     await tick();
     assert.equal(
       doc.querySelector('.m2-current-card-slot .m2-selection-status').textContent,
-      'Selected',
+      'Committed ✓',
     );
     assert(!doc.querySelector('.m2-current-card-slot .m2-selecting-dots'));
-    assert.equal(doc.querySelector('.m2-summary-turn').getAttribute('aria-label'), 'Selected');
+    assert.equal(doc.querySelector('.m2-summary-turn').getAttribute('aria-label'), 'Committed');
     doc.querySelector('section').__reactFiber$t.memoizedProps.hero.current_turn_card = null;
     doc.querySelector('._row_x').className = '_row_x _selected_x';
     await tick();

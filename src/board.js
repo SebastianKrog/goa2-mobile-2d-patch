@@ -139,7 +139,7 @@ function renderSummary(heroes, upgradeRequest = null) {
     const turn = document.createElement('span');
     turn.className = 'm2-summary-turn';
     let status;
-    if (h.clock && (!h.resolving || h.clock.running)) {
+    if (!h.upgrading && h.clock && (!h.resolving || h.clock.running)) {
       row.classList.add('m2-timed-hero');
       turn.classList.add('m2-summary-clock');
       turn.textContent = h.clock.text;
@@ -152,16 +152,15 @@ function renderSummary(heroes, upgradeRequest = null) {
       turn.append(order, cardSymbol('INITIATIVE', h.resolution.initiative));
       status = 'Turn ' + order.textContent + ', initiative ' + h.resolution.initiative;
     } else if (h.upgrading || h.planning) {
-      const selecting = h.upgrading ? h.upgradeRemaining > 0 : !h.committed;
-      const unknown = h.upgrading && h.upgradeRemaining === null;
-      status = unknown ? 'Waiting' : selecting ? 'Selecting' : h.upgrading ? 'Done' : 'Selected';
+      const selecting = h.upgrading ? h.upgradeRemaining !== 0 : !h.committed;
+      status = selecting ? h.upgrading ? 'Upgrading' : 'Selecting' : 'Committed';
       if (selecting) {
         const dots = document.createElement('span');
         dots.className = 'm2-selecting-dots';
         dots.textContent = '...';
         dots.setAttribute('aria-hidden', 'true');
         turn.append(dots);
-      } else turn.textContent = unknown ? '…' : '✓';
+      } else turn.textContent = '✓';
     } else {
       turn.textContent = h.offboard ? '☠' : h.done ? '✓' : '—';
       status = h.offboard ? 'Off board' : h.done ? 'Turn completed' : 'No card played';

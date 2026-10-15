@@ -1,3 +1,4 @@
+import { remainingUpgrades } from './game-input.js';
 import { predictResolutionOrder } from './resolution-order.js';
 import { openCardActionOptions } from './controls.js';
 import { highlightViewedCard, trackCardSource } from './card-highlight.js';
@@ -106,6 +107,8 @@ function updateHeroDashboard(box, view, suppliedHero = null, upgradeRequest = nu
     (dot) => ({ color: dot.style.backgroundColor, label: dot.title }),
   );
   const planning = isCardSelection(view);
+  const upgrading = /^LEVEL[_ ]UP$/i.test(view?.phase || '');
+  const upgradeRemaining = upgrading ? remainingUpgrades(upgradeRequest, hero.id) : null;
   const currentCard = visibleCurrentCard(box, hero);
   // One compact entry is shared by Heroes, Hand and Board focus in every phase.
   const key = JSON.stringify([
@@ -116,6 +119,7 @@ function updateHeroDashboard(box, view, suppliedHero = null, upgradeRequest = nu
     handDots,
     hero.current_turn_card,
     hero.can_commit_second_card,
+    upgradeRemaining,
     hero.played_cards,
     hero.discard_pile,
     hero.items,
@@ -240,7 +244,7 @@ function updateHeroDashboard(box, view, suppliedHero = null, upgradeRequest = nu
   label.className = 'm2-hero-played-label';
   label.textContent = 'Played:';
   current.append(label);
-  if (currentCard && !currentCard.is_facedown) {
+  if (!upgrading && currentCard && !currentCard.is_facedown) {
     const card = document.createElement('button');
     card.type = 'button';
     card.className = 'm2-current-card-mini';
@@ -257,12 +261,12 @@ function updateHeroDashboard(box, view, suppliedHero = null, upgradeRequest = nu
     const slot = document.createElement('div');
     slot.className = 'm2-current-card-slot';
     const status = document.createElement('span');
-    if (planning) {
+    if (planning || upgrading) {
       status.className = 'm2-selection-status';
-      const selected = !!hero.current_turn_card;
+      const selected = upgrading ? upgradeRemaining === 0 : !!hero.current_turn_card;
       status.textContent = selected
-        ? hero.can_commit_second_card ? 'Selected · choosing second' : 'Selected'
-        : 'Selecting';
+        ? !upgrading && hero.can_commit_second_card ? 'Committed ✓ · choosing second' : 'Committed ✓'
+        : upgrading ? 'Upgrading' : 'Selecting';
       status.setAttribute('aria-label', status.textContent);
       if (!selected) {
         const dots = document.createElement('span');

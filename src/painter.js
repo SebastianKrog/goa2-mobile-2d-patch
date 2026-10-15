@@ -1,7 +1,8 @@
+import { printedPrimarySigns, printedModifierSigns } from './printed-signs.js';
 // Deck adapter: read only card props belonging to already-rendered deck canvases.
 // Does not inspect the game store, sockets, or other players' hidden cards.
 // Card painter adapted from PedroVIOliv/goa2-frontend-portfolio.
-// Numeric-only renderer for gold/silver deck artwork. Values come from card props.
+// Printed renderer for gold/silver deck artwork. Values come from card props.
 // 4. Artwork painter
 // This isolated block supplies missing basic-card canvases for Deck. The internal
 // m3/m2/m1/m0 names are inherited module wrappers: vocabulary, drawing, icon mapping,
@@ -1535,10 +1536,12 @@ const m2Painter = (() => {
         card.initiative ?? 0,
         primaryType,
         Math.abs(primaryValue),
-        valueSign(primaryValue),
+        printedPrimarySigns[card.id] ||
+          (['DEFENSE', 'DEFENSE_SKILL'].includes(card.primary_action) && primaryValue === 0
+            ? ValueSign.EXCLAMATION : valueSign(primaryValue)),
         modifier,
         modifierValue,
-        ValueSign.NONE,
+        printedModifierSigns[card.id] || ValueSign.NONE,
         secondaryMovement,
         secondaryDefense,
         secondaryAttack,

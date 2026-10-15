@@ -412,7 +412,7 @@ on(media, 'change', schedule);
 
 // Public teardown for console installs and upgrades: release observers, timers, and DOM changes.
 window.GOA2Mobile2D = {
-  version: '1.1.1',
+  version: '1.1.2',
   destroy() {
     flushEventHistory();
     uiState.dead = true;

@@ -96,7 +96,7 @@ try {
   heroes[1].current_turn_card = { ...card('Hidden secret'), is_facedown: true };
   w.refreshTest();
   assert(!doc.querySelector('#other .m2-expanded-card'));
-  assert.equal(doc.querySelector('#other .m2-selection-status').textContent, 'Selected');
+  assert.equal(doc.querySelector('#other .m2-selection-status').textContent, 'Committed ✓');
   // Local rendered selection is still known while public commitment is facedown.
   heroes[0].current_turn_card = { id: 'Current', name: 'Hidden', is_facedown: true };
   const hand = doc.createElement('div');
