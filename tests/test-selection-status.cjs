@@ -25,9 +25,15 @@ const tick = () => new Promise((r) => setTimeout(r, 50));
     assert(doc.querySelector('.m2-selection-status .m2-selecting-dots'));
     doc.querySelector('._row_x').className = '_row_x _selected_x';
     await tick();
-    assert(doc.querySelector('.m2-selection-status .m2-selecting-dots'), 'highlight is not commitment');
+    assert(
+      doc.querySelector('.m2-selection-status .m2-selecting-dots'),
+      'highlight is not commitment',
+    );
     assert(doc.querySelector('.m2-summary-turn .m2-selecting-dots'));
-    doc.querySelector('section').__reactFiber$t.memoizedProps.hero.current_turn_card = { id: 'committed', is_facedown: true };
+    doc.querySelector('section').__reactFiber$t.memoizedProps.hero.current_turn_card = {
+      id: 'committed',
+      is_facedown: true,
+    };
     doc.querySelector('._row_x').className = '_row_x';
     await tick();
     assert.equal(
@@ -41,9 +47,7 @@ const tick = () => new Promise((r) => setTimeout(r, 50));
     await tick();
     assert(doc.querySelector('.m2-selection-status .m2-selecting-dots'));
     assert(doc.querySelector('.m2-summary-turn .m2-selecting-dots'));
-    console.log(
-      'PASS: animation waits for commitment and resumes on takeback, Heroes and Board',
-    );
+    console.log('PASS: animation waits for commitment and resumes on takeback, Heroes and Board');
   } finally {
     w.GOA2Mobile2D.destroy();
     w.close();

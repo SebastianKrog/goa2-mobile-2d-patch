@@ -159,8 +159,12 @@
   letter-spacing: 0.03em;
   color: #e7cc83;
 }
-& [data-m2="pause-vote"] [class*="_summary_"] { font-size: 13px; }
-& [data-m2="pause-vote"] [class*="_footer_"] { flex-wrap: wrap; }
+& [data-m2="pause-vote"] [class*="_summary_"] {
+  font-size: 13px;
+}
+& [data-m2="pause-vote"] [class*="_footer_"] {
+  flex-wrap: wrap;
+}
 & [data-m2="pause-vote"] button,
 & [data-m2="match-ready"] button {
   min-height: 34px;
@@ -193,8 +197,14 @@
   box-shadow: none;
   color: #dbe2eb;
 }
-& [data-m2="match-ready"] h1 { font: 600 17px/1.3 system-ui, sans-serif; }
-& [data-m2="match-ready"] p { font-size: 12px; }
+& [data-m2="match-ready"] h1 {
+  font:
+    600 17px/1.3 system-ui,
+    sans-serif;
+}
+& [data-m2="match-ready"] p {
+  font-size: 12px;
+}
 & [data-m2="setup"] button,
 & [data-m2="tools"] button {
   min-height: 44px;
@@ -2859,7 +2869,9 @@
     0 1px 3px #000,
     0 0 3px #000;
 }
-& .m2-turn-tie { font-size: 13px; }
+& .m2-turn-tie {
+  font-size: 13px;
+}
 & .m2-current-hero .m2-turn-number {
   font-size: 13px;
   color: #ffe5a1;
@@ -2985,11 +2997,22 @@
   color: #929baa;
   font-variant-numeric: tabular-nums;
 }
-& .m2-hero-clock strong { font-weight: 500; color: #b8c0cc; }
-& .m2-hero-clock .m2-clock-bank { color: #e7cc83; }
-& .m2-hero-clock[data-running="true"] .m2-clock-pool { color: #dce7f2; }
-& .m2-hero-clock[data-tone="warning"] .m2-clock-pool { color: #e7cc83; }
-& .m2-hero-clock[data-tone="critical"] .m2-clock-pool { color: #ff827b; }
+& .m2-hero-clock strong {
+  font-weight: 500;
+  color: #b8c0cc;
+}
+& .m2-hero-clock .m2-clock-bank {
+  color: #e7cc83;
+}
+& .m2-hero-clock[data-running="true"] .m2-clock-pool {
+  color: #dce7f2;
+}
+& .m2-hero-clock[data-tone="warning"] .m2-clock-pool {
+  color: #e7cc83;
+}
+& .m2-hero-clock[data-tone="critical"] .m2-clock-pool {
+  color: #ff827b;
+}
 & .m2-hero-upgrades {
   display: inline-flex;
   align-items: center;
@@ -3500,8 +3523,12 @@
   font-size: 10px;
   font-variant-numeric: tabular-nums;
 }
-& #goa2-m2-summary .m2-summary-clock[data-tone="warning"] { color: #e7cc83; }
-& #goa2-m2-summary .m2-summary-clock[data-tone="critical"] { color: #ff827b; }
+& #goa2-m2-summary .m2-summary-clock[data-tone="warning"] {
+  color: #e7cc83;
+}
+& #goa2-m2-summary .m2-summary-clock[data-tone="critical"] {
+  color: #ff827b;
+}
 & #goa2-m2-summary .m2-summary-current-slot {
   width: 70px;
   display: flex;
