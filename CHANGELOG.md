@@ -2,13 +2,19 @@
 
 Published releases, newest first.
 
+## 1.1.1
+
+- Keep same-initiative heroes grouped by team during resolution. Show each team's earliest predicted position on one hero and TIE on their teammates; later groups still account for every tied hero.
+- Predict coin flips across remaining initiative groups, preserving the server's selected actor and recalculating from current game state. Show ties in both hero portraits and the compact list; running clocks still take precedence.
+- Read resolution data even when the native queue is collapsed.
+
 ## 1.1.0
 
 - Show timed-match clocks after hero names as phase allowance / bank, using the native synchronized values. Replace locked planning clocks with a dash.
 - Show each hero's relevant countdown in the compact Board status slot, switching to the bank once the phase allowance is exhausted. Use a checkmark for locked cards; during resolution, retain turn order and completion marks unless a timer is running.
 - Replace the Setup footer tab with a Position button on Board that opens native starting-position adjustment directly.
 - Fit pause votes and paused-match readiness dialogs into the mobile layout while preserving native controls.
-- Show known committed Silver card details in Deck instead of a facedown placeholder. Hero views display only committed cards, not a highlighted Hand selection.
+- Show known card details in Deck regardless of their facedown commitment state. Hero views display only committed cards, not a highlighted Hand selection.
 
 ## 1.0.6
 

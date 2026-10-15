@@ -213,7 +213,7 @@ function refresh() {
         details = q(c('details'), box),
         hero = componentProp(box, 'hero');
       const entry = queue.find(
-        (e) =>
+        (e) => e.heroId ? e.heroId === hero?.id :
           heroDisplayName(name)
             .split('·')[0]
             .replace(/\(You\)/g, '')
@@ -224,7 +224,7 @@ function refresh() {
       // marks completion; absence from the queue alone does not prove a turn was taken.
       const playedThisTurn = !!hero?.played_cards?.[Number(publicView?.turn) - 1];
       const done = resolving && !entry && (hero ? playedThisTurn : !q(c('currentCard'), box));
-      box.style.order = String(entry ? entry.order : 99);
+      box.style.order = String(entry ? entry.position || entry.order : 99);
       box.classList.toggle('m2-current-hero', !!entry?.current);
       box.classList.toggle('m2-pending-hero', resolving && !!entry);
       box.classList.toggle('m2-done-hero', done);
@@ -279,7 +279,7 @@ function refresh() {
         ),
       };
     });
-    heroes.sort((a, b) => (a.resolution?.order ?? 99) - (b.resolution?.order ?? 99));
+    heroes.sort((a, b) => (a.resolution?.position ?? a.resolution?.order ?? 99) - (b.resolution?.position ?? b.resolution?.order ?? 99));
     const sh = heroes.length * 32 + 12 + 'px';
     if (root.style.getPropertyValue('--m2-summary-h') !== sh)
       root.style.setProperty('--m2-summary-h', sh);
@@ -412,7 +412,7 @@ on(media, 'change', schedule);
 
 // Public teardown for console installs and upgrades: release observers, timers, and DOM changes.
 window.GOA2Mobile2D = {
-  version: '1.1.0',
+  version: '1.1.1',
   destroy() {
     flushEventHistory();
     uiState.dead = true;

@@ -148,7 +148,7 @@ function renderSummary(heroes, upgradeRequest = null) {
       status = h.clock.label + (h.clock.paused ? ' · Paused' : '');
     } else if (h.resolution) {
       const order = document.createElement('b');
-      order.textContent = h.resolution.current ? 'NOW' : h.resolution.order + '.';
+      order.textContent = h.resolution.current ? 'NOW' : h.resolution.tied ? 'TIE' : h.resolution.order + '.';
       turn.append(order, cardSymbol('INITIATIVE', h.resolution.initiative));
       status = 'Turn ' + order.textContent + ', initiative ' + h.resolution.initiative;
     } else if (h.upgrading || h.planning) {

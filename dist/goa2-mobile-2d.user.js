@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GoA II — Mobile 2D
 // @namespace    goa2-mobile-local
-// @version      1.1.0
+// @version      1.1.1
 // @description  Compact 2D HUD, Board/Hand modes, contained setup and utility panels.
 // @match        https://goa2.frontend.pedroliv.dev/game/*
 // @grant        none
@@ -2918,6 +2918,7 @@ window.GOA2Mobile?.destroy();
     0 1px 3px #000,
     0 0 3px #000;
 }
+& .m2-turn-tie { font-size: 13px; }
 & .m2-current-hero .m2-turn-number {
   font-size: 13px;
   color: #ffe5a1;
@@ -8102,6 +8103,52 @@ html:not([data-m2-active]) .m2-choice-launchers {
     }
   }
 
+  // src/resolution-order.js
+  function predictResolutionOrder(entries, coin, actorId = null) {
+    if (!entries.length || entries.some((e) => !e.team || !Number.isFinite(Number(e.initiative))))
+      return entries;
+    const ordered = entries.map((entry, index) => ({ ...entry, nativeIndex: index })).sort((a, b) => Number(b.initiative) - Number(a.initiative) || a.nativeIndex - b.nativeIndex);
+    const result = [];
+    let offset = 0;
+    while (offset < ordered.length) {
+      let end = offset + 1;
+      while (end < ordered.length && Number(ordered[end].initiative) === Number(ordered[offset].initiative)) end++;
+      const group = ordered.slice(offset, end), teams = /* @__PURE__ */ new Map();
+      for (const entry of group) {
+        if (!teams.has(entry.team)) teams.set(entry.team, []);
+        teams.get(entry.team).push(entry);
+      }
+      for (const members of teams.values()) members.sort((a, b) => Number(b.heroId === actorId) - Number(a.heroId === actorId) || a.nativeIndex - b.nativeIndex);
+      const remaining = new Map([...teams].map(([team, members]) => [team, members.length]));
+      const slots = new Map([...teams.keys()].map((team) => [team, []]));
+      for (let index = 0; index < group.length; index++) {
+        const available = [...remaining.keys()].filter((team2) => remaining.get(team2) > 0);
+        const actor = offset === 0 && index === 0 && group.find((e) => e.heroId === actorId);
+        const team = actor ? actor.team : available.includes(coin) ? coin : available[0];
+        slots.get(team).push(offset + index + 1);
+        remaining.set(team, remaining.get(team) - 1);
+        if (available.length > 1) coin = available.find((other) => other !== team);
+      }
+      const blocks = [...teams].map(([team, members]) => ({
+        rank: slots.get(team)[0],
+        entries: members
+      }));
+      blocks.sort((a, b) => a.rank - b.rank);
+      for (const block of blocks) for (let i = 0; i < block.entries.length; i++)
+        result.push({
+          ...block.entries[i],
+          order: block.rank,
+          tied: i > 0,
+          position: result.length + 1,
+          current: false
+        });
+      offset = end;
+    }
+    const current = actorId ? result.find((e) => e.heroId === actorId) : result[0];
+    if (current) current.current = true;
+    return result;
+  }
+
   // src/controls.js
   function openCardActionOptions(heroId, card) {
     if (uiState.mode !== "board" || !card || card.is_facedown) return false;
@@ -8490,7 +8537,7 @@ html:not([data-m2-active]) .m2-choice-launchers {
   }
   function updateTurnPortrait(box, entry, done, offboard, resolving) {
     let info = q(".m2-resolution-info", box);
-    const marker = entry ? entry.current ? "NOW" : String(entry.order) : resolving && !offboard ? done ? "✓" : "—" : null;
+    const marker = entry ? entry.current ? "NOW" : entry.tied ? "TIE" : String(entry.order) : resolving && !offboard ? done ? "✓" : "—" : null;
     if (marker === null) {
       info?.remove();
       return;
@@ -8506,8 +8553,8 @@ html:not([data-m2-active]) .m2-choice-launchers {
     if (info.dataset.key === key) return;
     info.dataset.key = key;
     const order = document.createElement("span");
-    order.className = "m2-turn-number";
-    if (entry && !entry.current) order.append(ordinalTurn(entry.order));
+    order.className = "m2-turn-number" + (entry?.tied ? " m2-turn-tie" : "");
+    if (entry && !entry.current && !entry.tied) order.append(ordinalTurn(entry.order));
     else order.textContent = marker;
     info.replaceChildren(order);
     if (entry) info.append(cardSymbol("INITIATIVE", entry.initiative));
@@ -8582,11 +8629,11 @@ html:not([data-m2-active]) .m2-choice-launchers {
     const rows = Array.from(document.querySelectorAll(c("entry"))).filter(
       (e) => q(c("initiative"), e) && q(c("heroName"), e) && q(c("cardName"), e)
     );
-    for (const row of rows) {
-      const container = row.closest(c("container"));
-      if (container) tag(container, "resolution-queue");
-    }
-    return rows.map((e, i) => ({
+    const containers = Array.from(document.querySelectorAll(c("container"))).filter((container) => rows.some((row) => container.contains(row)) || q('[aria-label*="resolution queue"]', container));
+    for (const container of containers) tag(container, "resolution-queue");
+    const view = componentProp(containers[0], "view") || componentProp(q('[data-m2="sidebar"]'), "view");
+    const heroes = Object.entries(view?.teams || {}).flatMap(([team, value]) => (value.heroes || []).map((hero) => ({ ...hero, team })));
+    const native = rows.map((e, i) => ({
       name: q(c("heroName"), e).textContent.trim(),
       initiative: q(c("initiative"), e).textContent.trim(),
       card: q(c("cardName"), e).textContent.trim(),
@@ -8594,6 +8641,22 @@ html:not([data-m2-active]) .m2-choice-launchers {
       order: i + 1,
       current: e.matches(c("nextEntry"))
     }));
+    if (view?.phase !== "RESOLUTION" || !Array.isArray(view.unresolved_cards)) return native;
+    const entries = view.unresolved_cards.map((entry, i) => {
+      const hero = heroes.find((h) => h.id === entry.hero_id);
+      const row = native.find((e) => e.name === hero?.name);
+      return {
+        ...row,
+        heroId: entry.hero_id,
+        team: hero?.team,
+        name: row?.name || hero?.name || entry.hero_id,
+        initiative: entry.initiative,
+        card: entry.card?.name || row?.card || "",
+        order: i + 1,
+        current: entry.hero_id === view.current_actor_id
+      };
+    });
+    return predictResolutionOrder(entries, view.tie_breaker_team, view.current_actor_id);
   }
 
   // src/action-choices.js
@@ -8878,7 +8941,7 @@ html:not([data-m2-active]) .m2-choice-launchers {
         status = h.clock.label + (h.clock.paused ? " · Paused" : "");
       } else if (h.resolution) {
         const order = document.createElement("b");
-        order.textContent = h.resolution.current ? "NOW" : h.resolution.order + ".";
+        order.textContent = h.resolution.current ? "NOW" : h.resolution.tied ? "TIE" : h.resolution.order + ".";
         turn.append(order, cardSymbol("INITIATIVE", h.resolution.initiative));
         status = "Turn " + order.textContent + ", initiative " + h.resolution.initiative;
       } else if (h.upgrading || h.planning) {
@@ -9967,12 +10030,12 @@ html:not([data-m2-active]) .m2-choice-launchers {
         updateHeroDashboard(box, publicView, null, upgradeRequest);
         const name = q(c("name"), box), details = q(c("details"), box), hero = componentProp(box, "hero");
         const entry = queue.find(
-          (e) => heroDisplayName(name).split("·")[0].replace(/\(You\)/g, "").trim() === e.name
+          (e) => e.heroId ? e.heroId === hero?.id : heroDisplayName(name).split("·")[0].replace(/\(You\)/g, "").trim() === e.name
         );
         const offboard = !!q(".m2-offboard-label", box);
         const playedThisTurn = !!hero?.played_cards?.[Number(publicView?.turn) - 1];
         const done = resolving && !entry && (hero ? playedThisTurn : !q(c("currentCard"), box));
-        box.style.order = String(entry ? entry.order : 99);
+        box.style.order = String(entry ? entry.position || entry.order : 99);
         box.classList.toggle("m2-current-hero", !!entry?.current);
         box.classList.toggle("m2-pending-hero", resolving && !!entry);
         box.classList.toggle("m2-done-hero", done);
@@ -10020,7 +10083,7 @@ html:not([data-m2-active]) .m2-choice-launchers {
           )
         };
       });
-      heroes.sort((a, b) => (a.resolution?.order ?? 99) - (b.resolution?.order ?? 99));
+      heroes.sort((a, b) => (a.resolution?.position ?? a.resolution?.order ?? 99) - (b.resolution?.position ?? b.resolution?.order ?? 99));
       const sh = heroes.length * 32 + 12 + "px";
       if (root.style.getPropertyValue("--m2-summary-h") !== sh)
         root.style.setProperty("--m2-summary-h", sh);
@@ -10131,7 +10194,7 @@ html:not([data-m2-active]) .m2-choice-launchers {
   }
   on(media, "change", schedule);
   window.GOA2Mobile2D = {
-    version: "1.1.0",
+    version: "1.1.1",
     destroy() {
       flushEventHistory();
       uiState.dead = true;

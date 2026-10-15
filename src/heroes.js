@@ -1,3 +1,4 @@
+import { predictResolutionOrder } from './resolution-order.js';
 import { openCardActionOptions } from './controls.js';
 import { highlightViewedCard, trackCardSource } from './card-highlight.js';
 import { centerBoardHero } from './camera.js';
@@ -326,7 +327,7 @@ function ordinalTurn(order) {
 }
 function updateTurnPortrait(box, entry, done, offboard, resolving) {
   let info = q('.m2-resolution-info', box);
-  const marker = entry ? entry.current ? 'NOW' : String(entry.order)
+  const marker = entry ? entry.current ? 'NOW' : entry.tied ? 'TIE' : String(entry.order)
     : resolving && !offboard ? done ? '✓' : '—' : null;
   if (marker === null) { info?.remove(); return; }
   if (!info) {
@@ -340,8 +341,8 @@ function updateTurnPortrait(box, entry, done, offboard, resolving) {
   if (info.dataset.key === key) return;
   info.dataset.key = key;
   const order = document.createElement('span');
-  order.className = 'm2-turn-number';
-  if (entry && !entry.current) order.append(ordinalTurn(entry.order));
+  order.className = 'm2-turn-number' + (entry?.tied ? ' m2-turn-tie' : '');
+  if (entry && !entry.current && !entry.tied) order.append(ordinalTurn(entry.order));
   else order.textContent = marker;
   info.replaceChildren(order);
   if (entry) info.append(cardSymbol('INITIATIVE', entry.initiative));
@@ -420,24 +421,34 @@ function updateUpgradeCards() {
     addExtra(display);
   }
 }
-// Read the native resolution queue as the authority for order and initiative.
-// The queue overlay is hidden by CSS, but its rendered data still drives hero badges.
+// Prefer the native queue's supplied view so a collapsed queue still works.
+// Rendered rows remain a fallback if the integration changes.
 function resolutionEntries() {
   const rows = Array.from(document.querySelectorAll(c('entry'))).filter(
-    (e) => q(c('initiative'), e) && q(c('heroName'), e) && q(c('cardName'), e),
-  );
-  for (const row of rows) {
-    const container = row.closest(c('container'));
-    if (container) tag(container, 'resolution-queue');
-  }
-  return rows.map((e, i) => ({
+    e => q(c('initiative'), e) && q(c('heroName'), e) && q(c('cardName'), e));
+  const containers = Array.from(document.querySelectorAll(c('container'))).filter(container =>
+    rows.some(row => container.contains(row)) || q('[aria-label*="resolution queue"]', container));
+  for (const container of containers) tag(container, 'resolution-queue');
+  const view = componentProp(containers[0], 'view') || componentProp(q('[data-m2="sidebar"]'), 'view');
+  const heroes = Object.entries(view?.teams || {}).flatMap(([team, value]) =>
+    (value.heroes || []).map(hero => ({ ...hero, team })));
+  const native = rows.map((e, i) => ({
     name: q(c('heroName'), e).textContent.trim(),
     initiative: q(c('initiative'), e).textContent.trim(),
     card: q(c('cardName'), e).textContent.trim(),
     color: q(c('cardName'), e).style.color,
-    order: i + 1,
-    current: e.matches(c('nextEntry')),
+    order: i + 1, current: e.matches(c('nextEntry')),
   }));
+  if (view?.phase !== 'RESOLUTION' || !Array.isArray(view.unresolved_cards)) return native;
+  const entries = view.unresolved_cards.map((entry, i) => {
+    const hero = heroes.find(h => h.id === entry.hero_id);
+    const row = native.find(e => e.name === hero?.name);
+    return { ...row, heroId: entry.hero_id, team: hero?.team,
+      name: row?.name || hero?.name || entry.hero_id,
+      initiative: entry.initiative, card: entry.card?.name || row?.card || '',
+      order: i + 1, current: entry.hero_id === view.current_actor_id };
+  });
+  return predictResolutionOrder(entries, view.tie_breaker_team, view.current_actor_id);
 }
 
 export {

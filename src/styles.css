@@ -2859,6 +2859,7 @@
     0 1px 3px #000,
     0 0 3px #000;
 }
+& .m2-turn-tie { font-size: 13px; }
 & .m2-current-hero .m2-turn-number {
   font-size: 13px;
   color: #ffe5a1;
