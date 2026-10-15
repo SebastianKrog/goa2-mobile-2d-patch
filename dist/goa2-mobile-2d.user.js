@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GoA II — Mobile 2D
 // @namespace    goa2-mobile-local
-// @version      1.0.6
+// @version      1.1.0
 // @description  Compact 2D HUD, Board/Hand modes, contained setup and utility panels.
 // @match        https://goa2.frontend.pedroliv.dev/game/*
 // @grant        none
@@ -191,6 +191,69 @@ window.GOA2Mobile?.destroy();
 & [data-m2="tools"] {
   display: none !important;
 }
+/* Retain native pause voting and readiness actions in the mobile frame. */
+& [data-m2="pause-vote"] {
+  position: fixed !important;
+  top: calc(var(--m2-head) + 80px) !important;
+  left: 8px !important;
+  right: 8px !important;
+  width: auto !important;
+  box-sizing: border-box;
+  max-height: calc(var(--m2-vh, 100dvh) - var(--m2-head) - var(--m2-nav) - 96px);
+  overflow: auto;
+  transform: none !important;
+  animation: none !important;
+  padding: 10px 12px;
+  gap: 6px;
+  border: 1px solid var(--m2-border);
+  border-radius: var(--m2-radius);
+  background: #141b27ed;
+  backdrop-filter: blur(8px);
+  color: #dbe2eb;
+  box-shadow: none;
+  z-index: 10010;
+}
+& [data-m2="pause-vote"] [class*="_kicker_"] {
+  font-size: 10px;
+  letter-spacing: 0.03em;
+  color: #e7cc83;
+}
+& [data-m2="pause-vote"] [class*="_summary_"] { font-size: 13px; }
+& [data-m2="pause-vote"] [class*="_footer_"] { flex-wrap: wrap; }
+& [data-m2="pause-vote"] button,
+& [data-m2="match-ready"] button {
+  min-height: 34px;
+  padding: 6px 12px;
+  font: inherit;
+  font-size: 12px;
+  border: 1px solid #59667c;
+  border-radius: 7px;
+  background: #233046;
+  color: #dbe2eb;
+}
+& [data-m2="match-ready"] {
+  position: fixed;
+  inset: var(--m2-head) 0 calc(var(--m2-nav) + var(--m2-offset, 0px));
+  z-index: 10020;
+  padding: 8px;
+  overflow: auto;
+  background: #0c1119bb;
+  backdrop-filter: blur(4px);
+}
+& [data-m2="match-ready"] > section {
+  box-sizing: border-box;
+  width: min(440px, 100%);
+  max-height: 100%;
+  overflow: auto;
+  padding: 14px;
+  border: 1px solid var(--m2-border);
+  border-radius: var(--m2-radius);
+  background: #141b27f7;
+  box-shadow: none;
+  color: #dbe2eb;
+}
+& [data-m2="match-ready"] h1 { font: 600 17px/1.3 system-ui, sans-serif; }
+& [data-m2="match-ready"] p { font-size: 12px; }
 & [data-m2="setup"] button,
 & [data-m2="tools"] button {
   min-height: 44px;
@@ -2967,6 +3030,24 @@ window.GOA2Mobile?.destroy();
   margin: 0;
   line-height: 15px;
 }
+& .m2-hero-clock {
+  display: inline-flex;
+  vertical-align: baseline;
+  align-items: baseline;
+  gap: 4px;
+  margin-left: 6px;
+  white-space: nowrap;
+  font-size: 10px;
+  font-weight: 400;
+  line-height: 15px;
+  color: #929baa;
+  font-variant-numeric: tabular-nums;
+}
+& .m2-hero-clock strong { font-weight: 500; color: #b8c0cc; }
+& .m2-hero-clock .m2-clock-bank { color: #e7cc83; }
+& .m2-hero-clock[data-running="true"] .m2-clock-pool { color: #dce7f2; }
+& .m2-hero-clock[data-tone="warning"] .m2-clock-pool { color: #e7cc83; }
+& .m2-hero-clock[data-tone="critical"] .m2-clock-pool { color: #ff827b; }
 & .m2-hero-upgrades {
   display: inline-flex;
   align-items: center;
@@ -3466,6 +3547,19 @@ window.GOA2Mobile?.destroy();
   column-gap: 3px;
   overflow-x: auto;
 }
+& #goa2-m2-summary > article.m2-timed-hero {
+  grid-template-columns:
+    34px minmax(var(--m2-name-min, 70px), 1fr) 45px minmax(var(--m2-piles-width, 48px), max-content)
+    70px 62px;
+}
+& #goa2-m2-summary .m2-summary-clock {
+  width: 34px;
+  min-width: 34px;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+& #goa2-m2-summary .m2-summary-clock[data-tone="warning"] { color: #e7cc83; }
+& #goa2-m2-summary .m2-summary-clock[data-tone="critical"] { color: #ff827b; }
 & #goa2-m2-summary .m2-summary-current-slot {
   width: 70px;
   display: flex;
@@ -4131,6 +4225,16 @@ html:not([data-m2-active]) .m2-choice-launchers {
     padding: 10px;
     gap: 8px;
   }
+  & [data-m2="pause-vote"] {
+    right: calc(var(--m2-nav-width) + 8px) !important;
+    top: calc(var(--m2-head) + 8px) !important;
+    left: auto !important;
+    width: calc(var(--m2-list-width) - 16px) !important;
+  }
+  & [data-m2="match-ready"] {
+    right: var(--m2-nav-width);
+    bottom: var(--m2-offset, 0px);
+  }
   &[data-m2-panel="setup"] [data-m2="setup"] {
     top: var(--m2-head) !important;
     left: auto !important;
@@ -4289,7 +4393,7 @@ html:not([data-m2-active]) .m2-choice-launchers {
   var deckPreferencesKey = "goa2-mobile-deck";
   var style = document.createElement("style");
   style.id = "goa2-m2-style";
-  var inactiveCss = "html:not([data-m2-active]) :is(#goa2-m2-nav,#goa2-m2-close,#goa2-m2-summary,#goa2-m2-details,#goa2-m2-hero-display,#goa2-m2-settings,#goa2-m2-log,.m2-list-card,.m2-text-card,.m2-hero-dashboard,.m2-resolution-info,.m2-hud,.m2-hud-bottom,.m2-planning-actions,.m2-deck-browser,.m2-deck-zoom,.m2-upgrade-browser,.m2-own-colors,.m2-saved-events){display:none!important}";
+  var inactiveCss = "html:not([data-m2-active]) :is(#goa2-m2-nav,#goa2-m2-close,#goa2-m2-summary,#goa2-m2-details,#goa2-m2-hero-display,#goa2-m2-settings,#goa2-m2-log,.m2-list-card,.m2-text-card,.m2-hero-dashboard,.m2-resolution-info,.m2-hud,.m2-hud-bottom,.m2-planning-actions,.m2-deck-browser,.m2-deck-zoom,.m2-upgrade-browser,.m2-own-colors,.m2-saved-events,.m2-hero-clock){display:none!important}";
   style.textContent = inactiveCss + styles_default.replaceAll("&", "html[data-m2-active]");
   document.head.append(style);
 
@@ -4359,7 +4463,6 @@ html:not([data-m2-active]) .m2-choice-launchers {
     ["heroes", "Heroes"],
     ["hand", "Hand"],
     ["deck", "Deck"],
-    ["setup", "Setup"],
     ["log", "Log"],
     ["tools", "Settings"]
   ]) {
@@ -4408,6 +4511,106 @@ html:not([data-m2-active]) .m2-choice-launchers {
     highlightViewedCard("hero");
     heroPanel.replaceChildren();
     delete heroPanel.dataset.key;
+  }
+
+  // src/clocks.js
+  var heroClocks = /* @__PURE__ */ new Map();
+  var clockFields = {
+    PLANNING: ["planning_allowance_ms", "time_bank_ms"],
+    RESOLUTION: ["initiative_bonus_ms", "resolution_allowance_ms", "time_bank_ms"],
+    RESPONSE: ["response_time_ms", "resolution_allowance_ms", "time_bank_ms"],
+    LEVEL_UP: ["upgrade_allowance_ms", "time_bank_ms"]
+  };
+  function clockText(ms) {
+    const value = Math.abs(ms), sign = ms < 0 ? "-" : "";
+    if (value < 1e4) return sign + (value / 1e3).toFixed(1) + "s";
+    const seconds = Math.ceil(value / 1e3);
+    return sign + Math.floor(seconds / 60) + ":" + String(seconds % 60).padStart(2, "0");
+  }
+  function heroClockSummary(id) {
+    return heroClocks.get(id) || null;
+  }
+  function updateHeroClocks(sidebar, header) {
+    heroClocks.clear();
+    const sources2 = Array.from(header?.querySelectorAll(c("clock")) || []);
+    for (const box of sidebar.querySelectorAll('[data-m2="hero"]')) {
+      const hero = componentProp(box, "hero");
+      const name = q(":scope>" + c("name"), box);
+      if (!name || !hero) continue;
+      const source = sources2.find((node) => {
+        const heroes = componentProp(node, "heroes");
+        if (Array.isArray(heroes)) {
+          const siblings = Array.from(node.parentElement.querySelectorAll(":scope>" + c("clock")));
+          const clock2 = componentProp(node, "clock");
+          const shown = clock2?.players ? heroes.filter((h) => clock2.players[h.id]) : heroes;
+          return shown[siblings.indexOf(node)]?.id === hero.id;
+        }
+        return q(":scope>" + c("hero"), node)?.textContent.trim() === hero.name;
+      });
+      const pools = source && q(c("pools"), source);
+      let display = q(".m2-hero-clock", name);
+      if (!pools) {
+        if (display) {
+          extras.delete(display);
+          display.remove();
+        }
+        continue;
+      }
+      const clock = componentProp(source, "clock");
+      const running = clock?.status === "RUNNING" && !!clock.players?.[hero.id]?.running;
+      const tone = ["critical", "warning", "over"].find((t) => source.matches(c(t))) || "";
+      const values = Array.from(pools.children).map((pool) => ({
+        label: q("small", pool)?.textContent || "",
+        value: q("strong", pool)?.textContent || ""
+      }));
+      const player = clock?.players?.[hero.id];
+      const locked = values.some((v) => /^locked$/i.test(v.value));
+      const phase = componentProp(source, "phase") || componentProp(header, "view")?.phase || q(c("phase"), header)?.textContent.trim();
+      const kind = player?.running && clock?.active?.hero_ids?.includes(hero.id) ? clock.active.kind : phase;
+      const fields = clockFields[kind] || ["time_bank_ms"];
+      const field = fields.find((key2) => Number(player?.[key2]) > 0) || "time_bank_ms";
+      const milliseconds = field === "time_bank_ms" ? Number(player?.time_bank_ms || 0) - Number(player?.overrun_ms || 0) : Number(player?.[field]);
+      const fallback = values.find((v) => !/^bank$/i.test(v.label)) || values[0];
+      const text = locked ? "✓" : player && Number.isFinite(Number(player[field])) ? clockText(milliseconds) : fallback?.value || "—";
+      heroClocks.set(hero.id, {
+        text,
+        locked,
+        running,
+        tone,
+        paused: clock?.status === "PAUSED",
+        label: locked ? "Card locked" : (field === "time_bank_ms" ? "Bank " : "Clock ") + text
+      });
+      const key = JSON.stringify([values, source.title, running, tone, clock?.status]);
+      if (display?.dataset.key === key) continue;
+      if (!display) {
+        display = document.createElement("span");
+        display.className = "m2-hero-clock";
+        name.append(display);
+        addExtra(display);
+      }
+      display.dataset.key = key;
+      display.dataset.running = String(running);
+      display.dataset.tone = tone;
+      display.title = source.title + (clock?.status === "PAUSED" ? " · Paused" : "");
+      display.setAttribute("aria-label", values.map((v) => v.label + " " + v.value).join(" · ") + (clock?.status === "PAUSED" ? " · Paused" : ""));
+      display.replaceChildren();
+      const phaseValues = values.filter((v) => !/^bank$/i.test(v.label));
+      const bank = values.find((v) => /^bank$/i.test(v.label));
+      const primary = document.createElement("strong");
+      primary.className = "m2-clock-pool";
+      const phaseFields = fields.filter((key2) => key2 !== "time_bank_ms");
+      const phaseTotal = phaseFields.reduce((sum, key2) => sum + Number(player?.[key2] || 0), 0);
+      primary.textContent = locked ? "-" : phaseFields.length && phaseFields.every((key2) => Number.isFinite(Number(player?.[key2]))) ? clockText(phaseTotal) : phaseValues.map((v) => v.value).join(" + ") || "-";
+      display.append(primary);
+      if (bank) {
+        const separator = document.createElement("span");
+        separator.textContent = "/";
+        const amount = document.createElement("strong");
+        amount.className = "m2-clock-bank";
+        amount.textContent = bank.value;
+        display.append(separator, amount);
+      }
+    }
   }
 
   // src/camera.js
@@ -4763,10 +4966,8 @@ html:not([data-m2-active]) .m2-choice-launchers {
     return content;
   }
   function syncNavigation() {
-    const setupButton = q('[data-mode="setup"]', nav);
     const setupAvailable = !!q('[aria-label="Starting position"]');
-    setupButton.hidden = !setupAvailable;
-    nav.style.gridTemplateColumns = "repeat(" + (setupAvailable ? 6 : 5) + ",minmax(0,1fr))";
+    nav.style.gridTemplateColumns = "repeat(5,minmax(0,1fr))";
     if (!setupAvailable && uiState.panel === "setup") {
       uiState.panel = "";
       root.dataset.m2Panel = "";
@@ -7240,6 +7441,11 @@ html:not([data-m2-active]) .m2-choice-launchers {
       clearDeckState();
       return;
     }
+    for (const entry of entries) {
+      const card = entry.card;
+      if (card.is_facedown && card.name && card.color && card.primary_action)
+        entry.card = { ...card, is_facedown: false };
+    }
     if (!uiState.deckState || uiState.deckState.modal !== modal) {
       clearDeckState();
       const host = document.createElement("section");
@@ -7977,16 +8183,18 @@ html:not([data-m2-active]) .m2-choice-launchers {
       addExtra(host);
     }
     const sources2 = boardControls.length ? [...boardControls].sort((a, b) => Number(/^Undo$/i.test(choiceControlLabel(b))) - Number(/^Undo$/i.test(choiceControlLabel(a)))) : Array.from(board.querySelectorAll("button")).filter(
-      (button) => !button.closest(".m2-choice-launchers") && /^(Options|Setup|Upgrades?)$/i.test(choiceControlLabel(button))
+      (button) => !button.closest(".m2-choice-launchers") && /^(Options|Upgrades?)$/i.test(choiceControlLabel(button))
     );
     for (const button of /* @__PURE__ */ new Set([...host._sources || [], ...document.querySelectorAll("[data-m2-choice-source]")])) {
       if (!sources2.includes(button)) button.removeAttribute("data-m2-choice-source");
     }
     for (const source of sources2) managedAttribute(source, "data-m2-choice-source", "true");
-    const setup = !!q('[data-m2="setup"]');
+    const position = q('[data-m2="setup"] > button');
+    const setup = position ? [position.textContent, position.disabled] : null;
     const key = JSON.stringify([setup, sources2.map((button) => [choiceControlLabel(button), button.disabled])]);
-    if (host._sources?.length === sources2.length && host._sources.every((source, i) => source === sources2[i]) && host.dataset.key === key) return;
+    if (host._sources?.length === sources2.length && host._sources.every((source, i) => source === sources2[i]) && host.dataset.key === key && host._position === position) return;
     host._sources = sources2;
+    host._position = position;
     host.dataset.key = key;
     host.replaceChildren();
     for (const source of sources2) {
@@ -8001,8 +8209,12 @@ html:not([data-m2-active]) .m2-choice-launchers {
     if (setup && !sources2.some((button) => /^Setup$/i.test(choiceControlLabel(button)))) {
       const button = document.createElement("button");
       button.type = "button";
-      button.textContent = "Setup";
-      button.onclick = () => navigate("setup");
+      button.textContent = /^Done/i.test(position.textContent.trim()) ? "Done" : "Position";
+      button.disabled = position.disabled;
+      button.onclick = () => {
+        position.click();
+        navigate("setup");
+      };
       host.append(button);
     }
     host.hidden = !host.children.length;
@@ -8012,21 +8224,8 @@ html:not([data-m2-active]) .m2-choice-launchers {
   function heroDisplayName(name) {
     if (!name) return "";
     const copy = name.cloneNode(true);
-    copy.querySelectorAll(c("items")).forEach((e) => e.remove());
+    copy.querySelectorAll(c("items") + ",.m2-hero-clock").forEach((e) => e.remove());
     return copy.textContent.trim();
-  }
-  function ownSelectedCard(box, hero) {
-    if (box.hasAttribute("data-m2-other")) return null;
-    const sidebar = q('[data-m2="sidebar"]');
-    if (!isCardSelection(componentProp(sidebar, "view")) && !hero?.current_turn_card) return null;
-    const hand = q('[data-m2="hand-list"]');
-    const row = hand && q(c("row") + c("selected"), hand);
-    const selectedId = componentProp(hand, "selectedId") || componentProp(sidebar, "selectedCardId");
-    const card = selectedId ? (hero?.hand || []).find((card2) => card2.id === selectedId) || Array.from(hand?.querySelectorAll(c("row")) || []).map(renderedCard).find((card2) => card2?.id === selectedId) : row && renderedCard(row);
-    return card && !card.is_facedown ? card : null;
-  }
-  function hasLocalSelection(box) {
-    return !box.hasAttribute("data-m2-other") && (!!ownSelectedCard(box, componentProp(box, "hero")) || !!q('[data-m2="hand-list"] ' + c("row") + c("selected")));
   }
   function visibleCurrentCard(box, hero) {
     const current = hero.current_turn_card;
@@ -8037,11 +8236,12 @@ html:not([data-m2-active]) .m2-choice-launchers {
         return { ...current, is_facedown: false };
       const known = [
         ...Array.isArray(hero.deck) ? hero.deck : [],
-        ...hero.hand || []
-      ].find((card) => card.id === current.id && !card.is_facedown);
+        ...hero.hand || [],
+        ...Array.from(q('[data-m2="hand-list"]')?.querySelectorAll(c("row")) || []).map(renderedCard)
+      ].find((card) => card?.id === current.id && !card.is_facedown);
       if (known) return { ...known, state: current.state, is_facedown: false };
     }
-    return ownSelectedCard(box, hero) || current || null;
+    return current || null;
   }
   function isCardSelection(view) {
     return /^PLANNING$/i.test(view?.phase || q('[data-m2="header"] ' + c("phase"))?.textContent || "");
@@ -8086,13 +8286,11 @@ html:not([data-m2-active]) .m2-choice-launchers {
     const handDots = Array.from(box.querySelectorAll(c("handColorDot") + ",.m2-own-colors i")).map(
       (dot) => ({ color: dot.style.backgroundColor, label: dot.title })
     );
-    const locallySelected = hasLocalSelection(box);
     const planning = isCardSelection(view);
     const currentCard = visibleCurrentCard(box, hero);
     const key = JSON.stringify([
       currentCard,
       hero.hand,
-      locallySelected,
       hero.level,
       hero.gold,
       handDots,
@@ -8234,7 +8432,7 @@ html:not([data-m2-active]) .m2-choice-launchers {
       const status = document.createElement("span");
       if (planning) {
         status.className = "m2-selection-status";
-        const selected = !!hero.current_turn_card || locallySelected;
+        const selected = !!hero.current_turn_card;
         status.textContent = selected ? hero.can_commit_second_card ? "Selected · choosing second" : "Selected" : "Selecting";
         status.setAttribute("aria-label", status.textContent);
         if (!selected) {
@@ -8671,7 +8869,14 @@ html:not([data-m2-active]) .m2-choice-launchers {
       const turn = document.createElement("span");
       turn.className = "m2-summary-turn";
       let status;
-      if (h.resolution) {
+      if (h.clock && (!h.resolving || h.clock.running)) {
+        row.classList.add("m2-timed-hero");
+        turn.classList.add("m2-summary-clock");
+        turn.textContent = h.clock.text;
+        turn.dataset.tone = h.clock.tone;
+        turn.dataset.running = String(h.clock.running);
+        status = h.clock.label + (h.clock.paused ? " · Paused" : "");
+      } else if (h.resolution) {
         const order = document.createElement("b");
         order.textContent = h.resolution.current ? "NOW" : h.resolution.order + ".";
         turn.append(order, cardSymbol("INITIATIVE", h.resolution.initiative));
@@ -9731,6 +9936,13 @@ html:not([data-m2-active]) .m2-choice-launchers {
     deckUpdate(upgradeRequest);
     deckPaint();
     tag(q('[aria-label="Starting position"]'), "setup");
+    for (const banner of document.querySelectorAll(c("banner"))) {
+      const proposal = componentProp(banner, "proposal");
+      const resolution = componentProp(banner, "resolution");
+      if (proposal?.family === "pause" || resolution?.family === "pause") tag(banner, "pause-vote");
+      else if (banner.getAttribute("data-m2") === "pause-vote") banner.removeAttribute("data-m2");
+    }
+    tag(q("#ready-title")?.closest('[role="dialog"]'), "match-ready");
     tag(q(c("gameToolsRow")), "tools");
     updateSettings();
     updateBoardRotation();
@@ -9749,6 +9961,7 @@ html:not([data-m2-active]) .m2-choice-launchers {
         if (/^Hand(?:\s|$)/i.test(label.textContent.trim())) tag(label.parentElement, "hand-list");
       }
       updateOwnColors(sidebar);
+      updateHeroClocks(sidebar, header);
       const publicView = componentProp(sidebar, "view");
       const heroes = Array.from(sidebar.querySelectorAll('[data-m2="hero"]')).map((box) => {
         updateHeroDashboard(box, publicView, null, upgradeRequest);
@@ -9788,7 +10001,9 @@ html:not([data-m2-active]) .m2-choice-launchers {
           upgrading: /^LEVEL[_ ]UP$/i.test(publicView?.phase || ""),
           upgradeRemaining: remainingUpgrades(upgradeRequest, hero?.id),
           planning: /^PLANNING$/i.test(publicView?.phase || ""),
-          committed: !!hero?.current_turn_card || hasLocalSelection(box),
+          committed: !!hero?.current_turn_card,
+          clock: heroClockSummary(hero?.id),
+          resolving,
           upgrades: hero?.items || {},
           cardPiles,
           done,
@@ -9916,7 +10131,7 @@ html:not([data-m2-active]) .m2-choice-launchers {
   }
   on(media, "change", schedule);
   window.GOA2Mobile2D = {
-    version: "1.0.6",
+    version: "1.1.0",
     destroy() {
       flushEventHistory();
       uiState.dead = true;

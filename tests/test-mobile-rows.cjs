@@ -59,7 +59,7 @@ setTimeout(() => {
   try {
     assert(row.classList.contains('m2-adapted-row'));
     assert.equal(row.querySelectorAll('.m2-list-card').length, 1);
-    assert(!doc.querySelector('[data-mode="setup"]').hidden);
+    assert(!doc.querySelector('[data-mode="setup"]'));
     w.GOA2Mobile2D.destroy();
     assert(!doc.querySelector('.m2-list-card'));
     assert(!row.classList.contains('m2-adapted-row'));

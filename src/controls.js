@@ -103,16 +103,18 @@ function updateChoiceLaunchers(boardControls = []) {
   }
   const sources = boardControls.length ? [...boardControls].sort((a, b) =>
     Number(/^Undo$/i.test(choiceControlLabel(b))) - Number(/^Undo$/i.test(choiceControlLabel(a)))) : Array.from(board.querySelectorAll('button')).filter(button =>
-    !button.closest('.m2-choice-launchers') && /^(Options|Setup|Upgrades?)$/i.test(choiceControlLabel(button))
+    !button.closest('.m2-choice-launchers') && /^(Options|Upgrades?)$/i.test(choiceControlLabel(button))
   );
   for (const button of new Set([...(host._sources || []), ...document.querySelectorAll('[data-m2-choice-source]')])) {
     if (!sources.includes(button)) button.removeAttribute('data-m2-choice-source');
   }
   for (const source of sources) managedAttribute(source, 'data-m2-choice-source', 'true');
-  const setup = !!q('[data-m2="setup"]');
+  const position = q('[data-m2="setup"] > button');
+  const setup = position ? [position.textContent, position.disabled] : null;
   const key = JSON.stringify([setup, sources.map(button => [choiceControlLabel(button), button.disabled])]);
-  if (host._sources?.length === sources.length && host._sources.every((source, i) => source === sources[i]) && host.dataset.key === key) return;
+  if (host._sources?.length === sources.length && host._sources.every((source, i) => source === sources[i]) && host.dataset.key === key && host._position === position) return;
   host._sources = sources;
+  host._position = position;
   host.dataset.key = key;
   host.replaceChildren();
   for (const source of sources) {
@@ -127,8 +129,12 @@ function updateChoiceLaunchers(boardControls = []) {
   if (setup && !sources.some(button => /^Setup$/i.test(choiceControlLabel(button)))) {
     const button = document.createElement('button');
     button.type = 'button';
-    button.textContent = 'Setup';
-    button.onclick = () => navigate('setup');
+    button.textContent = /^Done/i.test(position.textContent.trim()) ? 'Done' : 'Position';
+    button.disabled = position.disabled;
+    button.onclick = () => {
+      position.click();
+      navigate('setup');
+    };
     host.append(button);
   }
   host.hidden = !host.children.length;

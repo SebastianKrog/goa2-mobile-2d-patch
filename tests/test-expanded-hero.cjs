@@ -119,11 +119,9 @@ try {
   side.__reactFiber$test.memoizedProps.selectedCardId = 'Native selected';
   heroes[0].current_turn_card = null;
   w.refreshTest();
-  assert.equal(
-    doc.querySelector('#own .m2-current-card-mini .m2-list-name').textContent,
-    'Native selected',
-  );
-  assert(!doc.querySelector('#own .m2-selection-status'));
+  assert(!doc.querySelector('#own .m2-current-card-mini'), 'highlight is not a commitment');
+  assert.equal(doc.querySelector('#own .m2-selection-status').textContent, 'Selecting...');
+  assert(doc.querySelector('.m2-summary-turn .m2-selecting-dots'), 'compact list waits for commit');
   assert(
     !doc.querySelector('#other .m2-current-card-mini'),
     'native own selection never applies to opponents',
@@ -137,8 +135,8 @@ try {
   hand.__reactFiber$test = { memoizedProps: { selectedId: 'Native selected' } };
   w.refreshTest();
   assert(
-    doc.querySelector('#own .m2-current-card-mini'),
-    'CardList selection prop is also supported',
+    !doc.querySelector('#own .m2-current-card-mini'),
+    'CardList highlight does not show a current card',
   );
   // The deployed commit handler clears selection immediately. The own current
   // card can still carry a facedown STATE alongside full, player-visible values.

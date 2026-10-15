@@ -19,7 +19,7 @@ assert.equal(doc.querySelector('[data-m2-fraction]').getAttribute('data-m2-fract
 assert.equal(doc.querySelectorAll('.m2-hand-actions button').length, 0);
 assert(doc.querySelector('[data-m2="deck"]'));
 assert(doc.querySelector('[data-m2="commit"]'));
-for (const name of ['hand', 'heroes', 'setup', 'tools']) {
+for (const name of ['hand', 'heroes', 'tools']) {
   doc.querySelector(`[data-mode="${name}"]`).click();
   assert.equal(
     doc.documentElement.dataset[['setup', 'tools'].includes(name) ? 'm2Panel' : 'm2Mode'],

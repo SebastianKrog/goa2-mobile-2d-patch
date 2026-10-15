@@ -138,12 +138,10 @@ function navigationShortcut(content, key, label) {
   content.onclick = event => { event.stopPropagation(); navigate(key); };
   return content;
 }
-// Reflect the actual open panel and show Setup only while starting-position UI exists.
+// Reflect the actual open panel; starting-position controls use the Board launcher.
 function syncNavigation() {
-  const setupButton = q('[data-mode="setup"]', nav);
   const setupAvailable = !!q('[aria-label="Starting position"]');
-  setupButton.hidden = !setupAvailable;
-  nav.style.gridTemplateColumns = 'repeat(' + (setupAvailable ? 6 : 5) + ',minmax(0,1fr))';
+  nav.style.gridTemplateColumns = 'repeat(5,minmax(0,1fr))';
   if (!setupAvailable && uiState.panel === 'setup') {
     uiState.panel = '';
     root.dataset.m2Panel = '';

@@ -651,3 +651,32 @@ test('all viewers reference the same height, including the short-screen rule', (
   assert.equal(short.cssRules[0].style.getPropertyValue('--m2-card-display-height'), '164.8px');
   assert(!d.getElementById('goa2-m2-style').textContent.includes('--m2-deck-preview-height'));
 });
+
+test('Deck shows known committed Silver details without changing native facedown state', (t) => {
+  const { w, d, hero, cards, node, option } = setup(t);
+  const silver = cards.find((card) => card.id === 'SILVER');
+  Object.assign(silver, {
+    primary_action: 'SKILL',
+    initiative: 4,
+    effect_text: 'Silver rules.',
+    is_facedown: true,
+  });
+  hero.current_turn_card = silver;
+  w.testUI.refresh();
+  assert(node('SILVER').querySelector('.m2-symbol'), 'Tree shows supplied printed values');
+  node('SILVER').click();
+  assert.equal(d.querySelector('.m2-deck-preview .m2-card-top b').textContent, 'SILVER');
+  option('List').click();
+  const row = [...d.querySelectorAll('.m2-deck-compact .m2-deck-card')].find(
+    (button) => button.getAttribute('aria-label') === 'View SILVER',
+  );
+  assert.equal(row.querySelector('.m2-list-name').textContent, 'SILVER');
+  assert.equal(silver.is_facedown, true, 'native card is never mutated');
+  silver.primary_action = undefined;
+  option('Tree').click();
+  assert.equal(
+    node('SILVER').querySelectorAll('.m2-symbol').length,
+    0,
+    'an unknown facedown placeholder remains hidden',
+  );
+});

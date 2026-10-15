@@ -1,3 +1,4 @@
+import { heroClockSummary, updateHeroClocks } from './clocks.js';
 import { clearBoardTexture, updateBoardTexture } from './board-texture.js';
 import { clearCardHighlights, highlightViewedCard } from './card-highlight.js';
 import { clearActionChoices, updateActionChoices } from './action-choices.js';
@@ -12,7 +13,6 @@ import { currentUpgradeRequest, remainingUpgrades } from './game-input.js';
 import { clearMobileStatus, updateMobileHeader } from './header.js';
 import {
   cardIsActive,
-  hasLocalSelection,
   heroDisplayName,
   heroTurnCard,
   resolutionEntries,
@@ -180,6 +180,13 @@ function refresh() {
   deckUpdate(upgradeRequest);
   deckPaint();
   tag(q('[aria-label="Starting position"]'), 'setup');
+  for (const banner of document.querySelectorAll(c('banner'))) {
+    const proposal = componentProp(banner, 'proposal');
+    const resolution = componentProp(banner, 'resolution');
+    if (proposal?.family === 'pause' || resolution?.family === 'pause') tag(banner, 'pause-vote');
+    else if (banner.getAttribute('data-m2') === 'pause-vote') banner.removeAttribute('data-m2');
+  }
+  tag(q('#ready-title')?.closest('[role="dialog"]'), 'match-ready');
   tag(q(c('gameToolsRow')), 'tools');
   updateSettings();
   updateBoardRotation();
@@ -198,6 +205,7 @@ function refresh() {
       if (/^Hand(?:\s|$)/i.test(label.textContent.trim())) tag(label.parentElement, 'hand-list');
     }
     updateOwnColors(sidebar);
+    updateHeroClocks(sidebar, header);
     const publicView = componentProp(sidebar, 'view');
     const heroes = Array.from(sidebar.querySelectorAll('[data-m2="hero"]')).map((box) => {
       updateHeroDashboard(box, publicView, null, upgradeRequest);
@@ -252,7 +260,9 @@ function refresh() {
         upgrading: /^LEVEL[_ ]UP$/i.test(publicView?.phase || ''),
         upgradeRemaining: remainingUpgrades(upgradeRequest, hero?.id),
         planning: /^PLANNING$/i.test(publicView?.phase || ''),
-        committed: !!hero?.current_turn_card || hasLocalSelection(box),
+        committed: !!hero?.current_turn_card,
+        clock: heroClockSummary(hero?.id),
+        resolving,
         upgrades: hero?.items || {},
         cardPiles,
         done,
@@ -402,7 +412,7 @@ on(media, 'change', schedule);
 
 // Public teardown for console installs and upgrades: release observers, timers, and DOM changes.
 window.GOA2Mobile2D = {
-  version: '1.0.6',
+  version: '1.1.0',
   destroy() {
     flushEventHistory();
     uiState.dead = true;

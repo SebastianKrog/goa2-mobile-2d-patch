@@ -146,6 +146,13 @@ function deckUpdate(upgradeRequest) {
     clearDeckState();
     return;
   } // Retain native deck if framework changes.
+  // Deck is a catalog of printed cards, not a display of commitment state.
+  // Only supplied definitions can be shown; unknown placeholders stay hidden.
+  for (const entry of entries) {
+    const card = entry.card;
+    if (card.is_facedown && card.name && card.color && card.primary_action)
+      entry.card = { ...card, is_facedown: false };
+  }
   if (!uiState.deckState || uiState.deckState.modal !== modal) {
     clearDeckState();
     const host = document.createElement('section');

@@ -56,10 +56,11 @@ try {
   assert(d.querySelector('.m2-choice-launchers').hidden);
   const setup = d.createElement('div');
   setup.setAttribute('aria-label', 'Starting position');
+  setup.innerHTML = '<button>Change starting position</button>';
   d.body.append(setup);
   w.testRefresh();
   const setupButton = d.querySelector('.m2-choice-launchers button');
-  assert.equal(setupButton.textContent, 'Setup');
+  assert.equal(setupButton.textContent, 'Position');
   setupButton.click();
   assert.equal(d.documentElement.dataset.m2Panel, 'setup');
   w.GOA2Mobile2D.destroy();

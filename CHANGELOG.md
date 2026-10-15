@@ -2,6 +2,14 @@
 
 Published releases, newest first.
 
+## 1.1.0
+
+- Show timed-match clocks after hero names as phase allowance / bank, using the native synchronized values. Replace locked planning clocks with a dash.
+- Show each hero's relevant countdown in the compact Board status slot, switching to the bank once the phase allowance is exhausted. Use a checkmark for locked cards; during resolution, retain turn order and completion marks unless a timer is running.
+- Replace the Setup footer tab with a Position button on Board that opens native starting-position adjustment directly.
+- Fit pause votes and paused-match readiness dialogs into the mobile layout while preserving native controls.
+- Show known committed Silver card details in Deck instead of a facedown placeholder. Hero views display only committed cards, not a highlighted Hand selection.
+
 ## 1.0.6
 
 - Give active H/P/D dots a slightly larger breathing glow with a 10% minimum intensity, and breathe their colour to 20% lighter at the peak. Preserve reduced-motion behaviour.

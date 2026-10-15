@@ -139,7 +139,14 @@ function renderSummary(heroes, upgradeRequest = null) {
     const turn = document.createElement('span');
     turn.className = 'm2-summary-turn';
     let status;
-    if (h.resolution) {
+    if (h.clock && (!h.resolving || h.clock.running)) {
+      row.classList.add('m2-timed-hero');
+      turn.classList.add('m2-summary-clock');
+      turn.textContent = h.clock.text;
+      turn.dataset.tone = h.clock.tone;
+      turn.dataset.running = String(h.clock.running);
+      status = h.clock.label + (h.clock.paused ? ' · Paused' : '');
+    } else if (h.resolution) {
       const order = document.createElement('b');
       order.textContent = h.resolution.current ? 'NOW' : h.resolution.order + '.';
       turn.append(order, cardSymbol('INITIATIVE', h.resolution.initiative));

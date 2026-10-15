@@ -108,7 +108,12 @@ function setup(t, initialWidth = 844, initialHeight = 360, initialCoarse = true)
   }
   screen();
   const css = (selector) => w.getComputedStyle(d.querySelector(selector));
-  const navigate = (mode) => d.querySelector('#goa2-m2-nav [data-mode="' + mode + '"]').click();
+  const navigate = (mode) =>
+    mode === 'setup'
+      ? [...d.querySelectorAll('.m2-choice-launchers button')]
+          .find((b) => /^(Position|Done)$/.test(b.textContent))
+          .click()
+      : d.querySelector('#goa2-m2-nav [data-mode="' + mode + '"]').click();
   return {
     ...fixture,
     screen,

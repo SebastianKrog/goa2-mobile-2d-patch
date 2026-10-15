@@ -23,30 +23,8 @@ import { addExtra, clearHeroCard, heroPanel } from './ui.js';
 function heroDisplayName(name) {
   if (!name) return '';
   const copy = name.cloneNode(true);
-  copy.querySelectorAll(c('items')).forEach((e) => e.remove());
+  copy.querySelectorAll(c('items') + ',.m2-hero-clock').forEach((e) => e.remove());
   return copy.textContent.trim();
-}
-// Read the own selection from the native CardList/Sidebar props as well as the
-// highlighted row. Hidden panels can stop painting selection classes, but React
-// still owns the selected ID. Never apply this fallback to an opponent.
-function ownSelectedCard(box, hero) {
-  if (box.hasAttribute('data-m2-other')) return null;
-  const sidebar = q('[data-m2="sidebar"]');
-  if (!isCardSelection(componentProp(sidebar, 'view')) && !hero?.current_turn_card) return null;
-  const hand = q('[data-m2="hand-list"]');
-  const row = hand && q(c('row') + c('selected'), hand);
-  const selectedId = componentProp(hand, 'selectedId') || componentProp(sidebar, 'selectedCardId');
-  const card = selectedId
-    ? (hero?.hand || []).find(card => card.id === selectedId) ||
-      Array.from(hand?.querySelectorAll(c('row')) || []).map(renderedCard).find(card => card?.id === selectedId)
-    : row && renderedCard(row);
-  return card && !card.is_facedown ? card : null;
-}
-function hasLocalSelection(box) {
-  return !box.hasAttribute('data-m2-other') && (
-    !!ownSelectedCard(box, componentProp(box, 'hero')) ||
-    !!q('[data-m2="hand-list"] ' + c('row') + c('selected'))
-  );
 }
 // A facedown flag also describes the own player's committed card state. The
 // native client clears selectedCardId on commit, so the hand-row fallback alone
@@ -62,10 +40,11 @@ function visibleCurrentCard(box, hero) {
     const known = [
       ...(Array.isArray(hero.deck) ? hero.deck : []),
       ...(hero.hand || []),
-    ].find(card => card.id === current.id && !card.is_facedown);
+      ...Array.from(q('[data-m2="hand-list"]')?.querySelectorAll(c('row')) || []).map(renderedCard),
+    ].find(card => card?.id === current.id && !card.is_facedown);
     if (known) return { ...known, state: current.state, is_facedown: false };
   }
-  return ownSelectedCard(box, hero) || current || null;
+  return current || null;
 }
 function isCardSelection(view) {
   return /^PLANNING$/i.test(view?.phase || q('[data-m2="header"] ' + c('phase'))?.textContent || '');
@@ -125,14 +104,12 @@ function updateHeroDashboard(box, view, suppliedHero = null, upgradeRequest = nu
   const handDots = Array.from(box.querySelectorAll(c('handColorDot') + ',.m2-own-colors i')).map(
     (dot) => ({ color: dot.style.backgroundColor, label: dot.title }),
   );
-  const locallySelected = hasLocalSelection(box);
   const planning = isCardSelection(view);
   const currentCard = visibleCurrentCard(box, hero);
   // One compact entry is shared by Heroes, Hand and Board focus in every phase.
   const key = JSON.stringify([
     currentCard,
     hero.hand,
-    locallySelected,
     hero.level,
     hero.gold,
     handDots,
@@ -281,7 +258,7 @@ function updateHeroDashboard(box, view, suppliedHero = null, upgradeRequest = nu
     const status = document.createElement('span');
     if (planning) {
       status.className = 'm2-selection-status';
-      const selected = !!hero.current_turn_card || locallySelected;
+      const selected = !!hero.current_turn_card;
       status.textContent = selected
         ? hero.can_commit_second_card ? 'Selected · choosing second' : 'Selected'
         : 'Selecting';
@@ -465,7 +442,6 @@ function resolutionEntries() {
 
 export {
   cardIsActive,
-  hasLocalSelection,
   heroDisplayName,
   heroTurnCard,
   inspectHeroCard,

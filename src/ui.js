@@ -10,7 +10,6 @@ for (const [key, label] of [
   ['heroes', 'Heroes'],
   ['hand', 'Hand'],
   ['deck', 'Deck'],
-  ['setup', 'Setup'],
   ['log', 'Log'],
   ['tools', 'Settings'],
 ]) {
