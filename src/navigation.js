@@ -139,8 +139,18 @@ function navigationShortcut(content, key, label) {
   return content;
 }
 // Reflect the actual open panel; starting-position controls use the Board launcher.
+let setupWasChoosing = false;
 function syncNavigation() {
-  const setupAvailable = !!q('[aria-label="Starting position"]');
+  const setup = q('[aria-label="Starting position"]');
+  const setupAvailable = !!setup;
+  const suppliedChoosing = componentProp(setup, 'choosing');
+  const choosing = typeof suppliedChoosing === 'boolean' ? suppliedChoosing
+    : !!setup && /^Done/i.test(q(':scope > button', setup)?.textContent.trim() || '');
+  if (uiState.panel === 'setup' && setupWasChoosing && !choosing) {
+    uiState.panel = '';
+    root.dataset.m2Panel = '';
+  }
+  setupWasChoosing = choosing;
   nav.style.gridTemplateColumns = 'repeat(5,minmax(0,1fr))';
   if (!setupAvailable && uiState.panel === 'setup') {
     uiState.panel = '';
@@ -189,4 +199,4 @@ on(document, 'keydown', (e) => {
   }
 });
 
-export { clearMenuHistory, dismiss, navigate, navigationShortcut, setDeckOpen, syncDeckMount, syncNavigation };
+export { syncMenuHistory, clearMenuHistory, dismiss, navigate, navigationShortcut, setDeckOpen, syncDeckMount, syncNavigation };

@@ -2,6 +2,15 @@
 
 Published releases, newest first.
 
+## 1.1.3
+
+- Preserve compact-row scroll and keyboard focus while countdowns update. Reconcile clock text, urgency and running state in place, including transitions back to resolution order.
+- Synchronize Position/Done with native starting-position adjustment, including Back and native Done. Retire mobile navigation history entries when the layout deactivates.
+- Show both of Emmitt's committed cards: two initiative-bearing Micro cards in Heroes and two Nano cards in the compact Board list, each centered in its own half. Preserve independent inspection, upgrades, active-effect highlights and hidden-opponent boundaries; handle either committed slot remaining after retrieval.
+- Match the skill/defense artwork's visual size to the shield without enlarging its value overlay.
+- Use initiative-bearing Micro cards without an upgrade cap for Tier 1 Deck cards and basics; retain item-grant slots on Tier 2/3 cards.
+- Expand regression coverage for timed navigation, desktop/mobile transitions, Emmitt and Gydion data boundaries, and two-card commitment transitions.
+
 ## 1.1.2
 
 - Present discard decisions as Hand-style cards with a separate confirmation button, preserving native submission and Board-peek controls.

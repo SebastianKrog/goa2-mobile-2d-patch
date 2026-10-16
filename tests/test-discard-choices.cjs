@@ -185,3 +185,28 @@ test('printed primary and modifier signs apply independently across card views',
   assert.equal(api.primaryCardValue(ordinary), 4);
   assert.equal(api.modifierCardValue(ordinary, 'RANGE'), 2);
 });
+
+test('hybrid defense artwork matches shield sizing without scaling values or card slots', (t) => {
+  const { w, d } = setup(t);
+  const hybrid = w.testUI.nanoCard(defense);
+  const shield = w.testUI.nanoCard({ ...defense, primary_action: 'DEFENSE', effect_text: '' });
+  d.body.append(hybrid, shield);
+  const icon = hybrid.querySelector('img');
+  assert.equal(w.getComputedStyle(icon).transform, 'scale(1.3)');
+  assert.equal(w.getComputedStyle(hybrid).width, w.getComputedStyle(shield).width);
+  assert.equal(
+    w.getComputedStyle(icon).width,
+    w.getComputedStyle(shield.querySelector('img')).width,
+  );
+  assert.equal(
+    w.getComputedStyle(hybrid.querySelector('.m2-symbol-value')).transform,
+    w.getComputedStyle(shield.querySelector('.m2-symbol-value')).transform,
+    'the number overlay is not enlarged',
+  );
+  const full = w.testUI.textCard(defense, 'deck');
+  d.body.append(full);
+  assert.equal(
+    w.getComputedStyle(full.querySelector('.m2-defense-skill img')).transform,
+    'scale(1.05)',
+  );
+});

@@ -1,7 +1,7 @@
 # Regression coverage
 
 Run `npm ci` once, then `npm test`. The command rebuilds the userscript and runs
-all 46 `test-*.cjs` files in separate Node processes, each with a 30-second timeout.
+all `test-*.cjs` files in separate Node processes, each with a 30-second timeout.
 Failures retain their assertion stacks; the runner lists failed filenames at the end.
 
 To investigate one file, build first and run it directly:
@@ -80,3 +80,18 @@ sound playback, fullscreen and reload application remain manual checks.
 
 [`fixtures/goa2-mobile-2d-v0.14.2.txt`](fixtures/goa2-mobile-2d-v0.14.2.txt) is a frozen
 baseline for painter command comparison. It must not be rebuilt from current source.
+
+## Cross-feature transitions
+
+[test-review-transitions.cjs](test-review-transitions.cjs) covers clock ticks with
+horizontal scroll and keyboard focus, phase-clock/resolution-marker transitions,
+Position → Back → Done, native Done, desktop deactivation with browser Back, and
+rapid reactivation while history cleanup is pending. Emmitt and Gydion fixtures
+exercise inspection, timed navigation and layout changes while preserving their
+special-card data and hidden-opponent boundaries. These lifecycle checks do not
+replace the planned spell/marker presentation work in the roadmap.
+
+[test-two-committed.cjs](test-two-committed.cjs) covers Emmitt's single/paired
+commitment transitions, either slot surviving retrieval, Micro/Nano sizing,
+independent inspection and active effects, own-card recovery without changing
+native visibility, and masked opponent slots through reveal.

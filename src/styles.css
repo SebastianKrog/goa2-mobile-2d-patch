@@ -2236,11 +2236,7 @@
   justify-items: center;
   margin: 10px auto 0;
 }
-/* Basics have no granted item. Reclaim that empty cap to keep the U beside them. */
-& .m2-tree-basics .m2-micro-grant:empty {
-  display: none;
-}
-& .m2-tree-basics .m2-micro-extended {
+& .m2-tree-basics .m2-micro-extended.m2-micro-no-grant {
   width: 100%;
 }
 & .m2-tree-basics .m2-mini-current.m2-micro-tree {
@@ -4404,4 +4400,38 @@ html:not([data-m2-active]) .m2-choice-launchers {
 }
 & .m2-discard-confirm:disabled {
   opacity: 0.45;
+}
+
+/* Split the existing current-card slot without changing its dimensions. */
+& .m2-current-card-pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: center;
+  justify-items: center;
+  flex: 1 1 0;
+  width: 100%;
+  min-width: 0;
+  height: 24px;
+}
+& .m2-current-card-pair > .m2-micro-button {
+  justify-self: center;
+  height: 24px;
+}
+
+/* Compensate for the hybrid artwork's padding, particularly in tall Nano cells.
+   Scale artwork only: value overlays and layout geometry stay unchanged. */
+& .m2-defense-skill > img {
+  transform: scale(1.05);
+}
+& :is(.m2-nano-card, .m2-mini-current.m2-micro-hero) .m2-defense-skill > img {
+  transform: scale(1.3);
+}
+& .m2-mini-current.m2-micro-tree .m2-defense-skill > img {
+  transform: scale(1.05);
+}
+& .m2-micro-extended.m2-micro-no-grant {
+  width: 112px;
+}
+& .m2-deck-tree .m2-tree-card[data-tier="1"] {
+  width: 116px;
 }

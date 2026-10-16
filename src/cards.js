@@ -28,7 +28,7 @@ const actionNames = {
 // zero is still a value here. Callers decide whether a stat is relevant.
 function cardSymbol(key, value) {
   const el = document.createElement('span');
-  el.className = 'm2-symbol';
+  el.className = 'm2-symbol' + (key === 'DEFENSE_SKILL' ? ' m2-defense-skill' : '');
   el.title = actionNames[key] || key.toLowerCase();
   const img = document.createElement('img');
   img.src = '/icons/' + key.toLowerCase().replaceAll('_', '-') + '.png';
@@ -180,7 +180,7 @@ function cardGrantedItem(card, cards = []) {
 }
 // Six printed-stat slots: clear initiative/item caps around four colored stats.
 // Ultimates use a compact three-cell Micro with a centered U instead.
-function extendedMicroCard(card, grantedItem) {
+function extendedMicroCard(card, grantedItem, items = {}, includeGrant = null) {
   if (card && (card.color === 'PURPLE' || card.tier === 'IV')) {
     const mini = miniatureCard(card);
     mini.classList.add('m2-micro-ultimate');
@@ -194,12 +194,16 @@ function extendedMicroCard(card, grantedItem) {
   }
   const extended = document.createElement('span');
   extended.className = 'm2-micro-extended';
+  const grantSlot = includeGrant ?? (!card?.is_facedown &&
+    /^(II|III|2|3)$/.test(String(card?.tier || '').toUpperCase()) &&
+    !['GOLD', 'SILVER'].includes(card?.color));
+  extended.classList.toggle('m2-micro-no-grant', !grantSlot);
   const visible = card && !card.is_facedown;
   extended.title = visible ? card.name : 'Hidden card';
   const initiative = document.createElement('span');
   initiative.className = 'm2-micro-cap';
   if (visible && card.initiative != null)
-    initiative.append(cardSymbol('INITIATIVE', card.initiative));
+    initiative.append(upgradedSymbol(items, 'INITIATIVE', card.initiative));
   const upgrade = document.createElement('span');
   upgrade.className = 'm2-micro-cap m2-micro-grant';
   if (visible && grantedItem) {
@@ -208,9 +212,10 @@ function extendedMicroCard(card, grantedItem) {
     upgrade.title = 'Gives ' + stat.toLowerCase() + ' +1';
     upgrade.setAttribute('aria-label', upgrade.title);
   }
-  const micro = miniatureCard(card, {}, true);
+  const micro = miniatureCard(card, items, true);
   micro.classList.add('m2-micro-tree');
-  extended.append(initiative, micro, upgrade);
+  extended.append(initiative, micro);
+  if (grantSlot) extended.append(upgrade);
   return extended;
 }
 // Discards need only their defense stat. Hidden cards never expose icon values.
@@ -279,6 +284,7 @@ function cardHero(card, source) {
     if (!hero) continue;
     const cards = [
       hero.current_turn_card,
+      hero.extra_turn_card,
       hero.ultimate_card,
       ...['hand', 'played_cards', 'discard_pile', 'deck', 'cast_spells'].flatMap((key) =>
         Array.isArray(hero[key]) ? hero[key] : [],

@@ -125,7 +125,12 @@ test('Tree uses six printed slots, correct card grants, and standard/alternate t
   assert.equal(micro.querySelector('.m2-micro-cap .m2-symbol-value').textContent, '6');
   assert(micro.querySelector('.m2-micro-grant img').src.endsWith('/defense.png'));
   assert(node('RED-II-b').querySelector('.m2-micro-grant img').src.endsWith('/attack.png'));
-  assert(!node('RED-I-a').querySelector('.m2-micro-grant img'));
+  assert.equal(node('RED-I-a').querySelector('.m2-micro-grant'), null);
+  assert.equal(w.getComputedStyle(node('RED-I-a')).width, '116px');
+  assert.equal(
+    w.getComputedStyle(node('RED-I-a').querySelector('.m2-micro-extended')).width,
+    '112px',
+  );
   assert.equal(micro.querySelector('.m2-micro-grant .m2-symbol-value').textContent, '+');
   assert.equal(w.getComputedStyle(micro).width, '132px');
   assert.equal(w.getComputedStyle(micro.children[0]).backgroundColor, 'rgba(0, 0, 0, 0)');
@@ -460,7 +465,7 @@ test('Preview centres its label, icons and Reset within one row; basics keep a c
   for (const card of [...basics.children].filter(
     (card) => !card.classList.contains('m2-tree-ultimate'),
   )) {
-    assert.equal(w.getComputedStyle(card.querySelector('.m2-micro-grant')).display, 'none');
+    assert.equal(card.querySelector('.m2-micro-grant'), null);
     assert.equal(w.getComputedStyle(card.querySelector('.m2-micro-extended')).width, '100%');
     assert.equal(w.getComputedStyle(card.querySelector('.m2-micro-tree')).minWidth, '0px');
   }

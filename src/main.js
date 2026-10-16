@@ -14,6 +14,7 @@ import { clearMobileStatus, updateMobileHeader } from './header.js';
 import {
   cardIsActive,
   heroDisplayName,
+  heroCommittedCards,
   heroTurnCard,
   resolutionEntries,
   updateHeroCardDisplay,
@@ -23,7 +24,7 @@ import {
 } from './heroes.js';
 import { eventHistoryTimer, flushEventHistory, updateEventHistory } from './history.js';
 import { cancelDecisionHistory } from './log.js';
-import { clearMenuHistory, syncDeckMount, syncNavigation } from './navigation.js';
+import { clearMenuHistory, syncDeckMount, syncNavigation, syncMenuHistory } from './navigation.js';
 import { committedFiberCache, componentProp } from './react.js';
 import {
   ac,
@@ -87,6 +88,7 @@ function refresh() {
     deckUpdate(null);
     for (const box of document.querySelectorAll('[data-m2="hero"]'))
       box.style.removeProperty('order');
+    syncMenuHistory();
     return;
   }
   if (header) {
@@ -255,12 +257,15 @@ function refresh() {
         level: hero?.level,
         gold: hero?.gold,
         currentCard: hero ? heroTurnCard(box, hero, publicView) : null,
+        committedCards: hero ? heroCommittedCards(box, hero).map(card => ({
+          card, active: cardIsActive(card, publicView),
+        })) : [],
         currentActive: hero ? cardIsActive(heroTurnCard(box, hero, publicView), publicView) : false,
         offboard,
         upgrading: /^LEVEL[_ ]UP$/i.test(publicView?.phase || ''),
         upgradeRemaining: remainingUpgrades(upgradeRequest, hero?.id),
         planning: /^PLANNING$/i.test(publicView?.phase || ''),
-        committed: !!hero?.current_turn_card,
+        committed: !!(hero?.current_turn_card || hero?.extra_turn_card),
         clock: heroClockSummary(hero?.id),
         resolving,
         upgrades: hero?.items || {},
@@ -412,7 +417,7 @@ on(media, 'change', schedule);
 
 // Public teardown for console installs and upgrades: release observers, timers, and DOM changes.
 window.GOA2Mobile2D = {
-  version: '1.1.2',
+  version: '1.1.3',
   destroy() {
     flushEventHistory();
     uiState.dead = true;

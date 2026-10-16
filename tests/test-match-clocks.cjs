@@ -49,9 +49,21 @@ test('Hero clocks mirror native pools by identity and update without a second ti
   const first = arien();
   w.testUI.refresh();
   assert.equal(arien(), first, 'unchanged clocks retain their nodes');
+  const row = [...d.querySelectorAll('#goa2-m2-summary article')].find((row) =>
+    row.textContent.includes('Arien'),
+  );
+  const focus = row.querySelector('.m2-summary-identity');
+  const statusCell = row.querySelector('.m2-summary-turn');
+  row.scrollLeft = 44;
+  focus.focus();
   d.querySelector('._clock_test strong').textContent = '7:37';
   w.testUI.refresh();
   assert.equal(arien().textContent, '7:37/20:00');
+  assert.equal(row.querySelector('.m2-summary-turn'), statusCell);
+  assert(row.isConnected, 'a real native clock update keeps its compact row');
+  assert.equal(row.scrollLeft, 44);
+  assert.equal(d.activeElement, focus);
+
   Object.assign(clock.players.arien, { planning_allowance_ms: 0, time_bank_ms: 1199000 });
   w.testUI.refresh();
   assert.equal(

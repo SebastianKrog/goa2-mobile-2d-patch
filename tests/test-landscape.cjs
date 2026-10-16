@@ -12,7 +12,7 @@ function setup(t, initialWidth = 844, initialHeight = 360, initialCoarse = true)
       <section aria-label="Blue team has 6 life remaining"><span class="_lifeScore_test"></span></section>
       <div class="_statusCopy_test"><strong>Select a card</strong><span class="_statusDetail_test">Waiting for players</span></div>
       </header><main class="_main_test"><div class="_boardArea_test"><div><svg class="_svg_test"></svg><button class="_zoomReset_test">100% Reset</button></div>
-      <div aria-label="Starting position"><button>Done adjusting</button></div></div>
+      <div aria-label="Starting position"><button>Change starting position</button></div></div>
       <aside class="_sidebar_test"><section class="own"><div class="_name_test">Test · Player (You)</div><div class="_details_test">Lv 4</div></section>
       <section class="other"><div class="_name_test">Other · Player</div><div class="_details_test">Lv 4</div></section>
       <div><div class="_label_test">Hand</div><div class="_row_test"><span class="_cardName_test">Card</span></div></div>
@@ -92,6 +92,13 @@ function setup(t, initialWidth = 844, initialHeight = 360, initialCoarse = true)
     canvas.__reactFiber$test = { memoizedProps: { card } };
     d.querySelector('._cardGrid_test').append(canvas);
   }
+  const position = d.querySelector('[aria-label="Starting position"] > button');
+  position.onclick = () => {
+    position.textContent =
+      position.textContent === 'Change starting position'
+        ? 'Done adjusting'
+        : 'Change starting position';
+  };
   fixture.install();
   function screen(nextWidth = width, nextHeight = height, nextCoarse = coarse) {
     width = nextWidth;

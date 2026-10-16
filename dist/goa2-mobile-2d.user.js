@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GoA II — Mobile 2D
 // @namespace    goa2-mobile-local
-// @version      1.1.2
+// @version      1.1.3
 // @description  Compact 2D HUD, Board/Hand modes, contained setup and utility panels.
 // @match        https://goa2.frontend.pedroliv.dev/game/*
 // @grant        none
@@ -2295,11 +2295,7 @@ window.GOA2Mobile?.destroy();
   justify-items: center;
   margin: 10px auto 0;
 }
-/* Basics have no granted item. Reclaim that empty cap to keep the U beside them. */
-& .m2-tree-basics .m2-micro-grant:empty {
-  display: none;
-}
-& .m2-tree-basics .m2-micro-extended {
+& .m2-tree-basics .m2-micro-extended.m2-micro-no-grant {
   width: 100%;
 }
 & .m2-tree-basics .m2-mini-current.m2-micro-tree {
@@ -4464,6 +4460,40 @@ html:not([data-m2-active]) .m2-choice-launchers {
 & .m2-discard-confirm:disabled {
   opacity: 0.45;
 }
+
+/* Split the existing current-card slot without changing its dimensions. */
+& .m2-current-card-pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: center;
+  justify-items: center;
+  flex: 1 1 0;
+  width: 100%;
+  min-width: 0;
+  height: 24px;
+}
+& .m2-current-card-pair > .m2-micro-button {
+  justify-self: center;
+  height: 24px;
+}
+
+/* Compensate for the hybrid artwork's padding, particularly in tall Nano cells.
+   Scale artwork only: value overlays and layout geometry stay unchanged. */
+& .m2-defense-skill > img {
+  transform: scale(1.05);
+}
+& :is(.m2-nano-card, .m2-mini-current.m2-micro-hero) .m2-defense-skill > img {
+  transform: scale(1.3);
+}
+& .m2-mini-current.m2-micro-tree .m2-defense-skill > img {
+  transform: scale(1.05);
+}
+& .m2-micro-extended.m2-micro-no-grant {
+  width: 112px;
+}
+& .m2-deck-tree .m2-tree-card[data-tier="1"] {
+  width: 116px;
+}
 `;
 
   // src/runtime.js
@@ -5135,8 +5165,17 @@ html:not([data-m2-active]) .m2-choice-launchers {
     };
     return content;
   }
+  var setupWasChoosing = false;
   function syncNavigation() {
-    const setupAvailable = !!q('[aria-label="Starting position"]');
+    const setup = q('[aria-label="Starting position"]');
+    const setupAvailable = !!setup;
+    const suppliedChoosing = componentProp(setup, "choosing");
+    const choosing = typeof suppliedChoosing === "boolean" ? suppliedChoosing : !!setup && /^Done/i.test(q(":scope > button", setup)?.textContent.trim() || "");
+    if (uiState.panel === "setup" && setupWasChoosing && !choosing) {
+      uiState.panel = "";
+      root.dataset.m2Panel = "";
+    }
+    setupWasChoosing = choosing;
     nav.style.gridTemplateColumns = "repeat(5,minmax(0,1fr))";
     if (!setupAvailable && uiState.panel === "setup") {
       uiState.panel = "";
@@ -5206,7 +5245,7 @@ html:not([data-m2-active]) .m2-choice-launchers {
   };
   function cardSymbol(key, value) {
     const el = document.createElement("span");
-    el.className = "m2-symbol";
+    el.className = "m2-symbol" + (key === "DEFENSE_SKILL" ? " m2-defense-skill" : "");
     el.title = actionNames[key] || key.toLowerCase();
     const img = document.createElement("img");
     img.src = "/icons/" + key.toLowerCase().replaceAll("_", "-") + ".png";
@@ -5330,7 +5369,7 @@ html:not([data-m2-active]) .m2-choice-launchers {
     const alternative = pair.find((candidate) => !same(candidate));
     return alternative && !alternative.is_facedown ? alternative.item || null : null;
   }
-  function extendedMicroCard(card, grantedItem) {
+  function extendedMicroCard(card, grantedItem, items = {}, includeGrant = null) {
     if (card && (card.color === "PURPLE" || card.tier === "IV")) {
       const mini = miniatureCard(card);
       mini.classList.add("m2-micro-ultimate");
@@ -5344,12 +5383,14 @@ html:not([data-m2-active]) .m2-choice-launchers {
     }
     const extended = document.createElement("span");
     extended.className = "m2-micro-extended";
+    const grantSlot = includeGrant ?? (!card?.is_facedown && /^(II|III|2|3)$/.test(String(card?.tier || "").toUpperCase()) && !["GOLD", "SILVER"].includes(card?.color));
+    extended.classList.toggle("m2-micro-no-grant", !grantSlot);
     const visible = card && !card.is_facedown;
     extended.title = visible ? card.name : "Hidden card";
     const initiative = document.createElement("span");
     initiative.className = "m2-micro-cap";
     if (visible && card.initiative != null)
-      initiative.append(cardSymbol("INITIATIVE", card.initiative));
+      initiative.append(upgradedSymbol(items, "INITIATIVE", card.initiative));
     const upgrade = document.createElement("span");
     upgrade.className = "m2-micro-cap m2-micro-grant";
     if (visible && grantedItem) {
@@ -5358,9 +5399,10 @@ html:not([data-m2-active]) .m2-choice-launchers {
       upgrade.title = "Gives " + stat.toLowerCase() + " +1";
       upgrade.setAttribute("aria-label", upgrade.title);
     }
-    const micro = miniatureCard(card, {}, true);
+    const micro = miniatureCard(card, items, true);
     micro.classList.add("m2-micro-tree");
-    extended.append(initiative, micro, upgrade);
+    extended.append(initiative, micro);
+    if (grantSlot) extended.append(upgrade);
     return extended;
   }
   function nanoCard(card, items = {}) {
@@ -5434,6 +5476,7 @@ html:not([data-m2-active]) .m2-choice-launchers {
       if (!hero) continue;
       const cards = [
         hero.current_turn_card,
+        hero.extra_turn_card,
         hero.ultimate_card,
         ...["hand", "played_cards", "discard_pile", "deck", "cast_spells"].flatMap(
           (key) => Array.isArray(hero[key]) ? hero[key] : []
@@ -8566,8 +8609,9 @@ html:not([data-m2-active]) .m2-choice-launchers {
       button.textContent = /^Done/i.test(position.textContent.trim()) ? "Done" : "Position";
       button.disabled = position.disabled;
       button.onclick = () => {
+        const opening = !/^Done/i.test(position.textContent.trim());
         position.click();
-        navigate("setup");
+        if (opening ? uiState.panel !== "setup" : uiState.panel === "setup") navigate("setup");
       };
       host.append(button);
     }
@@ -8581,8 +8625,7 @@ html:not([data-m2-active]) .m2-choice-launchers {
     copy.querySelectorAll(c("items") + ",.m2-hero-clock").forEach((e) => e.remove());
     return copy.textContent.trim();
   }
-  function visibleCurrentCard(box, hero) {
-    const current = hero.current_turn_card;
+  function visibleCurrentCard(box, hero, current = hero.current_turn_card) {
     if (current && !current.is_facedown) return current;
     if (box.hasAttribute("data-m2-other")) return current || null;
     if (current) {
@@ -8597,6 +8640,12 @@ html:not([data-m2-active]) .m2-choice-launchers {
     }
     return current || null;
   }
+  function heroCommittedCards(box, hero) {
+    return [
+      visibleCurrentCard(box, hero),
+      visibleCurrentCard(box, hero, hero.extra_turn_card || null)
+    ].filter(Boolean);
+  }
   function isCardSelection(view) {
     return /^PLANNING$/i.test(view?.phase || q('[data-m2="header"] ' + c("phase"))?.textContent || "");
   }
@@ -8610,7 +8659,7 @@ html:not([data-m2-active]) .m2-choice-launchers {
     return !!card && !card.is_facedown && (card.is_active || (view?.effects || []).some((effect) => effect.is_active && effect.source_card_id === card.id));
   }
   function heroTurnCard(box, hero, view) {
-    return visibleCurrentCard(box, hero) || hero.played_cards?.[Number(view?.turn) - 1] || null;
+    return heroCommittedCards(box, hero)[0] || hero.played_cards?.[Number(view?.turn) - 1] || null;
   }
   function inspectHeroCard(heroId, card) {
     if (!card || card.is_facedown) return;
@@ -8623,11 +8672,12 @@ html:not([data-m2-active]) .m2-choice-launchers {
     if (!hero || !Array.isArray(hero.played_cards)) return;
     if (Array.isArray(hero.deck)) rememberDeckTreeChoices(hero, hero.deck, upgradeRequest);
     const offboard = heroOffboard(hero, view);
+    const committedCards = heroCommittedCards(box, hero);
     const effects = view?.effects || [];
     const cards = [
       ...hero.played_cards,
       ...hero.discard_pile || [],
-      hero.current_turn_card,
+      ...committedCards,
       ...hero.cast_spells || []
     ].filter((card) => card && !card.is_facedown);
     const active = [
@@ -8643,9 +8693,9 @@ html:not([data-m2-active]) .m2-choice-launchers {
     const planning = isCardSelection(view);
     const upgrading = /^LEVEL[_ ]UP$/i.test(view?.phase || "");
     const upgradeRemaining = upgrading ? remainingUpgrades(upgradeRequest, hero.id) : null;
-    const currentCard = visibleCurrentCard(box, hero);
+    const currentCard = committedCards[0] || null;
     const key = JSON.stringify([
-      currentCard,
+      committedCards,
       hero.hand,
       hero.level,
       hero.gold,
@@ -8747,7 +8797,7 @@ html:not([data-m2-active]) .m2-choice-launchers {
     const upgrades = itemUpgradeSymbols(hero.items, "m2-hero-upgrades");
     upgrades.prepend(ultimateIndicator(hero));
     dashboard.append(boardShortcuts ? navigationShortcut(upgrades, "deck", "Open your Deck") : upgrades);
-    function smallCard(card, nano = false, resolved = false) {
+    function smallCard(card, nano = false, resolved = false, initiative = false) {
       const button = document.createElement("button");
       button.type = "button";
       button.className = "m2-micro-button";
@@ -8755,9 +8805,9 @@ html:not([data-m2-active]) .m2-choice-launchers {
       button.disabled = !!card.is_facedown;
       button.title = card.is_facedown ? "Hidden card" : card.name;
       button.setAttribute("aria-label", button.title);
-      button.append(nano ? nanoCard(card, hero.items) : miniatureCard(card, hero.items, true));
+      button.append(initiative ? extendedMicroCard(card, null, hero.items, false) : nano ? nanoCard(card, hero.items) : miniatureCard(card, hero.items, true));
       button.classList.toggle("m2-card-resolved", resolved);
-      if (active.some((a) => a.id === card.id)) {
+      if (active.some((a) => a.id === card.id) || cardIsActive(card, view)) {
         button.classList.add("m2-effect-active");
         button.style.setProperty("--effect-color", cardColors[card.color] || "#bbab73");
       }
@@ -8770,7 +8820,13 @@ html:not([data-m2-active]) .m2-choice-launchers {
     label.className = "m2-hero-played-label";
     label.textContent = "Played:";
     current.append(label);
-    if (!upgrading && currentCard && !currentCard.is_facedown) {
+    if (!upgrading && committedCards.length === 2) {
+      const pair = document.createElement("span");
+      pair.className = "m2-current-card-pair";
+      pair.setAttribute("aria-label", "Two committed cards");
+      pair.append(...committedCards.map((card) => smallCard(card, false, false, true)));
+      current.append(pair);
+    } else if (!upgrading && currentCard && !currentCard.is_facedown) {
       const card = document.createElement("button");
       card.type = "button";
       card.className = "m2-current-card-mini";
@@ -8789,7 +8845,7 @@ html:not([data-m2-active]) .m2-choice-launchers {
       const status = document.createElement("span");
       if (planning || upgrading) {
         status.className = "m2-selection-status";
-        const selected = upgrading ? upgradeRemaining === 0 : !!hero.current_turn_card;
+        const selected = upgrading ? upgradeRemaining === 0 : committedCards.length > 0;
         status.textContent = selected ? !upgrading && hero.can_commit_second_card ? "Committed ✓ · choosing second" : "Committed ✓" : upgrading ? "Upgrading" : "Selecting";
         status.setAttribute("aria-label", status.textContent);
         if (!selected) {
@@ -8885,8 +8941,7 @@ html:not([data-m2-active]) .m2-choice-launchers {
       return;
     }
     const cards = [
-      visibleCurrentCard(box, hero),
-      hero.extra_turn_card,
+      ...heroCommittedCards(box, hero),
       hero.ultimate_card,
       ...["hand", "played_cards", "discard_pile", "cast_spells"].flatMap(
         (key2) => Array.isArray(hero[key2]) ? hero[key2] : []
@@ -9209,6 +9264,56 @@ html:not([data-m2-active]) .m2-choice-launchers {
     }
     strip.scrollLeft = scroll;
   }
+  function updateSummaryTurn(turn, row, h) {
+    const ticking = !h.upgrading && h.clock && (!h.resolving || h.clock.running);
+    const key = JSON.stringify([
+      ticking ? h.clock : null,
+      h.resolution,
+      h.upgrading,
+      h.planning,
+      h.upgradeRemaining,
+      h.committed,
+      h.offboard,
+      h.done,
+      h.resolving
+    ]);
+    if (turn.dataset.statusKey === key) return;
+    turn.dataset.statusKey = key;
+    row.classList.toggle("m2-timed-hero", !!ticking);
+    turn.classList.toggle("m2-summary-clock", !!ticking);
+    if (!ticking) {
+      turn.replaceChildren();
+      delete turn.dataset.tone;
+      delete turn.dataset.running;
+    }
+    let status;
+    if (ticking) {
+      if (turn.textContent !== h.clock.text) turn.textContent = h.clock.text;
+      turn.dataset.tone = h.clock.tone;
+      turn.dataset.running = String(h.clock.running);
+      status = h.clock.label + (h.clock.paused ? " · Paused" : "");
+    } else if (h.resolution) {
+      const order = document.createElement("b");
+      order.textContent = h.resolution.current ? "NOW" : h.resolution.tied ? "TIE" : h.resolution.order + ".";
+      turn.append(order, cardSymbol("INITIATIVE", h.resolution.initiative));
+      status = "Turn " + order.textContent + ", initiative " + h.resolution.initiative;
+    } else if (h.upgrading || h.planning) {
+      const selecting = h.upgrading ? h.upgradeRemaining !== 0 : !h.committed;
+      status = selecting ? h.upgrading ? "Upgrading" : "Selecting" : "Committed";
+      if (selecting) {
+        const dots = document.createElement("span");
+        dots.className = "m2-selecting-dots";
+        dots.textContent = "...";
+        dots.setAttribute("aria-hidden", "true");
+        turn.append(dots);
+      } else turn.textContent = "✓";
+    } else {
+      turn.textContent = h.offboard ? "☠" : h.done ? "✓" : "—";
+      status = h.offboard ? "Off board" : h.done ? "Turn completed" : "No card played";
+    }
+    turn.title = status;
+    turn.setAttribute("aria-label", status);
+  }
   function renderSummary(heroes, upgradeRequest = null) {
     if (summary.classList.contains("m2-summary-focused") !== !!uiState.focusedHeroId) {
       summary.classList.toggle("m2-summary-focused", !!uiState.focusedHeroId);
@@ -9226,8 +9331,14 @@ html:not([data-m2-active]) .m2-choice-launchers {
       summary.classList.remove("m2-summary-focused");
       root.style.setProperty("--m2-summary-h", heroes.length * 32 + 12 + "px");
     }
-    const key = JSON.stringify(heroes);
-    if (summary.dataset.key === key) return;
+    const key = JSON.stringify(heroes.map(({ clock, ...hero }) => hero));
+    if (summary.dataset.key === key) {
+      Array.from(summary.children).forEach((row, i) => {
+        const turn = q(".m2-summary-turn", row);
+        if (turn && heroes[i]) updateSummaryTurn(turn, row, heroes[i]);
+      });
+      return;
+    }
     summary.dataset.key = key;
     summary.replaceChildren();
     const separator = () => {
@@ -9243,35 +9354,7 @@ html:not([data-m2-active]) .m2-choice-launchers {
       if (h.done) row.classList.add("m2-done-hero");
       const turn = document.createElement("span");
       turn.className = "m2-summary-turn";
-      let status;
-      if (!h.upgrading && h.clock && (!h.resolving || h.clock.running)) {
-        row.classList.add("m2-timed-hero");
-        turn.classList.add("m2-summary-clock");
-        turn.textContent = h.clock.text;
-        turn.dataset.tone = h.clock.tone;
-        turn.dataset.running = String(h.clock.running);
-        status = h.clock.label + (h.clock.paused ? " · Paused" : "");
-      } else if (h.resolution) {
-        const order = document.createElement("b");
-        order.textContent = h.resolution.current ? "NOW" : h.resolution.tied ? "TIE" : h.resolution.order + ".";
-        turn.append(order, cardSymbol("INITIATIVE", h.resolution.initiative));
-        status = "Turn " + order.textContent + ", initiative " + h.resolution.initiative;
-      } else if (h.upgrading || h.planning) {
-        const selecting = h.upgrading ? h.upgradeRemaining !== 0 : !h.committed;
-        status = selecting ? h.upgrading ? "Upgrading" : "Selecting" : "Committed";
-        if (selecting) {
-          const dots = document.createElement("span");
-          dots.className = "m2-selecting-dots";
-          dots.textContent = "...";
-          dots.setAttribute("aria-hidden", "true");
-          turn.append(dots);
-        } else turn.textContent = "✓";
-      } else {
-        turn.textContent = h.offboard ? "☠" : h.done ? "✓" : "—";
-        status = h.offboard ? "Off board" : h.done ? "Turn completed" : "No card played";
-      }
-      turn.title = status;
-      turn.setAttribute("aria-label", status);
+      updateSummaryTurn(turn, row, h);
       const identity = document.createElement("span");
       identity.className = "m2-summary-identity";
       identity.setAttribute("role", "button");
@@ -9311,10 +9394,10 @@ html:not([data-m2-active]) .m2-choice-launchers {
       gold.classList.add("m2-gold-overlay");
       const piles = document.createElement("span");
       piles.className = "m2-summary-piles";
-      const add = (label, cards) => {
+      const add = (label, cards2) => {
         const group = document.createElement("span");
         group.append(document.createTextNode(label));
-        for (const card of cards) {
+        for (const card of cards2) {
           const dot = document.createElement("i");
           dot.style.backgroundColor = card.color;
           dot.style.setProperty("--effect-color", card.color);
@@ -9322,7 +9405,7 @@ html:not([data-m2-active]) .m2-choice-launchers {
           if (card.active) dot.classList.add("m2-effect-active");
           group.append(dot);
         }
-        if (!cards.length) group.append(document.createTextNode("–"));
+        if (!cards2.length) group.append(document.createTextNode("–"));
         piles.append(group);
       };
       add("H", h.dots.map((color) => ({ color })));
@@ -9334,24 +9417,32 @@ html:not([data-m2-active]) .m2-choice-launchers {
       row.append(turn, identity, resources, h.isOwn ? navigationShortcut(piles, "hand", "Open your Hand") : piles);
       const currentSlot = document.createElement("span");
       currentSlot.className = "m2-summary-current-slot";
-      if (h.currentCard) {
+      const paired = h.committedCards?.length === 2;
+      const cards = paired ? h.committedCards : h.currentCard ? [{ card: h.currentCard, active: h.currentActive }] : [];
+      const host = paired ? document.createElement("span") : currentSlot;
+      if (paired) {
+        host.className = "m2-current-card-pair";
+        host.setAttribute("aria-label", "Two committed cards");
+        currentSlot.append(host);
+      }
+      for (const { card, active } of cards) {
         const button = document.createElement("button");
         button.type = "button";
         button.className = "m2-micro-button";
-        trackCardSource(button, h.currentCard, "hero", h.id);
-        button.disabled = !!h.currentCard.is_facedown;
-        button.setAttribute("aria-label", h.currentCard.is_facedown ? "Hidden card" : h.currentCard.name);
+        trackCardSource(button, card, "hero", h.id);
+        button.disabled = !!card.is_facedown;
+        button.setAttribute("aria-label", card.is_facedown ? "Hidden card" : card.name);
         button.classList.toggle("m2-card-resolved", h.done && !h.resolution);
-        if (h.currentActive) {
+        if (active) {
           button.classList.add("m2-effect-active");
-          button.style.setProperty("--effect-color", cardColors[h.currentCard.color] || "#888");
+          button.style.setProperty("--effect-color", cardColors[card.color] || "#888");
         }
-        button.append(miniatureCard(h.currentCard, h.upgrades));
+        button.append(paired ? nanoCard(card, h.upgrades) : miniatureCard(card, h.upgrades));
         button.onclick = () => {
-          inspectHeroCard(h.id, h.currentCard);
+          inspectHeroCard(h.id, card);
           refresh();
         };
-        currentSlot.append(button);
+        host.append(button);
       }
       const upgrades = itemUpgradeSymbols(h.upgrades, "m2-summary-upgrades");
       upgrades.prepend(ultimateIndicator(h, true));
@@ -10224,6 +10315,7 @@ html:not([data-m2-active]) .m2-choice-launchers {
       deckUpdate(null);
       for (const box of document.querySelectorAll('[data-m2="hero"]'))
         box.style.removeProperty("order");
+      syncMenuHistory();
       return;
     }
     if (header) {
@@ -10370,12 +10462,16 @@ html:not([data-m2-active]) .m2-choice-launchers {
           level: hero?.level,
           gold: hero?.gold,
           currentCard: hero ? heroTurnCard(box, hero, publicView) : null,
+          committedCards: hero ? heroCommittedCards(box, hero).map((card2) => ({
+            card: card2,
+            active: cardIsActive(card2, publicView)
+          })) : [],
           currentActive: hero ? cardIsActive(heroTurnCard(box, hero, publicView), publicView) : false,
           offboard,
           upgrading: /^LEVEL[_ ]UP$/i.test(publicView?.phase || ""),
           upgradeRemaining: remainingUpgrades(upgradeRequest, hero?.id),
           planning: /^PLANNING$/i.test(publicView?.phase || ""),
-          committed: !!hero?.current_turn_card,
+          committed: !!(hero?.current_turn_card || hero?.extra_turn_card),
           clock: heroClockSummary(hero?.id),
           resolving,
           upgrades: hero?.items || {},
@@ -10505,7 +10601,7 @@ html:not([data-m2-active]) .m2-choice-launchers {
   }
   on(media, "change", schedule);
   window.GOA2Mobile2D = {
-    version: "1.1.2",
+    version: "1.1.3",
     destroy() {
       flushEventHistory();
       uiState.dead = true;

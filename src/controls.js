@@ -132,8 +132,9 @@ function updateChoiceLaunchers(boardControls = []) {
     button.textContent = /^Done/i.test(position.textContent.trim()) ? 'Done' : 'Position';
     button.disabled = position.disabled;
     button.onclick = () => {
+      const opening = !/^Done/i.test(position.textContent.trim());
       position.click();
-      navigate('setup');
+      if (opening ? uiState.panel !== 'setup' : uiState.panel === 'setup') navigate('setup');
     };
     host.append(button);
   }

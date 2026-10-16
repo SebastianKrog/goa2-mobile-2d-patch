@@ -7,6 +7,7 @@ import { updateCardRow } from './card-rows.js';
 import {
   cardColors,
   cardSymbol,
+  extendedMicroCard,
   goldSymbol,
   itemUpgradeSymbols,
   miniatureCard,
@@ -32,8 +33,7 @@ function heroDisplayName(name) {
 // native client clears selectedCardId on commit, so the hand-row fallback alone
 // cannot recover it. Use details actually supplied to our player, or an exact ID
 // match in their own known deck. Opponent facedown cards remain untouched.
-function visibleCurrentCard(box, hero) {
-  const current = hero.current_turn_card;
+function visibleCurrentCard(box, hero, current = hero.current_turn_card) {
   if (current && !current.is_facedown) return current;
   if (box.hasAttribute('data-m2-other')) return current || null;
   if (current) {
@@ -47,6 +47,12 @@ function visibleCurrentCard(box, hero) {
     if (known) return { ...known, state: current.state, is_facedown: false };
   }
   return current || null;
+}
+// Use only committed server slots, never the highlighted Hand selection.
+// Both hidden opponent slots remain hidden even when their IDs are known elsewhere.
+function heroCommittedCards(box, hero) {
+  return [visibleCurrentCard(box, hero),
+    visibleCurrentCard(box, hero, hero.extra_turn_card || null)].filter(Boolean);
 }
 function isCardSelection(view) {
   return /^PLANNING$/i.test(view?.phase || q('[data-m2="header"] ' + c('phase'))?.textContent || '');
@@ -66,7 +72,7 @@ function cardIsActive(card, view) {
 }
 // The played slot is authoritative for a just-resolved card in this turn.
 function heroTurnCard(box, hero, view) {
-  return visibleCurrentCard(box, hero) || hero.played_cards?.[Number(view?.turn) - 1] || null;
+  return heroCommittedCards(box, hero)[0] || hero.played_cards?.[Number(view?.turn) - 1] || null;
 }
 function inspectHeroCard(heroId, card) {
   if (!card || card.is_facedown) return;
@@ -83,11 +89,12 @@ function updateHeroDashboard(box, view, suppliedHero = null, upgradeRequest = nu
   // An absent location means off board only when a location map is actually available.
   // Missing board data alone must not be treated as a death/off-board signal.
   const offboard = heroOffboard(hero, view);
+  const committedCards = heroCommittedCards(box, hero);
   const effects = view?.effects || [];
   const cards = [
     ...hero.played_cards,
     ...(hero.discard_pile || []),
-    hero.current_turn_card,
+    ...committedCards,
     ...(hero.cast_spells || []),
   ].filter((card) => card && !card.is_facedown);
   // Effects can mark their source card active even if the card flag is not set.
@@ -109,10 +116,10 @@ function updateHeroDashboard(box, view, suppliedHero = null, upgradeRequest = nu
   const planning = isCardSelection(view);
   const upgrading = /^LEVEL[_ ]UP$/i.test(view?.phase || '');
   const upgradeRemaining = upgrading ? remainingUpgrades(upgradeRequest, hero.id) : null;
-  const currentCard = visibleCurrentCard(box, hero);
+  const currentCard = committedCards[0] || null;
   // One compact entry is shared by Heroes, Hand and Board focus in every phase.
   const key = JSON.stringify([
-    currentCard,
+    committedCards,
     hero.hand,
     hero.level,
     hero.gold,
@@ -219,7 +226,7 @@ function updateHeroDashboard(box, view, suppliedHero = null, upgradeRequest = nu
   dashboard.append(boardShortcuts ? navigationShortcut(upgrades, 'deck', 'Open your Deck') : upgrades);
   // The header card and five history slots replace separate active-effect badges.
   // Only the source card glows, including defense-only discard Nano cards.
-  function smallCard(card, nano = false, resolved = false) {
+  function smallCard(card, nano = false, resolved = false, initiative = false) {
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'm2-micro-button';
@@ -227,9 +234,10 @@ function updateHeroDashboard(box, view, suppliedHero = null, upgradeRequest = nu
     button.disabled = !!card.is_facedown;
     button.title = card.is_facedown ? 'Hidden card' : card.name;
     button.setAttribute('aria-label', button.title);
-    button.append(nano ? nanoCard(card, hero.items) : miniatureCard(card, hero.items, true));
+    button.append(initiative ? extendedMicroCard(card, null, hero.items, false)
+      : nano ? nanoCard(card, hero.items) : miniatureCard(card, hero.items, true));
     button.classList.toggle('m2-card-resolved', resolved);
-    if (active.some(a => a.id === card.id)) {
+    if (active.some(a => a.id === card.id) || cardIsActive(card, view)) {
       button.classList.add('m2-effect-active');
       button.style.setProperty('--effect-color', cardColors[card.color] || '#bbab73');
     }
@@ -244,7 +252,13 @@ function updateHeroDashboard(box, view, suppliedHero = null, upgradeRequest = nu
   label.className = 'm2-hero-played-label';
   label.textContent = 'Played:';
   current.append(label);
-  if (!upgrading && currentCard && !currentCard.is_facedown) {
+  if (!upgrading && committedCards.length === 2) {
+    const pair = document.createElement('span');
+    pair.className = 'm2-current-card-pair';
+    pair.setAttribute('aria-label', 'Two committed cards');
+    pair.append(...committedCards.map(card => smallCard(card, false, false, true)));
+    current.append(pair);
+  } else if (!upgrading && currentCard && !currentCard.is_facedown) {
     const card = document.createElement('button');
     card.type = 'button';
     card.className = 'm2-current-card-mini';
@@ -263,7 +277,7 @@ function updateHeroDashboard(box, view, suppliedHero = null, upgradeRequest = nu
     const status = document.createElement('span');
     if (planning || upgrading) {
       status.className = 'm2-selection-status';
-      const selected = upgrading ? upgradeRemaining === 0 : !!hero.current_turn_card;
+      const selected = upgrading ? upgradeRemaining === 0 : committedCards.length > 0;
       status.textContent = selected
         ? !upgrading && hero.can_commit_second_card ? 'Committed ✓ · choosing second' : 'Committed ✓'
         : upgrading ? 'Upgrading' : 'Selecting';
@@ -366,8 +380,7 @@ function updateHeroCardDisplay() {
     return;
   }
   const cards = [
-    visibleCurrentCard(box, hero),
-    hero.extra_turn_card,
+    ...heroCommittedCards(box, hero),
     hero.ultimate_card,
     ...['hand', 'played_cards', 'discard_pile', 'cast_spells'].flatMap((key) =>
       Array.isArray(hero[key]) ? hero[key] : [],
@@ -458,6 +471,7 @@ function resolutionEntries() {
 export {
   cardIsActive,
   heroDisplayName,
+  heroCommittedCards,
   heroTurnCard,
   inspectHeroCard,
   resolutionEntries,

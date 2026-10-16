@@ -6,6 +6,7 @@ import {
   goldSymbol,
   itemUpgradeSymbols,
   miniatureCard,
+  nanoCard,
   ultimateIndicator,
 } from './cards.js';
 import { inspectHeroCard, updateHeroDashboard, updateTurnPortrait } from './heroes.js';
@@ -107,6 +108,48 @@ function renderFocusPortraits(heroes) {
   }
   strip.scrollLeft = scroll;
 }
+function updateSummaryTurn(turn, row, h) {
+  const ticking = !h.upgrading && h.clock && (!h.resolving || h.clock.running);
+  const key = JSON.stringify([ticking ? h.clock : null, h.resolution, h.upgrading, h.planning,
+    h.upgradeRemaining, h.committed, h.offboard, h.done, h.resolving]);
+  if (turn.dataset.statusKey === key) return;
+  turn.dataset.statusKey = key;
+  row.classList.toggle('m2-timed-hero', !!ticking);
+  turn.classList.toggle('m2-summary-clock', !!ticking);
+  if (!ticking) {
+    turn.replaceChildren();
+    delete turn.dataset.tone;
+    delete turn.dataset.running;
+  }
+  let status;
+  if (ticking) {
+    if (turn.textContent !== h.clock.text) turn.textContent = h.clock.text;
+    turn.dataset.tone = h.clock.tone;
+    turn.dataset.running = String(h.clock.running);
+    status = h.clock.label + (h.clock.paused ? ' · Paused' : '');
+  } else if (h.resolution) {
+    const order = document.createElement('b');
+    order.textContent = h.resolution.current ? 'NOW' : h.resolution.tied ? 'TIE' : h.resolution.order + '.';
+    turn.append(order, cardSymbol('INITIATIVE', h.resolution.initiative));
+    status = 'Turn ' + order.textContent + ', initiative ' + h.resolution.initiative;
+  } else if (h.upgrading || h.planning) {
+    const selecting = h.upgrading ? h.upgradeRemaining !== 0 : !h.committed;
+    status = selecting ? h.upgrading ? 'Upgrading' : 'Selecting' : 'Committed';
+    if (selecting) {
+      const dots = document.createElement('span');
+      dots.className = 'm2-selecting-dots';
+      dots.textContent = '...';
+      dots.setAttribute('aria-hidden', 'true');
+      turn.append(dots);
+    } else turn.textContent = '✓';
+  } else {
+    turn.textContent = h.offboard ? '☠' : h.done ? '✓' : '—';
+    status = h.offboard ? 'Off board' : h.done ? 'Turn completed' : 'No card played';
+  }
+  turn.title = status;
+  turn.setAttribute('aria-label', status);
+}
+
 function renderSummary(heroes, upgradeRequest = null) {
   if (summary.classList.contains('m2-summary-focused') !== !!uiState.focusedHeroId) {
     summary.classList.toggle('m2-summary-focused', !!uiState.focusedHeroId);
@@ -121,8 +164,15 @@ function renderSummary(heroes, upgradeRequest = null) {
     summary.classList.remove('m2-summary-focused');
     root.style.setProperty('--m2-summary-h', heroes.length * 32 + 12 + 'px');
   }
-  const key = JSON.stringify(heroes);
-  if (summary.dataset.key === key) return;
+  // Countdown changes must not replace scrolled rows or focused controls.
+  const key = JSON.stringify(heroes.map(({ clock, ...hero }) => hero));
+  if (summary.dataset.key === key) {
+    Array.from(summary.children).forEach((row, i) => {
+      const turn = q('.m2-summary-turn', row);
+      if (turn && heroes[i]) updateSummaryTurn(turn, row, heroes[i]);
+    });
+    return;
+  }
   summary.dataset.key = key;
   summary.replaceChildren();
   const separator = () => {
@@ -138,35 +188,7 @@ function renderSummary(heroes, upgradeRequest = null) {
     if (h.done) row.classList.add('m2-done-hero');
     const turn = document.createElement('span');
     turn.className = 'm2-summary-turn';
-    let status;
-    if (!h.upgrading && h.clock && (!h.resolving || h.clock.running)) {
-      row.classList.add('m2-timed-hero');
-      turn.classList.add('m2-summary-clock');
-      turn.textContent = h.clock.text;
-      turn.dataset.tone = h.clock.tone;
-      turn.dataset.running = String(h.clock.running);
-      status = h.clock.label + (h.clock.paused ? ' · Paused' : '');
-    } else if (h.resolution) {
-      const order = document.createElement('b');
-      order.textContent = h.resolution.current ? 'NOW' : h.resolution.tied ? 'TIE' : h.resolution.order + '.';
-      turn.append(order, cardSymbol('INITIATIVE', h.resolution.initiative));
-      status = 'Turn ' + order.textContent + ', initiative ' + h.resolution.initiative;
-    } else if (h.upgrading || h.planning) {
-      const selecting = h.upgrading ? h.upgradeRemaining !== 0 : !h.committed;
-      status = selecting ? h.upgrading ? 'Upgrading' : 'Selecting' : 'Committed';
-      if (selecting) {
-        const dots = document.createElement('span');
-        dots.className = 'm2-selecting-dots';
-        dots.textContent = '...';
-        dots.setAttribute('aria-hidden', 'true');
-        turn.append(dots);
-      } else turn.textContent = '✓';
-    } else {
-      turn.textContent = h.offboard ? '☠' : h.done ? '✓' : '—';
-      status = h.offboard ? 'Off board' : h.done ? 'Turn completed' : 'No card played';
-    }
-    turn.title = status;
-    turn.setAttribute('aria-label', status);
+    updateSummaryTurn(turn, row, h);
 
     const identity = document.createElement('span');
     identity.className = 'm2-summary-identity';
@@ -222,21 +244,30 @@ function renderSummary(heroes, upgradeRequest = null) {
     // Keep a just-resolved card in its fixed column, with a subdued appearance.
     const currentSlot = document.createElement('span');
     currentSlot.className = 'm2-summary-current-slot';
-    if (h.currentCard) {
+    const paired = h.committedCards?.length === 2;
+    const cards = paired ? h.committedCards : h.currentCard
+      ? [{ card: h.currentCard, active: h.currentActive }] : [];
+    const host = paired ? document.createElement('span') : currentSlot;
+    if (paired) {
+      host.className = 'm2-current-card-pair';
+      host.setAttribute('aria-label', 'Two committed cards');
+      currentSlot.append(host);
+    }
+    for (const { card, active } of cards) {
       const button = document.createElement('button');
       button.type = 'button';
       button.className = 'm2-micro-button';
-      trackCardSource(button, h.currentCard, 'hero', h.id);
-      button.disabled = !!h.currentCard.is_facedown;
-      button.setAttribute('aria-label', h.currentCard.is_facedown ? 'Hidden card' : h.currentCard.name);
+      trackCardSource(button, card, 'hero', h.id);
+      button.disabled = !!card.is_facedown;
+      button.setAttribute('aria-label', card.is_facedown ? 'Hidden card' : card.name);
       button.classList.toggle('m2-card-resolved', h.done && !h.resolution);
-      if (h.currentActive) {
+      if (active) {
         button.classList.add('m2-effect-active');
-        button.style.setProperty('--effect-color', cardColors[h.currentCard.color] || '#888');
+        button.style.setProperty('--effect-color', cardColors[card.color] || '#888');
       }
-      button.append(miniatureCard(h.currentCard, h.upgrades));
-      button.onclick = () => { inspectHeroCard(h.id, h.currentCard); refresh(); };
-      currentSlot.append(button);
+      button.append(paired ? nanoCard(card, h.upgrades) : miniatureCard(card, h.upgrades));
+      button.onclick = () => { inspectHeroCard(h.id, card); refresh(); };
+      host.append(button);
     }
     const upgrades = itemUpgradeSymbols(h.upgrades, 'm2-summary-upgrades');
     upgrades.prepend(ultimateIndicator(h, true));
