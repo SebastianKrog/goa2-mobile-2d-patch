@@ -1,11 +1,14 @@
+import { runes } from './rune-choices.js';
 import { cardColors } from './cards.js';
 import { spellColorName } from './spells.js';
 
-// Marker targets can name a hero or an owned piece. Rune state is deliberately
-// excluded here until Snorri receives his own presentation.
-function heroIndicators(hero, view) {
+// Marker targets can name a hero or an owned piece. Only the compact Board
+// gets an active-rune indicator; hero dashboards attach runes to turn slots.
+function heroIndicators(hero, view, compact = false) {
   if (!hero) return [];
   const indicators = [];
+  const rune = hero.rune_slots?.[String(view?.turn)];
+  if (compact && runes.includes(rune)) indicators.push({ type: 'rune', rune });
   if (hero.spellbook != null || /^(?:hero_)?gydion$/i.test(hero.id || hero.name || ''))
     indicators.push({ type: 'spells', count: hero.cast_spells?.length || 0,
       colors: (hero.cast_spells || []).map(spell => cardColors[spellColorName(spell)] || '#c4c8ce') });
@@ -21,7 +24,8 @@ function heroIndicators(hero, view) {
 const dicePips = [[], [4], [0, 8], [0, 4, 8], [0, 2, 6, 8], [0, 2, 4, 6, 8],
   [0, 2, 3, 5, 6, 8], [0, 2, 3, 4, 5, 6, 8], [0, 1, 2, 3, 5, 6, 7, 8], [0, 1, 2, 3, 4, 5, 6, 7, 8]];
 function indicatorLabel(indicator) {
-  return indicator.type === 'spells' ? 'Spells cast: ' + indicator.count
+  return indicator.type === 'rune' ? 'Active rune: ' + indicator.rune[0].toUpperCase() + indicator.rune.slice(1)
+    : indicator.type === 'spells' ? 'Spells cast: ' + indicator.count
     : indicator.type === 'bounty' ? 'Bounty' : 'Poison';
 }
 function renderHeroIndicators(indicators, compact, openSpells) {
@@ -46,7 +50,7 @@ function renderHeroIndicators(indicators, compact, openSpells) {
       node.type = 'button';
       node.onclick = event => { event.stopPropagation(); openSpells(); };
       const img = document.createElement('img');
-      img.src = '/hero-images/gydion.webp';
+      img.src = '/cards/logos/gydion.png';
       img.alt = '';
       node.append(img);
       if (compact || indicator.count === 0 || indicator.count > 9) {
@@ -67,6 +71,11 @@ function renderHeroIndicators(indicators, compact, openSpells) {
         });
         node.append(pips);
       }
+    } else if (indicator.type === 'rune') {
+      const img = document.createElement('img');
+      img.src = '/icons/rune_' + indicator.rune + '.png';
+      img.alt = '';
+      node.append(img);
     } else node.textContent = compact ? indicator.type[0].toUpperCase() : indicatorLabel(indicator);
     host.append(node);
   }

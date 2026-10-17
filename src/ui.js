@@ -36,6 +36,9 @@ detailsPanel.id = 'goa2-m2-details';
 const extras = new Set();
 const heroPanel = document.createElement('section');
 heroPanel.id = 'goa2-m2-hero-display';
+const spellPanel = document.createElement('section');
+spellPanel.id = 'goa2-m2-spells';
+document.body.append(spellPanel);
 const settingsPanel = document.createElement('section');
 settingsPanel.id = 'goa2-m2-settings';
 settingsPanel.className = 'm2-utility-panel';
@@ -47,7 +50,7 @@ logPanel.setAttribute('aria-label', 'Match log');
 document.body.append(settingsPanel, logPanel);
 // Keep weak ownership markers after removal, so queued mutation records can
 // distinguish generated UI from native changes without retaining detached DOM.
-const generatedRoots = new WeakSet([nav, close, summary, detailsPanel, heroPanel, settingsPanel, logPanel]);
+const generatedRoots = new WeakSet([nav, close, summary, detailsPanel, heroPanel, spellPanel, settingsPanel, logPanel]);
 function addExtra(element) {
   extras.add(element);
   generatedRoots.add(element);
@@ -62,7 +65,13 @@ const on = (e, n, f, options = {}) =>
   );
 
 // Card inspection owns a separate generated panel from playable Hand details.
+function clearSpellBrowser() {
+  document.documentElement.removeAttribute('data-m2-spells-open');
+  if (spellPanel.firstChild) spellPanel.replaceChildren();
+  delete spellPanel.dataset.key;
+}
 function clearHeroCard() {
+  clearSpellBrowser();
   uiState.selectedHeroCard = null;
   highlightViewedCard('hero');
   heroPanel.replaceChildren();
@@ -72,6 +81,8 @@ function clearHeroCard() {
 export {
   addExtra,
   clearHeroCard,
+  clearSpellBrowser,
+  spellPanel,
   close,
   detailsPanel,
   extras,

@@ -86,8 +86,17 @@ try {
   assert.equal(deckOpens, 1, 'shortcut opens native deck');
   nav('deck');
   assert(!d.documentElement.hasAttribute('data-m2-deck-open'));
-  summary().querySelector('.m2-summary-identity').click();
+  const status = summary().querySelector('.m2-summary-turn');
+  assert.equal(status.getAttribute('role'), 'button');
+  status.click();
   w.previewRefresh();
+  assert(summary().classList.contains('m2-summary-focused'), 'status opens the hero on Board');
+  assert.equal(d.documentElement.dataset.m2Mode, 'board');
+  summary().querySelector('.m2-focus-back').click();
+  const keyboardStatus = summary().querySelector('.m2-summary-turn');
+  keyboardStatus.dispatchEvent(new w.KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+  assert(summary().classList.contains('m2-summary-focused'), 'status is keyboard accessible');
+
   assert.equal(
     summary().querySelectorAll('.m2-navigation-shortcut').length,
     2,

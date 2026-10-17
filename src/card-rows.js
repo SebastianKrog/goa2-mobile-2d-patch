@@ -15,13 +15,13 @@ import { c, q } from './runtime.js';
 import { handCardSize } from './settings.js';
 import { addExtra } from './ui.js';
 
-function updateCardRow(row, card, knownItems) {
+function updateCardRow(row, card, knownItems, size) {
   const items = knownItems || cardUpgrades(card, row);
   const symbol = (key, value) => upgradedSymbol(items, key, value);
   // Hand and discard choices share artwork. Hero/Deck Mini rows
   // share the renderer but keep their existing compact presentation.
-  const small = !!row.closest('[data-m2="hand-list"], .m2-discard-choices');
-  const tiny = small && handCardSize() === 'tiny';
+  const small = size === 'small' || !!row.closest('[data-m2="hand-list"], .m2-discard-choices');
+  const tiny = small && size !== 'small' && handCardSize() === 'tiny';
   if (small) trackCardSource(row, card, 'hand');
   const owner = small ? cardHero(card, row)?.id : null;
   const key = JSON.stringify([card, items, small, owner, tiny]);

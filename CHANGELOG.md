@@ -2,6 +2,34 @@
 
 Published releases, newest first.
 
+## 1.3.0
+
+- Use Gydion's emblem for his spell counter, with colored dice pips, a numeric
+  fallback and a neutral clickable border. Replace the native Deck/Cast counters.
+  Compact markers sit directly after the hero name and reserve space only when present.
+- Present public cast spells as Tiny cards in a flat list sorted by Rank or Color,
+  with a shorter Large viewer above the board (beside it in landscape). Keep
+  Image display available in Settings and show rank IV with solid end accents.
+- Share Deck sorting with spell lists, put Cast Spells before Spellbook, and use
+  rank/color subheadings only within Spellbook. Highlight inspected spells.
+- Embed unique slim, full-width spell rows in the owner's card descriptions
+  across viewers. Replace choose-one options, retain names in ordinary rules,
+  and place spell rows before parenthetical text. Other players retain text.
+- Open embedded spell details as padded, shadowed overlays without resizing the
+  parent card. Back and Close return to the parent. Show Tiny spell-cast choices
+  and preview the spell itself when selecting its action.
+- Arrange Snorri's inscription in fixed Bird/Axe/Anvil/Horn columns, tracking
+  confirmed choices across Undo, reload and Board peek. Show all four runes at
+  confirmation with centered turn labels.
+- Show Snorri's active rune in compact indicators and named runes in Heroes'
+  history slots. Labels float above filled slots without changing board height;
+  the current turn uses the original gold glow. Remove the redundant native row.
+- Open focused Board heroes from compact status/order controls as well as names.
+  Move starting-position controls to the top with a close control and place
+  selection instructions in the action strip.
+- Use Small cards for gold-card choices, remove FAST TRAVEL's zero placeholder,
+  use skill icons in action labels, and remove the native red action-picker border.
+
 ## 1.2.0
 
 - Add shared hero-board indicators in place of **Played:** when present: yellow

@@ -10,7 +10,7 @@
   --m2-card-display-height: clamp(206px, 32.96dvh, 278.1px);
   --m2-board-pane-height: 43%;
 }
-&:is([data-m2-mode="hand"], [data-m2-mode="heroes"], [data-m2-deck-open]) {
+&:is([data-m2-mode="hand"], [data-m2-mode="heroes"], [data-m2-deck-open], [data-m2-spells-open]) {
   --m2-board-pane-height: calc(var(--m2-card-display-height) + 8px);
 }
 & body {
@@ -293,13 +293,15 @@
   box-sizing: border-box;
   left: 8px !important;
   right: 8px !important;
-  top: auto !important;
-  bottom: calc(var(--m2-nav) + 8px) !important;
+  top: calc(var(--m2-head) + var(--m2-status-h) + 8px) !important;
+  bottom: auto !important;
   width: auto !important;
   max-width: none !important;
   max-height: 40dvh !important;
   overflow: auto !important;
-  padding: 10px !important;
+  padding: 10px 44px 10px 10px !important;
+  min-height: 44px;
+  gap: 6px;
   transform: none !important;
   background: #141b27f7;
   border: 1px solid #59667c;
@@ -307,6 +309,30 @@
   visibility: visible !important;
   pointer-events: auto !important;
   z-index: 600 !important;
+}
+&[data-m2-panel="setup"] [data-m2="setup"]::before {
+  content: "Starting position";
+  font: 600 12px/1.4 system-ui;
+  color: #dbe2eb;
+}
+&[data-m2-panel="setup"] [data-m2="setup"] > :is(span, small) {
+  display: none !important;
+}
+&[data-m2-panel="setup"] [data-m2="setup"] > button:first-child {
+  position: absolute;
+  right: 3px;
+  bottom: 3px;
+  width: 28px;
+  min-height: 28px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #c4cedb;
+  font-size: 0;
+}
+&[data-m2-panel="setup"] [data-m2="setup"] > button:first-child::after {
+  content: "×";
+  font: 22px system-ui;
 }
 &[data-m2-panel="setup"] [data-m2="board"],
 &[data-m2-panel="tools"] [data-m2="board"] {
@@ -464,6 +490,7 @@
     [data-m2-mode="hand"],
     [data-m2-mode="heroes"],
     [data-m2-deck-open],
+    [data-m2-spells-open],
     [data-m2-panel="tools"],
     [data-m2-panel="log"]
   )
@@ -717,10 +744,10 @@
 & .m2-settings-actions button {
   min-height: 44px;
 }
-&[data-m2-deck-open] [data-m2="board"] {
+&:is([data-m2-deck-open], [data-m2-spells-open]) [data-m2="board"] {
   display: block !important;
 }
-&[data-m2-deck-open] [data-m2="sidebar"] {
+&:is([data-m2-deck-open], [data-m2-spells-open]) [data-m2="sidebar"] {
   display: block !important;
   visibility: hidden;
   pointer-events: none;
@@ -2669,10 +2696,9 @@
 & [data-m2="hero"]:has(> .m2-hero-dashboard) [class*="_items_"] {
   display: none !important;
 }
+/* The dashboard replaces native metadata, including Gydion's extra counts row. */
 & [data-m2="hero"]:has(> .m2-hero-dashboard) > [class*="_details_"] {
-  grid-column: 2/-1;
-  grid-row: 2;
-  margin: 0;
+  display: none !important;
 }
 & [data-m2="hero"]:has(> .m2-hero-dashboard) > .m2-resolution-info {
   position: static;
@@ -2713,10 +2739,6 @@
   height: 8px;
   border: 0;
   border-radius: 50%;
-}
-& [data-m2="hero"]:has(> .m2-hero-dashboard) > [class*="_details_"]:first-of-type,
-& [data-m2="hero"]:has(> .m2-hero-dashboard) > [class*="_name_"] + [class*="_details_"] {
-  display: none !important;
 }
 & .m2-hero-history > span:first-child {
   white-space: nowrap;
@@ -2952,8 +2974,9 @@
   width: 30px;
   padding: 1px;
   overflow: hidden;
-  color: #eee4ff;
-  border-color: #b799de;
+  color: #dbe2eb;
+  border-color: #73777e;
+  background: rgb(190 195 205 / 10%);
   cursor: pointer;
 }
 & .m2-indicator-spells > img {
@@ -2961,8 +2984,8 @@
   inset: 0;
   width: 100%;
   height: 100%;
-  object-fit: cover;
-  opacity: 0.4;
+  object-fit: contain;
+  opacity: 1;
 }
 & .m2-indicator-spells > b {
   position: relative;
@@ -2988,6 +3011,7 @@
   justify-content: space-evenly;
 }
 & .m2-summary-indicators {
+  flex: 0 0 20px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -3016,78 +3040,141 @@
   outline: 2px solid #ffe09c;
   outline-offset: 1px;
 }
-/* Public cast spells reuse the existing inspected-card surface and Back handling. */
-& .m2-cast-spells {
-  min-height: 100%;
+/* Spell browsing shares compact controls and the ordinary card palette. */
+& #goa2-m2-hero-display:has(> .m2-spell-card) {
+  height: auto !important;
+}
+& #goa2-m2-spells {
+  display: none;
+}
+&[data-m2-spells-open] #goa2-m2-spells {
+  display: block;
+  position: fixed;
+  inset: calc(var(--m2-head) + var(--m2-board-pane-height)) 0
+    calc(var(--m2-nav) + var(--m2-offset, 0px));
+  z-index: 10001;
+  padding: 6px;
+  background: #111722;
   box-sizing: border-box;
-  padding: 8px;
+}
+& .m2-spell-row[aria-pressed="true"] {
+  border-color: #e4d399;
+}
+& .m2-spell-tiny[data-spell-rank="4"] > .m2-list-band::before,
+& .m2-spell-tiny[data-spell-rank="4"] > .m2-list-band::after {
+  width: 6px;
+  background: var(--card-color);
+}
+& .m2-cast-spells {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  box-sizing: border-box;
+  padding: 4px;
   color: #dbe2eb;
   background: #141b25;
   border: 1px solid #647083;
-  border-radius: 9px;
+  border-radius: 7px;
+  overflow: hidden;
+}
+& .m2-cast-spells[data-selected="true"] {
+  height: auto;
 }
 & .m2-cast-spells > header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  font: 12px/1.3 system-ui;
+  gap: 4px;
+  padding-bottom: 4px;
+  flex: 0 0 auto;
+  font: 11px/1.3 system-ui;
+}
+& .m2-cast-spells > header > b {
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+& .m2-spells-content {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+& .m2-cast-spells[data-selected="true"] .m2-spells-content {
+  max-height: calc(var(--m2-card-display-height) - 34px);
 }
 & .m2-spells-control {
+  box-sizing: border-box;
   color: #c4ceda;
-  border: 1px solid #657084;
-  background: rgb(170 180 195 / 8%);
-  border-radius: 5px;
-  padding: 4px 8px;
+  border: 0;
+  background: transparent;
+  border-radius: 4px;
+  min-height: 26px;
+  padding: 2px 6px;
+  font: 10px/1.2 system-ui;
   cursor: pointer;
+  flex: 0 0 auto;
 }
-& .m2-spells-close {
-  font-size: 18px;
+& .m2-spells-control[aria-pressed="true"] {
+  background: #405473;
+  color: #fff;
+}
+& .m2-spells-close,
+& .m2-spells-back {
+  width: 26px;
+  padding: 0;
+  font-size: 20px;
+}
+& .m2-spell-formats {
+  display: flex;
+  gap: 2px;
+  flex: 0 0 auto;
 }
 & .m2-spell-group h3 {
-  color: #b9a4d4;
-  font: 11px/1.3 system-ui;
-  margin: 8px 0 5px;
+  color: #aabbd1;
+  text-transform: capitalize;
+  font: 10px/1.3 system-ui;
+  margin: 5px 0 3px;
+}
+& .m2-spell-group h3:empty {
+  display: none;
 }
 & .m2-spell-list {
   display: grid;
-  gap: 5px;
+  gap: 4px;
 }
 & .m2-spell-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
+  box-sizing: border-box;
+  display: block;
   min-width: 0;
-  min-height: 34px;
-  padding: 6px 8px;
+  height: 30px;
+  padding: 0;
   color: #dbe2eb;
   background: #202936;
   border: 1px solid #566273;
-  border-left: 3px solid #c4c8ce;
   border-radius: 5px;
   text-align: left;
-  font: 11px/1.3 system-ui;
   cursor: pointer;
+  overflow: hidden;
 }
-& .m2-spell-row > span {
-  color: #b5bfcc;
-  white-space: nowrap;
+& .m2-spell-tiny {
+  box-sizing: border-box;
+  min-height: 0;
+  gap: 0;
 }
-& .m2-spell-row[data-color="RED"] {
-  border-left-color: #de6262;
+& .m2-spell-tiny > .m2-list-band {
+  box-sizing: border-box;
+  height: 100%;
+  display: flex;
+  gap: 5px;
 }
-& .m2-spell-row[data-color="BLUE"] {
-  border-left-color: #67b1ef;
+& .m2-spell-tiny .m2-list-name {
+  font-size: 11px;
 }
-& .m2-spell-row[data-color="GREEN"] {
-  border-left-color: #6abd7d;
-}
-& .m2-spell-row[data-color="GOLD"] {
-  border-left-color: #e9c956;
-}
-& .m2-spell-row[data-color="PURPLE"] {
-  border-left-color: #b799de;
+& .m2-spell-tiny .m2-symbol {
+  font-size: 11px;
 }
 & .m2-spells-empty {
   color: #aab4c3;
@@ -3097,7 +3184,7 @@
   grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
 }
 & .m2-spell-grid .m2-spell-row {
-  display: block;
+  height: auto;
   padding: 2px;
 }
 & .m2-spell-card {
@@ -3109,10 +3196,46 @@
   overflow: hidden;
   background: #1b2330;
 }
+& #goa2-m2-hero-display > .m2-spell-large {
+  min-height: clamp(130px, 19dvh, 175px);
+}
+& .m2-spell-large > .m2-card-top {
+  grid-template-columns: minmax(0, 1fr) auto;
+  padding: 5px 8px;
+}
+& .m2-spell-large .m2-card-top > b {
+  font-size: 13px;
+}
+& .m2-spell-large .m2-card-top > span {
+  font-size: 10px;
+}
+& .m2-spell-large > .m2-card-body {
+  display: block;
+  padding: 6px 8px;
+}
+& .m2-spell-large .m2-card-type {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 5px;
+}
+& .m2-spell-large .m2-card-effect {
+  font-size: 12px;
+  line-height: 1.4;
+}
+& .m2-spell-large .m2-card-art > img {
+  object-position: 50% 34%;
+  filter: blur(2px);
+  transform: scale(3.5);
+  transform-origin: 50% 34%;
+}
 & .m2-spell-face {
   position: relative;
   width: 100%;
   aspect-ratio: 1192 / 831;
+}
+& .m2-spells-content .m2-spell-face {
+  height: calc(var(--m2-card-display-height) - 36px);
+  aspect-ratio: auto;
 }
 & .m2-spell-face > img {
   position: absolute;
@@ -3598,7 +3721,7 @@
   height: 10px;
 }
 &[data-m2-panel="tools"] #goa2-m2-summary,
-&[data-m2-deck-open] #goa2-m2-summary {
+&:is([data-m2-deck-open], [data-m2-spells-open]) #goa2-m2-summary {
   display: none !important;
 }
 & #goa2-m2-summary article {
@@ -3619,6 +3742,7 @@
   display: grid;
 }
 & #goa2-m2-summary .m2-summary-turn {
+  cursor: pointer;
   white-space: nowrap;
   flex-shrink: 0;
   height: 26px;
@@ -3640,6 +3764,7 @@
 & #goa2-m2-summary .m2-summary-upgrades > .m2-symbol img {
   width: 11px;
 }
+& #goa2-m2-summary .m2-summary-turn:focus-visible,
 & #goa2-m2-summary .m2-summary-identity:focus-visible {
   outline: 1px solid #c0cad8;
   outline-offset: 2px;
@@ -3662,17 +3787,24 @@
 & #goa2-m2-summary.m2-summary-focused {
   min-height: 0;
 }
+& #goa2-m2-summary .m2-summary-name-cell {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  width: 100%;
+  gap: 3px;
+}
 & #goa2-m2-summary .m2-summary-identity {
   align-items: center;
   white-space: nowrap;
   overflow: hidden;
-  flex: 1 1 112px;
+  flex: 1 1 0;
   cursor: pointer;
   max-width: none;
   display: flex;
   gap: 3px;
   min-width: 0;
-  width: 100%;
+  width: auto;
 }
 & #goa2-m2-summary .m2-summary-identity strong {
   font-size: 10px;
@@ -3682,6 +3814,11 @@
   max-width: none;
   overflow: visible;
   text-overflow: clip;
+}
+& #goa2-m2-summary .m2-summary-name-cell:has(.m2-summary-indicators) .m2-summary-identity strong {
+  flex-shrink: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 & #goa2-m2-summary .m2-summary-player {
   color: #a0a6b0;
@@ -3718,14 +3855,14 @@
   overflow: hidden;
   grid-template-columns:
     23px minmax(var(--m2-name-min, 70px), 1fr) 45px minmax(var(--m2-piles-width, 48px), max-content)
-    20px 70px 62px;
+    70px 62px;
   column-gap: 3px;
   overflow-x: auto;
 }
 & #goa2-m2-summary > article.m2-timed-hero {
   grid-template-columns:
     34px minmax(var(--m2-name-min, 70px), 1fr) 45px minmax(var(--m2-piles-width, 48px), max-content)
-    20px 70px 62px;
+    70px 62px;
 }
 & #goa2-m2-summary .m2-summary-clock {
   width: 34px;
@@ -3996,6 +4133,7 @@
   pointer-events: auto;
 }
 & [data-m2-action-picker] {
+  border-top: 1px solid #435066 !important;
   box-sizing: border-box;
   width: min(100%, 500px) !important;
   min-width: 0 !important;
@@ -4044,7 +4182,7 @@
 & [data-m2-action-picker] [class*="_titleRow_"] {
   gap: 8px;
 }
-& [data-m2-action-picker] button {
+& [data-m2-action-picker] button:not(.m2-inline-spell) {
   min-height: 36px;
   white-space: normal;
 }
@@ -4291,6 +4429,7 @@ html:not([data-m2-active]) .m2-choice-launchers {
       [data-m2-mode="hand"],
       [data-m2-mode="heroes"],
       [data-m2-deck-open],
+      [data-m2-spells-open],
       [data-m2-panel="tools"],
       [data-m2-panel="log"]
     )
@@ -4309,7 +4448,7 @@ html:not([data-m2-active]) .m2-choice-launchers {
     flex: 0 0 var(--m2-list-width) !important;
     border-left: 1px solid #3f4c61;
   }
-  &[data-m2-deck-open] [data-m2="board"] {
+  &:is([data-m2-deck-open], [data-m2-spells-open]) [data-m2="board"] {
     display: block !important;
   }
   & svg[data-m2-rotate] {
@@ -4415,16 +4554,20 @@ html:not([data-m2-active]) .m2-choice-launchers {
     bottom: var(--m2-offset, 0px);
   }
   &[data-m2-panel="setup"] [data-m2="setup"] {
-    top: var(--m2-head) !important;
+    top: calc(var(--m2-head) + 8px) !important;
     left: auto !important;
     right: var(--m2-nav-width) !important;
-    bottom: var(--m2-offset, 0px) !important;
+    bottom: auto !important;
     width: var(--m2-list-width) !important;
-    max-height: none !important;
+    max-height: calc(var(--m2-vh, 100dvh) - var(--m2-head) - 16px) !important;
   }
   /* Header icons protrude below their row; keep them above the native Deck modal. */
-  &[data-m2-deck-open] [data-m2="header"] {
+  &:is([data-m2-deck-open], [data-m2-spells-open]) [data-m2="header"] {
     z-index: 10002;
+  }
+  &[data-m2-spells-open] #goa2-m2-spells {
+    inset: calc(var(--m2-head) + 8px) var(--m2-nav-width) var(--m2-offset, 0px) auto;
+    width: var(--m2-list-width);
   }
   & [data-m2="deck"] {
     inset: calc(var(--m2-head) + 8px) var(--m2-nav-width) var(--m2-offset, 0px) auto !important;
@@ -4648,4 +4791,222 @@ html:not([data-m2-active]) .m2-choice-launchers {
 }
 & .m2-deck-tree .m2-tree-card[data-tier="1"] {
   width: 116px;
+}
+
+& .m2-spell-group h4 {
+  color: #aabbd1;
+  text-transform: capitalize;
+  font: 10px/1.3 system-ui;
+  margin: 5px 0 3px;
+}
+& .m2-deck-browser .m2-spell-group > h3 {
+  margin: 12px 0 5px;
+  font-size: 12px;
+}
+& .m2-spell-rule-line {
+  margin: 3px 0;
+  line-height: 24px;
+}
+& .m2-spell-rule-note {
+  margin-top: 5px;
+}
+& .m2-text-card .m2-inline-spell {
+  box-sizing: border-box;
+  height: 26px;
+  min-height: 26px;
+  overflow: hidden;
+  background: transparent;
+}
+& .m2-text-card .m2-inline-spell .m2-symbol {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 20px;
+  width: 20px;
+  height: 20px;
+  vertical-align: middle;
+}
+& .m2-text-card .m2-inline-spell .m2-symbol img {
+  width: 19px;
+  height: 19px;
+}
+& .m2-text-card .m2-inline-spell .m2-symbol-value {
+  font-size: 12px;
+}
+& .m2-inline-spell .m2-list-band {
+  background: color-mix(
+    in srgb,
+    color-mix(in srgb, var(--card-color) 27%, #18202b) 80%,
+    transparent
+  );
+}
+& .m2-nested-spell-frame {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  padding: 12px;
+  width: 100%;
+  background: #0007;
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+}
+& .m2-nested-spell-frame > .m2-nested-spell {
+  max-height: 100%;
+  overflow-y: auto;
+  box-shadow: 0 0 10px 2px #0009;
+}
+& [data-m2-spell-choice] {
+  font-size: 0 !important;
+  padding: 0 !important;
+  background: transparent !important;
+}
+& [data-m2-spell-choice] > :not(.m2-spell-tiny) {
+  display: none !important;
+}
+& [data-m2-spell-choice] > .m2-spell-tiny {
+  width: 100%;
+}
+& [data-m2-action-picker] > button[data-m2-spell-choice] {
+  height: 30px;
+  min-height: 30px;
+  border: 1px solid #566273;
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+& [data-m2-gold-choice] {
+  font-size: 0 !important;
+  padding: 0 5px !important;
+  overflow: hidden;
+}
+& [data-m2-gold-choice] > :not(.m2-list-card) {
+  display: none !important;
+}
+& [data-m2-gold-choice] .m2-small-card {
+  min-height: 42px;
+}
+
+/* Inscription keeps rune and turn columns aligned as options disappear. */
+& [data-m2-rune-source] {
+  display: none !important;
+}
+& [data-m2-rune-heading] {
+  font-size: 0 !important;
+}
+& [data-m2-rune-heading]::after {
+  content: attr(data-m2-rune-heading);
+  font: 600 14px/1.4 system-ui;
+}
+& .m2-rune-choices {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+& :is(.m2-rune-options, .m2-rune-slots) {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 4px;
+}
+& :is(.m2-rune-choice-cell, .m2-rune-slot) {
+  min-width: 0;
+  min-height: 36px;
+}
+& :is(.m2-rune-choice-cell > button, .m2-rune-slot) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 100%;
+  padding: 4px 2px;
+  border: 1px solid #4b5667;
+  border-radius: 5px;
+  color: #dbe2eb;
+  font: 11px/1.3 system-ui;
+}
+& .m2-rune-choice-cell > button {
+  background: #202936;
+  cursor: pointer;
+}
+& .m2-rune-slot {
+  background: rgb(190 195 205 / 5%);
+}
+& .m2-rune-slot[data-current="true"] {
+  border-color: #fff;
+  box-shadow: inset 0 0 0 1px #fff;
+  color: #fff;
+}
+& .m2-rune-label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  white-space: nowrap;
+}
+& .m2-rune-label > img {
+  width: 17px;
+  height: 17px;
+  object-fit: contain;
+}
+
+& [data-m2="hero"]:has(> .m2-hero-dashboard) > [class*="_runes_"] {
+  display: none !important;
+}
+& .m2-indicator-rune > img {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+}
+& .m2-hero-micro-slots.m2-has-floating-runes {
+  /* Extend the scroll viewport upward without shifting its cards or the board. */
+  padding-top: 14px;
+  margin-top: -8px;
+  border-top-color: transparent;
+  background: linear-gradient(#ffffff16, #ffffff16) 0 12px / 100% 1px no-repeat;
+}
+& .m2-micro-history-slot:has(.m2-rune-floating) {
+  position: relative;
+}
+& .m2-micro-history-slot .m2-rune-label {
+  font-size: 9px;
+  color: #c4ceda;
+  gap: 2px;
+}
+& .m2-micro-history-slot .m2-rune-label > img {
+  width: 12px;
+  height: 12px;
+}
+& .m2-rune-floating {
+  position: absolute;
+  top: -12px;
+  left: 0;
+  right: 0;
+  z-index: 30;
+  pointer-events: none;
+}
+
+& .m2-summary-indicators .m2-indicator-rune {
+  color: #c8cfd8;
+  background: rgb(190 195 205 / 18%);
+}
+& .m2-summary-indicators .m2-indicator-rune > img {
+  opacity: 0.85;
+}
+& .m2-micro-history-slot .m2-rune-label.m2-turn-rune-active {
+  color: #ffd700;
+  font-weight: 700;
+}
+& .m2-turn-rune-active > img {
+  filter: brightness(2.2) drop-shadow(0 0 1px #ffd700) drop-shadow(0 0 3px #ffd700);
+}
+& .m2-rune-turn-labels {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 4px;
+  margin-bottom: -4px;
+  color: #929baa;
+  text-align: center;
+  font: 10px/1.3 system-ui;
 }

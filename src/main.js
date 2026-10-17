@@ -7,7 +7,7 @@ import { renderSummary } from './board.js';
 import { clearBoardRotation, updateBoardRotation } from './camera.js';
 import { updateCardRow, updateOwnColors } from './card-rows.js';
 import { cardColors, cardUpgrades, syncHandActions, textCard } from './cards.js';
-import { updateChoiceLaunchers, updatePlanningActions } from './controls.js';
+import { startingPositionPrompt, updateChoiceLaunchers, updatePlanningActions } from './controls.js';
 import { deckTreeBuilds } from './deck-tree.js';
 import { basicCanvases, deckPaint, deckUpdate, renderedCard, retryBasicArtwork } from './deck.js';
 import { currentUpgradeRequest, remainingUpgrades } from './game-input.js';
@@ -47,6 +47,7 @@ import {
   extras,
   generatedRoots,
   heroPanel,
+  spellPanel,
   logPanel,
   nav,
   on,
@@ -197,7 +198,7 @@ function refresh() {
   updateUpgradeCards();
   updateUpgradeTree();
   const actionChoices = updateActionChoices();
-  updateMobileHeader(header, actionChoices.prompt);
+  updateMobileHeader(header, actionChoices.prompt || startingPositionPrompt());
   updateChoiceLaunchers(actionChoices.controls);
   const queue = resolutionEntries();
   const resolving = /^RESOLUTION$/i.test(
@@ -255,7 +256,7 @@ function refresh() {
       return {
         id: hero?.id,
         isOwn: !box.hasAttribute('data-m2-other'),
-        indicators: heroIndicators(hero, publicView),
+        indicators: heroIndicators(hero, publicView, true),
         level: hero?.level,
         gold: hero?.gold,
         currentCard: hero ? heroTurnCard(box, hero, publicView) : null,
@@ -419,7 +420,7 @@ on(media, 'change', schedule);
 
 // Public teardown for console installs and upgrades: release observers, timers, and DOM changes.
 window.GOA2Mobile2D = {
-  version: '1.2.0',
+  version: '1.3.0',
   destroy() {
     flushEventHistory();
     uiState.dead = true;
@@ -464,6 +465,7 @@ window.GOA2Mobile2D = {
     summary.remove();
     detailsPanel.remove();
     heroPanel.remove();
+    spellPanel.remove();
     settingsPanel.remove();
     logPanel.remove();
     cancelDecisionHistory();
@@ -490,6 +492,7 @@ window.GOA2Mobile2D = {
       'data-m2-hand-cards',
       'data-m2-hide-deck-options',
       'data-m2-deck-open',
+      'data-m2-spells-open',
       'data-m2-active',
       'data-m2-mode',
       'data-m2-panel',

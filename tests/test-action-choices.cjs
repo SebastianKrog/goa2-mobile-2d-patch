@@ -75,6 +75,90 @@ function setup(t) {
   return { ...fixture, hero, card, other, view, request, picker };
 }
 
+test('spell cast options use Tiny cards and the next action prompt displays that spell', (t) => {
+  const { d, w, hero, request, picker } = setup(t);
+  const shield = {
+    id: 'shield',
+    name: 'Shield',
+    spell_rank: 0,
+    image_id: 'Silver',
+    color: 'SILVER',
+    primary_action: 'SKILL',
+    secondary_actions: {},
+    state: 'SPELLBOOK',
+    is_facedown: true,
+    effect_text: 'Protect your hero.',
+  };
+  hero.spellbook = [shield];
+  hero.current_turn_card.effect_text = 'Cast the "Shield" spell. (A magic shield.)';
+  let casts = 0;
+  const native = d.createElement('button');
+  native.textContent = 'shield';
+  native.onclick = () => casts++;
+  picker.insertBefore(native, d.querySelector('#undo'));
+  Object.assign(request, {
+    type: 'SELECT_OPTION',
+    prompt: 'Choose a prepared spell to cast',
+    options: [
+      { id: 'shield', text: 'shield' },
+      { id: 'unknown', text: 'Unknown' },
+    ],
+  });
+  w.testUI.refresh();
+  assert(native.querySelector('.m2-spell-tiny'));
+  assert.equal(native.getAttribute('aria-label'), 'Shield');
+  assert.equal(w.getComputedStyle(native).minHeight, '30px');
+  const embedded = picker.querySelector('.m2-inline-spell');
+  assert.equal(
+    w.getComputedStyle(embedded).minHeight,
+    '26px',
+    'native action button height does not stretch embedded spells',
+  );
+  assert.equal(w.getComputedStyle(embedded.querySelector('.m2-symbol img')).height, '19px');
+  const stable = native.firstElementChild;
+  w.testUI.refresh();
+  assert.equal(native.firstElementChild, stable);
+  Object.assign(request, { type: 'SELECT_CARD', valid_options: ['shield'] });
+  w.testUI.refresh();
+  assert.equal(
+    native.firstElementChild,
+    stable,
+    'native SELECT_CARD with ID labels retains its Tiny spell button',
+  );
+  native.click();
+  assert.equal(casts, 1, 'native submission is retained');
+  native.disabled = true;
+  assert(native.disabled);
+  Object.assign(request, {
+    type: 'CHOOSE_ACTION',
+    prompt: 'Choose an action to perform on Shield',
+  });
+  w.testUI.refresh();
+  assert.equal(native.querySelector('.m2-spell-tiny'), null);
+  assert.equal(native.textContent, 'shield');
+  assert.equal(native.getAttribute('aria-label'), null);
+  const viewer = d.querySelector('.m2-action-card-view');
+  assert(viewer.querySelector('.m2-spell-large'));
+  assert.match(viewer.textContent, /Shield.*Protect your hero/s);
+  assert(!viewer.textContent.includes('Time Loop'));
+  request.prompt = 'Choose action for card Time Loop';
+  w.testUI.refresh();
+  assert(!viewer.querySelector('.m2-spell-large'));
+  assert(viewer.textContent.includes('Time Loop'));
+  assert(shield.is_facedown, 'presentation never mutates prepared cards');
+});
+
+test('rune options use their icons without redundant bullets, preserving ordinary lists', (t) => {
+  const { d, card, w } = setup(t);
+  card.effect_text =
+    'Target a unit.\n• :rune_bird: You may target a minion.\n• :rune_axe: +3 attack.\n• Ordinary option.';
+  w.testUI.refresh();
+  const viewer = d.querySelector('.m2-action-card-view');
+  assert.equal(viewer.querySelectorAll('.m2-rule-icon').length, 2);
+  assert.doesNotMatch(viewer.textContent, /•\s*You may|•\s*\+3/);
+  assert.match(viewer.textContent, /• Ordinary option/);
+});
+
 test('played-card viewer precedes native choices, stays fresh and preserves native handlers', (t) => {
   const f = setup(t),
     { d, w, picker, hero, card, request, view } = f;
@@ -317,4 +401,362 @@ test('Board card falls back to inspection after the choice advances and in Heroe
   d.querySelector('#own .m2-current-card-mini').click();
   assert.equal(opens, 0, 'Heroes retains card inspection');
   assert(d.querySelector('#goa2-m2-hero-display .m2-text-card'));
+});
+
+test('skill choices use icons and Fast Travel hides its placeholder value without replacing handlers', (t) => {
+  const { d, w, picker, request, media } = setup(t);
+  const entries = [
+    ['Primary: SKILL (-)', '/icons/skill.png'],
+    ['Primary: DEFENSE_SKILL (-)', '/icons/defense-skill.png'],
+    ['Secondary: FAST_TRAVEL (0)', null],
+  ];
+  const buttons = entries.map(([text]) => {
+    const button = d.createElement('button');
+    button.innerHTML = '<span></span>';
+    button.firstChild.textContent = text;
+    picker.append(button);
+    return button;
+  });
+  w.testUI.refresh();
+  assert.equal(w.getComputedStyle(picker).borderTopWidth, '1px');
+  assert(!w.getComputedStyle(picker).borderTop.includes('phase-resolution'));
+  for (let i = 0; i < buttons.length; i++) {
+    const button = buttons[i];
+    const label = button.querySelector('.m2-action-choice-label');
+    assert(label);
+    assert(!label.querySelector('.m2-symbol-value'));
+    if (entries[i][1]) assert.equal(label.querySelector('img').getAttribute('src'), entries[i][1]);
+    else assert.equal(label.textContent, 'Secondary: FAST TRAVEL');
+    let clicks = 0;
+    button.onclick = () => clicks++;
+    label.click();
+    assert.equal(clicks, 1);
+    assert.equal(button.firstChild.textContent, entries[i][0]);
+  }
+  request.type = 'SELECT_OPTION';
+  w.testUI.refresh();
+  assert(buttons.every((button) => !button.hasAttribute('data-m2-action-choice')));
+  assert(buttons.every((button, i) => button.textContent === entries[i][0]));
+  media.matches = false;
+  w.testUI.refresh();
+  assert(!picker.hasAttribute('data-m2-action-picker'));
+});
+
+test('gold-card choices are always Small catalog cards and retain native submission and cleanup', (t) => {
+  const { d, w, picker, request, hero, media } = setup(t);
+  d.querySelector('[data-mode="tools"]').click();
+  const setting = d.querySelector('[data-setting="hand-cards"]');
+  setting.value = 'tiny';
+  setting.dispatchEvent(new w.Event('change'));
+  d.querySelector('[data-mode="tools"]').click();
+  hero.deck = ['Bee', 'Tiger'].map((name, i) => ({
+    id: name.toLowerCase(),
+    name,
+    color: 'GOLD',
+    tier: 'UNTIERED',
+    initiative: 8 + i,
+    primary_action: 'ATTACK',
+    primary_action_value: 3 + i,
+    secondary_actions: { MOVEMENT: 2, DEFENSE: 3 },
+    is_facedown: i === 0,
+  }));
+  request.type = 'SELECT_CARD';
+  request.prompt = 'Choose a gold card in your deck';
+  request.valid_options = hero.deck.map((card) => card.id);
+  let chosen = null;
+  const buttons = hero.deck.map((card) => {
+    const button = d.createElement('button');
+    button.textContent = card.name;
+    button.onclick = () => (chosen = card.id);
+    picker.append(button);
+    return button;
+  });
+  w.testUI.refresh();
+  for (const button of buttons) {
+    assert(button.querySelector('.m2-small-card'));
+    assert.equal(button.querySelector('.m2-tiny-hand-card'), null);
+    assert.equal(button.querySelectorAll('.m2-list-card').length, 1);
+  }
+  const row = buttons[0].querySelector('.m2-list-card');
+  w.testUI.refresh();
+  assert.equal(buttons[0].querySelector('.m2-list-card'), row);
+  row.querySelector('.m2-list-name').click();
+  assert.equal(chosen, 'bee');
+  assert.equal(hero.deck[0].is_facedown, true, 'catalog display does not mutate card state');
+  request.valid_options.push('missing');
+  w.testUI.refresh();
+  assert(
+    buttons.every((button) => !button.querySelector('.m2-list-card')),
+    'incomplete offers retain native choices',
+  );
+  request.valid_options.pop();
+  w.testUI.refresh();
+  assert(buttons.every((button) => button.querySelector('.m2-small-card')));
+  media.matches = false;
+  w.testUI.refresh();
+  assert(buttons.every((button) => !button.hasAttribute('data-m2-gold-choice')));
+  assert.deepEqual(
+    buttons.map((button) => button.textContent),
+    ['Bee', 'Tiger'],
+  );
+  assert(buttons.every((button) => !button.querySelector('.m2-list-card')));
+});
+
+test('rune inscription reserves four ordered choices and fills unpublished slots through selection, Undo and reload', (t) => {
+  const fixture = setup(t);
+  const { d, w, picker, request, hero, media } = fixture;
+  request.type = 'SELECT_OPTION';
+  request.prompt = 'Place a rune below turn slot 1';
+  request.options = ['Axe', 'Bird', 'Anvil', 'Horn'].map((name) => ({
+    id: name.toLowerCase(),
+    text: name,
+  }));
+  hero.rune_slots = {};
+  d.querySelectorAll('#attack, #choose, #hold, #clear').forEach((button) => button.remove());
+  const sources = new Map();
+  for (const option of request.options) {
+    const source = d.createElement('button');
+    source.textContent = option.text;
+    source.onclick = () => {
+      const turn = Number(request.prompt.match(/(\d)$/)[1]);
+      // Real inscription publishes final rune_slots only after all four picks.
+      request.options = request.options.filter((candidate) => candidate.id !== option.id);
+      source.remove();
+      if (turn === 4) {
+        request.type = 'CHOOSE_ACTION';
+        request.prompt = 'Confirm your action.';
+        request.options = [{ id: 'CONFIRM', text: 'Confirm' }];
+        const confirm = d.createElement('button');
+        confirm.id = 'rune-confirm';
+        confirm.textContent = 'Confirm';
+        picker.insertBefore(confirm, d.querySelector('#undo'));
+      } else request.prompt = 'Place a rune below turn slot ' + (turn + 1);
+      w.testUI.refresh();
+    };
+    picker.insertBefore(source, d.querySelector('#undo'));
+    sources.set(option.id, source);
+  }
+  w.testUI.refresh();
+  const root = () => picker.querySelector('.m2-rune-choices');
+  const cells = () => [...root().querySelectorAll('.m2-rune-choice-cell')];
+  const slots = () => [...root().querySelectorAll('.m2-rune-slot')];
+  assert.deepEqual(
+    cells().map((cell) => cell.dataset.rune),
+    ['bird', 'axe', 'anvil', 'horn'],
+  );
+  assert.deepEqual(
+    cells().map((cell) => cell.textContent),
+    ['Bird', 'Axe', 'Anvil', 'Horn'],
+  );
+  assert.deepEqual(
+    slots().map((slot) => slot.textContent),
+    ['Turn 1', 'Turn 2', 'Turn 3', 'Turn 4'],
+  );
+  assert.equal(
+    picker.querySelector('[data-m2-rune-heading]').dataset.m2RuneHeading,
+    'Place a rune for turn 1',
+  );
+  assert.equal(slots()[0].getAttribute('aria-current'), 'step');
+  assert.equal(w.getComputedStyle(slots()[0]).borderColor, 'rgb(255, 255, 255)');
+  assert.equal(
+    w.getComputedStyle(root().firstChild).gridTemplateColumns,
+    'repeat(4, minmax(0, 1fr))',
+  );
+  assert(
+    root().compareDocumentPosition(d.querySelector('#undo')) & w.Node.DOCUMENT_POSITION_FOLLOWING,
+  );
+  const bird = cells()[0].querySelector('button');
+  assert.equal(bird.querySelector('img').getAttribute('src'), '/icons/rune_bird.png');
+  bird.focus();
+  w.testUI.refresh();
+  assert.equal(cells()[0].querySelector('button'), bird);
+  assert.equal(d.activeElement, bird, 'unchanged updates preserve focus');
+  bird.querySelector('img').click();
+  assert.equal(cells()[0].querySelector('button'), null);
+  assert.equal(cells()[0].textContent, '');
+  assert.equal(cells().length, 4);
+  assert.deepEqual(
+    slots().map((slot) => slot.textContent),
+    ['Bird', 'Turn 2', 'Turn 3', 'Turn 4'],
+  );
+  assert.equal(slots()[1].getAttribute('aria-current'), 'step');
+  cells()[1].querySelector('button').click();
+  assert.deepEqual(
+    slots().map((slot) => slot.textContent),
+    ['Bird', 'Axe', 'Turn 3', 'Turn 4'],
+  );
+  assert.equal(cells()[1].querySelector('button'), null);
+  assert.equal(slots()[2].getAttribute('aria-current'), 'step');
+  assert.deepEqual(hero.rune_slots, {}, 'staged choices are absent from the public hero');
+  w.GOA2Mobile2D.destroy();
+  fixture.install();
+  assert.deepEqual(
+    slots().map((slot) => slot.textContent),
+    ['Bird', 'Axe', 'Turn 3', 'Turn 4'],
+    'confirmed choices survive userscript reload via session storage',
+  );
+  // Undo is still the native control: simulate its server acknowledgement.
+  let undos = 0;
+  d.querySelector('#undo').onclick = () => {
+    undos++;
+    delete hero.rune_slots['2'];
+    request.options.push({ id: 'axe', text: 'Axe' });
+    picker.insertBefore(sources.get('axe'), d.querySelector('#undo'));
+    request.prompt = 'Place a rune below turn slot 2';
+    w.testUI.refresh();
+  };
+  d.querySelector('#undo').click();
+  assert.equal(undos, 1);
+  assert(cells()[1].querySelector('button'));
+  assert.deepEqual(
+    slots().map((slot) => slot.textContent),
+    ['Bird', 'Turn 2', 'Turn 3', 'Turn 4'],
+  );
+  cells()[1].querySelector('button').click();
+  cells()[2].querySelector('button').click();
+  assert.deepEqual(
+    slots().map((slot) => slot.textContent),
+    ['Bird', 'Axe', 'Anvil', 'Turn 4'],
+  );
+  assert.equal(slots()[3].getAttribute('aria-current'), 'step');
+  assert.equal(root().querySelectorAll('button').length, 1);
+  cells()[3].querySelector('button').click();
+  assert.deepEqual(
+    slots().map((slot) => slot.textContent),
+    ['Bird', 'Axe', 'Anvil', 'Horn'],
+  );
+  assert.equal(root().querySelector('.m2-rune-options'), null);
+  assert.deepEqual(
+    [...root().querySelectorAll('.m2-rune-turn-labels > span')].map((label) => label.textContent),
+    ['Turn 1', 'Turn 2', 'Turn 3', 'Turn 4'],
+  );
+  assert.equal(
+    w.getComputedStyle(root().querySelector('.m2-rune-turn-labels')).textAlign,
+    'center',
+  );
+  assert.equal(root().querySelector('[aria-current]'), null);
+  assert.equal(
+    picker.querySelector('[data-m2-rune-heading]'),
+    null,
+    'native confirmation heading is restored',
+  );
+  assert(
+    root().compareDocumentPosition(d.querySelector('#rune-confirm')) &
+      w.Node.DOCUMENT_POSITION_FOLLOWING,
+  );
+  let confirms = 0;
+  d.querySelector('#rune-confirm').onclick = () => confirms++;
+  d.querySelector('#rune-confirm').click();
+  assert.equal(confirms, 1, 'native confirmation remains clickable');
+  w.GOA2Mobile2D.destroy();
+  fixture.install();
+  assert.deepEqual(
+    slots().map((slot) => slot.textContent),
+    ['Bird', 'Axe', 'Anvil', 'Horn'],
+    'confirmation survives reload',
+  );
+  media.matches = false;
+  w.testUI.refresh();
+  assert.equal(root(), null);
+  assert(!sources.get('horn').hasAttribute('data-m2-rune-source'));
+  assert.equal(picker.querySelector('[data-m2-rune-heading]'), null);
+  media.matches = true;
+  w.testUI.refresh();
+  assert(root());
+  request.type = 'CHOOSE_ACTION';
+  request.prompt = 'Choose action';
+  w.testUI.refresh();
+  assert.equal(root(), null);
+  assert(!sources.get('horn').hasAttribute('data-m2-rune-source'));
+});
+
+test('joining inscription midway does not guess earlier order or reuse the old saved rune layout', (t) => {
+  const { d, w, picker, request, hero } = setup(t);
+  hero.rune_slots = { 1: 'axe', 2: 'bird', 3: 'horn', 4: 'anvil' };
+  request.type = 'SELECT_OPTION';
+  request.prompt = 'Place a rune below turn slot 3';
+  request.options = [
+    { id: 'anvil', text: 'Anvil' },
+    { id: 'horn', text: 'Horn' },
+  ];
+  for (const text of ['Anvil', 'Horn']) {
+    const button = d.createElement('button');
+    button.textContent = text;
+    picker.append(button);
+  }
+  w.testUI.refresh();
+  const slots = () => [...picker.querySelectorAll('.m2-rune-slot')].map((slot) => slot.textContent);
+  assert.deepEqual(slots(), ['Turn 1', 'Turn 2', 'Turn 3', 'Turn 4']);
+  request.prompt = 'Place a rune below turn slot 4';
+  request.options.shift();
+  w.testUI.refresh();
+  assert.deepEqual(slots(), ['Turn 1', 'Turn 2', 'Anvil', 'Turn 4']);
+  request.type = 'CHOOSE_ACTION';
+  request.prompt = 'Choose action';
+  w.testUI.refresh();
+  assert.equal(w.sessionStorage.getItem('goa2-mobile-rune-progress'), null);
+});
+
+test('published rune layout is visible when installing directly at inscription confirmation', (t) => {
+  const { d, w, picker, request, hero } = setup(t);
+  hero.current_turn_card = {
+    ...hero.current_turn_card,
+    id: 'inscribe_the_runes',
+    name: 'Inscribe the Runes',
+  };
+  hero.rune_slots = { 1: 'horn', 2: 'anvil', 3: 'bird', 4: 'axe' };
+  request.type = 'SELECT_OPTION';
+  request.type = 'CHOOSE_ACTION';
+  request.prompt = 'Confirm your action.';
+  request.options = [{ id: 'CONFIRM', text: 'Confirm' }];
+  w.testUI.refresh();
+  assert.deepEqual(
+    [...picker.querySelectorAll('.m2-rune-slot')].map((slot) => slot.textContent),
+    ['Horn', 'Anvil', 'Bird', 'Axe'],
+  );
+  assert.equal(picker.querySelector('.m2-rune-options'), null);
+  assert.equal(picker.querySelector('[data-m2-rune-heading]'), null);
+  hero.current_turn_card = { ...hero.current_turn_card, id: 'other', name: 'Other card' };
+  request.prompt = 'Choose action';
+  w.testUI.refresh();
+  request.type = 'CHOOSE_ACTION';
+  request.prompt = 'Confirm your action.';
+  w.testUI.refresh();
+  assert.equal(
+    picker.querySelector('.m2-rune-choices'),
+    null,
+    'other action confirmations do not inherit the rune display',
+  );
+});
+
+test('automatic final rune appears when turn-three selection goes straight to confirmation', (t) => {
+  const { d, w, picker, request, hero } = setup(t);
+  hero.current_turn_card = {
+    ...hero.current_turn_card,
+    id: 'inscribe_the_runes',
+    name: 'Inscribe the Runes',
+  };
+  hero.rune_slots = {};
+  request.type = 'SELECT_OPTION';
+  request.prompt = 'Place a rune below turn slot 3';
+  request.options = [
+    { id: 'bird', text: 'Bird' },
+    { id: 'horn', text: 'Horn' },
+  ];
+  for (const text of ['Bird', 'Horn']) {
+    const button = d.createElement('button');
+    button.textContent = text;
+    picker.append(button);
+  }
+  w.testUI.refresh();
+  hero.rune_slots = { 1: 'axe', 2: 'anvil', 3: 'bird', 4: 'horn' };
+  request.type = 'CHOOSE_ACTION';
+  request.prompt = 'Confirm your action.';
+  request.options = [{ id: 'CONFIRM', text: 'Confirm' }];
+  w.testUI.refresh();
+  assert.deepEqual(
+    [...picker.querySelectorAll('.m2-rune-slot')].map((slot) => slot.textContent),
+    ['Axe', 'Anvil', 'Bird', 'Horn'],
+  );
+  assert.equal(picker.querySelector('.m2-rune-options'), null);
 });

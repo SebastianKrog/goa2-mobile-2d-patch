@@ -1,6 +1,6 @@
-import { isSpellCard, spellFace } from './spells.js';
+import { isSpellCard, spellColorName, spellRankLabel, spellPreferences, spellFace, knownSpells, spellTinyCard } from './spells.js';
 import { printedPrimarySigns, printedModifierSigns } from './printed-signs.js';
-import { dismiss } from './navigation.js';
+import { dismiss, openNestedCard } from './navigation.js';
 import { componentProp } from './react.js';
 import { q, uiState } from './runtime.js';
 import { detailsPanel, on } from './ui.js';
@@ -249,7 +249,9 @@ const inlineRuleIcons = {
   ])),
 };
 function appendRulesText(effect, text, symbol) {
-  for (const part of String(text || '').split(/(:[a-z_]+:)/g)) {
+  // Rune icons already identify each option; retain bullets for ordinary lists.
+  const rules = String(text || '').replace(/(^|\n|\\n)([ \t]*)[•·*-][ \t]+(?=:rune_(?:bird|axe|anvil|horn)(?:_marker)?:)/g, '$1$2');
+  for (const part of rules.split(/(:[a-z_]+:)/g)) {
     const key = /^:([a-z_]+):$/.exec(part)?.[1];
     if (key && /^(attack|defense|movement|range|radius|initiative)$/.test(key))
       effect.append(symbol(key.toUpperCase()));
@@ -262,6 +264,79 @@ function appendRulesText(effect, text, symbol) {
       effect.append(img);
     } else effect.append(document.createTextNode(part));
   }
+}
+// Only the owner sees spell cards embedded in Gydion's rules. Parenthetical
+// reminder/flavour text remains intact and never creates extra spell buttons.
+function appendSpellRules(effect, card, heroId, symbol, inspect) {
+  const own = q('[data-m2="sidebar"] [data-m2="hero"]:not([data-m2-other])');
+  const hero = own && componentProp(own, 'hero');
+  if (!hero || hero.id !== heroId || !Array.isArray(hero.spellbook)) return false;
+  const catalog = [...knownSpells(hero.spellbook, true), ...knownSpells(hero.cast_spells)];
+  const cards = [...new Map(catalog.map(spell => [spell.name.toLowerCase().replace(/[’']/g, ''), spell])).values()]
+    .sort((a, b) => b.name.length - a.name.length);
+  const escaped = name => [...name].map(char => /['’]/.test(char) ? "['’]?"
+    : /[a-z0-9 ]/i.test(char) ? char : String.fromCharCode(92) + char).join('');
+  const source = String(card.effect_text || '').replace(/\\n/g, '\n');
+  let main = '', depth = 0, parenthetical = '';
+  const notes = [];
+  for (const char of source) {
+    if (char === '(') depth++;
+    if (depth) parenthetical += char;
+    else main += char;
+    if (char === ')' && depth && --depth === 0) {
+      notes.push(parenthetical);
+      parenthetical = '';
+    }
+  }
+  // An unmatched opening parenthesis is ordinary rules text, not a hidden note.
+  main += parenthetical;
+  const seen = new Set(), deferred = [];
+  let choosing = false, matched = false;
+  const addSpell = spell => {
+    const row = document.createElement('button');
+    row.type = 'button';
+    row.className = 'm2-current-card-mini m2-inline-spell';
+    row.dataset.spellId = spell.id;
+    row.setAttribute('aria-label', 'View ' + spell.name);
+    row.title = spell.name;
+    row.append(spellTinyCard(spell));
+    row.onclick = event => { event.preventDefault(); event.stopPropagation(); inspect(spell, row); };
+    const line = document.createElement('div');
+    line.className = 'm2-spell-rule-line';
+    line.append(row);
+    effect.append(line);
+  };
+  for (const line of main.split(/\r?\n/)) {
+    if (/choose one/i.test(line)) choosing = true;
+    const matches = [];
+    let text = line;
+    for (const spell of cards) {
+      const pattern = new RegExp('(^|[^a-z0-9])(["“]?' + escaped(spell.name) + '["”]?)(?=$|[^a-z0-9])', 'ig');
+      text = text.replace(pattern, (reference, prefix) => {
+        matched = true;
+        const key = spell.name.toLowerCase().replace(/[’']/g, '');
+        if (!seen.has(key)) { seen.add(key); matches.push(spell); }
+        return choosing ? prefix : reference;
+      });
+    }
+    text = text.replace(/^\s*[•>*-]\s*(?=[.\s]*$)/, '').trim();
+    if (text && !/^[.\s]*$/.test(text)) {
+      const paragraph = document.createElement('div');
+      appendRulesText(paragraph, text, symbol);
+      effect.append(paragraph);
+    }
+    if (choosing) for (const spell of matches) addSpell(spell);
+    else deferred.push(...matches);
+  }
+  if (!matched) { effect.replaceChildren(); return false; }
+  for (const spell of deferred) addSpell(spell);
+  for (const note of notes) {
+    const paragraph = document.createElement('div');
+    paragraph.className = 'm2-spell-rule-note';
+    appendRulesText(paragraph, note, symbol);
+    effect.append(paragraph);
+  }
+  return true;
 }
 // Suppress placeholder zeros, but preserve open-ended values and zeros explicitly
 // mentioned in rules text. This is presentation filtering, not rules evaluation.
@@ -328,7 +403,8 @@ function appendCardArtwork(box, card, source, heroId) {
     box.classList.remove('m2-has-art');
     art.remove();
   };
-  const url = '/cards/backgrounds/' + slug + '/' + imageId + '.webp';
+  const url = isSpellCard(card) ? '/cards/spells/' + imageId + '.webp'
+    : '/cards/backgrounds/' + slug + '/' + imageId + '.webp';
   // One crop spans the complete card. Bars blur this layer in place rather
   // than drawing their own copy, so artwork stays aligned across each seam.
   image.src = url;
@@ -364,6 +440,7 @@ function upgradedSymbol(items, key, value) {
 // Native controls can change while the card and its artwork stay unchanged.
 // Reconcile their labels, availability and identity independently of card rendering.
 function syncHandActions(foot, card, tip, items) {
+  if (foot.closest('.m2-nested-spell')) return;
   const sec = card.secondary_actions || {};
   const original = tip
     ? Array.from(tip.querySelectorAll('button')).filter((b) => !b.closest('.m2-text-card'))
@@ -429,10 +506,44 @@ function syncHandActions(foot, card, tip, items) {
   if (dismissButton) foot.append(dismissButton);
 }
 
+// Spells use printed values: their owner is not necessarily their caster.
+// No initiative, empty secondary-stat rail, or upgrade/item slot is reserved.
+function spellLargeCard(card, heroId) {
+  const box = document.createElement('article');
+  box.className = 'm2-text-card m2-spell-card m2-spell-large';
+  box.style.setProperty('--card-color', cardColors[spellColorName(card)] || '#bfc7d2');
+  appendCardArtwork(box, card, null, heroId);
+  const top = document.createElement('header');
+  top.className = 'm2-card-top';
+  const name = document.createElement('b'), tier = document.createElement('span');
+  name.textContent = card.name;
+  tier.textContent = spellRankLabel(card).replace('Rank ', '');
+  top.append(name, tier);
+  const body = document.createElement('div'), head = document.createElement('div');
+  body.className = 'm2-card-body';
+  head.className = 'm2-card-type';
+  if (card.primary_action) head.append(cardSymbol(card.primary_action, primaryCardValue(card)));
+  const type = document.createElement('b');
+  type.textContent = (card.color === 'GOLD' ? 'Basic ' : '') + (actionNames[card.primary_action] || 'Spell');
+  head.append(type);
+  for (const key of ['RANGE', 'RADIUS']) {
+    const value = modifierCardValue(card, key);
+    if (relevantStat(card, key, value)) head.append(cardSymbol(key, value));
+  }
+  const effect = document.createElement('div');
+  effect.className = 'm2-card-effect';
+  appendRulesText(effect, card.effect_text, cardSymbol);
+  if (!card.effect_text) effect.textContent = 'See the printed spell face for its rules.';
+  body.append(head, effect);
+  const foot = document.createElement('footer');
+  foot.className = 'm2-card-foot';
+  box.append(top, body, foot);
+  return box;
+}
 // Shared readable card renderer. Deck shows printed values; Hand and Heroes apply known upgrades.
 // Hand actions proxy native controls so the website remains responsible for game rules.
 function textCard(card, context, tip, heroId, grantedItem) {
-  if (isSpellCard(card)) return spellFace(card);
+  if (isSpellCard(card)) return spellPreferences.view === 'image' ? spellFace(card) : spellLargeCard(card, heroId);
   const items = context === 'deck' ? {} : cardUpgrades(card);
   const symbol = (key, value) => upgradedSymbol(items, key, value);
   const ultimate = card.tier === 'IV' || card.color === 'PURPLE';
@@ -484,7 +595,9 @@ function textCard(card, context, tip, heroId, grantedItem) {
     head.append(symbol('RADIUS', modifierCardValue(card, 'RADIUS')));
   const effect = document.createElement('div');
   effect.className = 'm2-card-effect';
-  appendRulesText(effect, card.effect_text, symbol);
+  if (!appendSpellRules(effect, card, heroId || cardHero(card, tip)?.id, symbol, (spell, source) =>
+    openNestedCard(box, textCard(spell, context, null, heroId), source)))
+    appendRulesText(effect, card.effect_text, symbol);
   main.append(head, effect);
   body.append(side, main);
   const foot = document.createElement('footer');

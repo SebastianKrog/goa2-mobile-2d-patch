@@ -91,6 +91,17 @@ function choiceControlLabel(source) {
   copy.querySelectorAll('kbd').forEach(hint => hint.remove());
   return copy.textContent.replace(/\s+/g, ' ').trim();
 }
+// Keep position instructions in the shared action strip even when Back hides
+// the swap panel: native choosing state remains the source of truth.
+function startingPositionPrompt() {
+  const setup = q('[data-m2="setup"]');
+  if (!setup) return '';
+  const supplied = componentProp(setup, 'choosing');
+  const choosing = typeof supplied === 'boolean' ? supplied
+    : /^Done/i.test(q(':scope > button', setup)?.textContent.trim() || '');
+  if (!choosing) return '';
+  return q(':scope > span', setup)?.textContent.trim() || 'Choose a highlighted space or request a swap.';
+}
 function updateChoiceLaunchers(boardControls = []) {
   const board = q('[data-m2="board"]');
   if (!board) return;
@@ -141,4 +152,4 @@ function updateChoiceLaunchers(boardControls = []) {
   host.hidden = !host.children.length;
 }
 
-export { openCardActionOptions, updateChoiceLaunchers, updatePlanningActions };
+export { startingPositionPrompt, openCardActionOptions, updateChoiceLaunchers, updatePlanningActions };

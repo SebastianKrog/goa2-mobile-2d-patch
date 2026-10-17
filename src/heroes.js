@@ -1,5 +1,6 @@
+import { runes, runeLabel } from './rune-choices.js';
 import { heroIndicators, renderHeroIndicators } from './hero-indicators.js';
-import { appendSpellGroup, knownSpells } from './spells.js';
+import { appendCastSpellGroups, knownSpells, spellPreferences, setSpellPreference } from './spells.js';
 import { schedule } from './main.js';
 import { remainingUpgrades } from './game-input.js';
 import { predictResolutionOrder } from './resolution-order.js';
@@ -23,7 +24,7 @@ import { renderedCard } from './deck.js';
 import { navigationShortcut } from './navigation.js';
 import { componentProp } from './react.js';
 import { c, q, uiState, tag } from './runtime.js';
-import { addExtra, clearHeroCard, heroPanel } from './ui.js';
+import { addExtra, clearHeroCard, clearSpellBrowser, spellPanel, heroPanel } from './ui.js';
 
 // Exclude injected item/stat nodes when recovering the native hero/player label.
 function heroDisplayName(name) {
@@ -137,6 +138,7 @@ function updateHeroDashboard(box, view, suppliedHero = null, upgradeRequest = nu
     hero.can_commit_second_card,
     upgradeRemaining,
     hero.played_cards,
+    hero.rune_slots,
     hero.discard_pile,
     hero.items,
     indicators,
@@ -317,6 +319,7 @@ function updateHeroDashboard(box, view, suppliedHero = null, upgradeRequest = nu
       const slot = document.createElement('div');
       slot.className = 'm2-micro-history-slot';
       const label = i < 4 ? 'Turn ' + (i + 1) : 'Discard';
+      const rune = i < 4 && runes.includes(hero.rune_slots?.[i + 1]) ? hero.rune_slots[i + 1] : null;
       slot.setAttribute('aria-label', label);
       const cards = i < 4 ? [hero.played_cards[i]].filter(Boolean) : hero.discard_pile || [];
       slot.classList.toggle('m2-history-empty', !cards.length);
@@ -335,8 +338,24 @@ function updateHeroDashboard(box, view, suppliedHero = null, upgradeRequest = nu
       if (!cards.length || i === 4) {
         const placeholder = document.createElement('span');
         placeholder.className = 'm2-micro-placeholder';
-        placeholder.textContent = label;
+        if (rune) {
+          const marker = runeLabel(rune);
+          marker.classList.toggle('m2-turn-rune-active', Number(view?.turn) === i + 1);
+          placeholder.append(marker);
+        }
+        else placeholder.textContent = label;
         slot.append(placeholder);
+      }
+      if (rune) {
+        const runeName = rune[0].toUpperCase() + rune.slice(1);
+        slot.setAttribute('aria-label', label + ': ' + runeName + (Number(view?.turn) === i + 1 ? ' (active)' : ''));
+        if (cards.length) {
+          const marker = runeLabel(rune);
+          marker.classList.add('m2-rune-floating');
+          marker.classList.toggle('m2-turn-rune-active', Number(view?.turn) === i + 1);
+          slot.append(marker);
+          slots.classList.add('m2-has-floating-runes');
+        }
       }
       slots.append(slot);
     }
@@ -382,6 +401,7 @@ function updateTurnPortrait(box, entry, done, offboard, resolving) {
 }
 // Resolve the selected card by identity each refresh so upgrades and visibility stay current.
 function updateHeroCardDisplay() {
+  if (!uiState.selectedHeroCard?.spells) clearSpellBrowser();
   if (!uiState.selectedHeroCard) { highlightViewedCard('hero'); return; }
   const box = Array.from(document.querySelectorAll('[data-m2="sidebar"] [data-m2="hero"]')).find(
     (box) => componentProp(box, 'hero')?.id === uiState.selectedHeroCard.heroId,
@@ -394,37 +414,68 @@ function updateHeroCardDisplay() {
   if (uiState.selectedHeroCard.spells) {
     const cards = knownSpells(hero.cast_spells);
     const selected = cards.find(card => card.id === uiState.selectedHeroCard.cardId);
-    const key = JSON.stringify(['cast-spells', hero.id, cards, selected?.id]);
-    if (heroPanel.dataset.key === key) return;
+    document.documentElement.setAttribute('data-m2-spells-open', '');
+    const key = JSON.stringify(['cast-spells', hero.id, cards, spellPreferences.sort]);
+    if (spellPanel.dataset.key !== key) {
+      const list = document.createElement('section');
+      list.className = 'm2-cast-spells';
+      list.setAttribute('aria-label', (hero.name || 'Gydion') + ' cast spells');
+      const header = document.createElement('header');
+      const title = document.createElement('b');
+      title.textContent = (hero.name || 'Gydion') + ' · Spells (' + cards.length + ')';
+      const sort = document.createElement('button');
+      sort.type = 'button';
+      sort.className = 'm2-spells-control m2-sort-switch';
+      sort.setAttribute('role', 'switch');
+      sort.setAttribute('aria-label', 'Sort spells by color instead of rank');
+      sort.setAttribute('aria-checked', String(spellPreferences.sort === 'color'));
+      const labels = document.createElement('span');
+      for (const text of ['Rank', 'Color']) {
+        const label = document.createElement('span'); label.textContent = text; labels.append(label);
+      }
+      sort.append(labels, document.createElement('i'));
+      sort.onclick = () => {
+        setSpellPreference('sort', spellPreferences.sort === 'tier' ? 'color' : 'tier');
+        updateHeroCardDisplay();
+      };
+      const close = document.createElement('button');
+      close.type = 'button';
+      close.className = 'm2-spells-control m2-spells-close';
+      close.textContent = '×';
+      close.setAttribute('aria-label', 'Close cast spells');
+      close.onclick = () => { clearHeroCard(); schedule(); };
+      header.append(title, sort, close);
+      const content = document.createElement('div');
+      content.className = 'm2-spells-content';
+      appendCastSpellGroups(content, cards, card => {
+        uiState.selectedHeroCard = { heroId: hero.id, spells: true, cardId: card.id };
+        updateHeroCardDisplay();
+      }, { viewer: 'hero', owner: hero.id, flat: true });
+      list.append(header, content);
+      spellPanel.replaceChildren(list);
+      spellPanel.dataset.key = key;
+    }
+    for (const row of spellPanel.querySelectorAll('[data-spell-id]'))
+      row.setAttribute('aria-pressed', String(row.dataset.spellId === selected?.id));
     highlightViewedCard('hero', selected || null, hero.id);
-    heroPanel.replaceChildren();
-    const list = document.createElement('section');
-    list.className = 'm2-cast-spells';
-    list.setAttribute('aria-label', (hero.name || 'Gydion') + ' cast spells');
-    const header = document.createElement('header');
-    const title = document.createElement('b');
-    title.textContent = (hero.name || 'Gydion') + ' · Spells cast';
-    const close = document.createElement('button');
-    close.type = 'button';
-    close.className = 'm2-spells-control m2-spells-close';
-    close.textContent = '×';
-    close.setAttribute('aria-label', 'Close cast spells');
-    close.onclick = () => { clearHeroCard(); schedule(); };
-    header.append(title, close);
-    list.append(header);
-    if (selected) {
-      const back = document.createElement('button');
-      back.type = 'button';
-      back.className = 'm2-spells-control m2-spells-back';
-      back.textContent = '‹ Cast spells';
-      back.onclick = () => openCastSpells(hero.id);
-      list.append(back, textCard(selected, 'hero', null, hero.id));
-    } else appendSpellGroup(list, 'Cast spells (' + cards.length + ')', cards, card => {
-      uiState.selectedHeroCard = { heroId: hero.id, spells: true, cardId: card.id };
-      updateHeroCardDisplay();
-    });
-    heroPanel.append(list);
-    heroPanel.dataset.key = key;
+    const viewerKey = JSON.stringify([selected, spellPreferences.view]);
+    if (heroPanel.dataset.key !== viewerKey) {
+      heroPanel.replaceChildren();
+      if (selected) {
+        const display = textCard(selected, 'hero', null, hero.id);
+        const close = document.createElement('button');
+        close.type = 'button';
+        close.className = 'm2-card-dismiss';
+        close.textContent = '×';
+        close.setAttribute('aria-label', 'Close spell details');
+        close.onclick = () => openCastSpells(hero.id);
+        const foot = q('.m2-card-foot', display);
+        foot.classList.add('m2-has-dismiss');
+        foot.append(close);
+        heroPanel.append(display);
+      }
+      heroPanel.dataset.key = viewerKey;
+    }
     return;
   }
   const cards = [

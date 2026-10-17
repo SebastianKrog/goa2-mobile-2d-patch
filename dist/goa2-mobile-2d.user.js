@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GoA II — Mobile 2D
 // @namespace    goa2-mobile-local
-// @version      1.2.0
+// @version      1.3.0
 // @description  Compact 2D HUD, Board/Hand modes, contained setup and utility panels.
 // @match        https://goa2.frontend.pedroliv.dev/game/*
 // @grant        none
@@ -24,203 +24,36 @@ if (new URLSearchParams(location.search).get('3d') !== '0') return;
 window.GOA2Mobile?.destroy();
 
 (() => {
-  // src/spells.js
-  function isSpellCard(card) {
-    return card?.spell_rank != null || ["SPELLBOOK", "OUTSIDE_SPELLBOOK"].includes(card?.state);
-  }
-  function spellColorName(card) {
-    if (/^Ultimate$/i.test(card?.image_id || "")) return "PURPLE";
-    return card?.color || String(card?.image_id || "").match(/^(Gold|Silver|Red|Blue|Green|Purple)/i)?.[1].toUpperCase() || "SILVER";
-  }
-  function spellRankLabel(card) {
-    const rank = Number(card.spell_rank ?? 0);
-    return rank === 0 ? "Cantrip" : "Rank " + (["", "I", "II", "III"][rank] || rank);
-  }
-  function knownSpells(cards, prepared = false) {
-    return (Array.isArray(cards) ? cards : []).filter((card) => card?.id && card.name && (!card.is_facedown || prepared && isSpellCard(card) && card.image_id)).map((card) => ({ ...card, is_facedown: false }));
-  }
-  function spellFace(card) {
-    const box = document.createElement("article");
-    box.className = "m2-text-card m2-spell-card";
-    const face = document.createElement("div");
-    face.className = "m2-spell-face";
-    const fallback = document.createElement("div");
-    fallback.className = "m2-spell-fallback";
-    const name = document.createElement("b"), rank = document.createElement("span");
-    name.textContent = card.name;
-    rank.textContent = spellRankLabel(card);
-    fallback.append(name, rank);
-    if (card.effect_text) {
-      const rules = document.createElement("p");
-      rules.textContent = card.effect_text;
-      fallback.append(rules);
-    }
-    face.append(fallback);
-    if (!card.is_facedown && /^[a-zA-Z0-9_-]+$/.test(card.image_id || "")) {
-      const img = document.createElement("img");
-      img.alt = card.name + " — " + spellRankLabel(card);
-      img.src = "/cards/spells/" + card.image_id + ".webp";
-      img.decoding = "async";
-      img.onload = () => face.classList.add("m2-spell-loaded");
-      img.onerror = () => {
-        face.classList.remove("m2-spell-loaded");
-        img.remove();
-      };
-      face.append(img);
-    }
-    const foot = document.createElement("footer");
-    foot.className = "m2-card-foot";
-    box.append(face, foot);
-    return box;
-  }
-  function appendSpellGroup(host, title, cards, inspect, grid = false) {
-    const group = document.createElement("section");
-    group.className = "m2-spell-group";
-    const heading = document.createElement("h3");
-    heading.textContent = title;
-    const list = document.createElement("div");
-    list.className = "m2-spell-list" + (grid ? " m2-spell-grid" : "");
-    for (const card of cards) {
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = "m2-spell-row";
-      button.dataset.color = spellColorName(card);
-      button.setAttribute("aria-label", "View " + card.name + " — " + spellRankLabel(card));
-      if (grid) button.append(spellFace(card));
-      else {
-        const name = document.createElement("b"), rank = document.createElement("span");
-        name.textContent = card.name;
-        rank.textContent = spellRankLabel(card);
-        button.append(name, rank);
+  // src/react.js
+  var committedFiberCache = /* @__PURE__ */ new Map();
+  function currentFiber(element) {
+    const key = element && Object.keys(element).find((k) => k.startsWith("__reactFiber$"));
+    const original = key ? element[key] : null;
+    if (!original) return null;
+    let top = original;
+    while (top.return) top = top.return;
+    const rootState = top.stateNode, current = rootState?.current;
+    if (!current) return original;
+    let cache = committedFiberCache.get(rootState);
+    if (!cache || cache.current !== current) {
+      const hosts = /* @__PURE__ */ new WeakMap(), stack = [current];
+      while (stack.length) {
+        const node = stack.pop();
+        if (node.stateNode && typeof node.stateNode === "object") hosts.set(node.stateNode, node);
+        for (let child = node.child; child; child = child.sibling) stack.push(child);
       }
-      button.onclick = () => inspect(card);
-      list.append(button);
+      cache = { current, hosts };
+      committedFiberCache.set(rootState, cache);
     }
-    group.append(heading, list);
-    if (!cards.length) {
-      const empty = document.createElement("p");
-      empty.className = "m2-spells-empty";
-      empty.textContent = "No spells cast.";
-      group.append(empty);
+    return cache.hosts.get(element) || null;
+  }
+  function componentProp(element, key) {
+    let fiber = currentFiber(element);
+    for (let i = 0; fiber && i < 32; i++, fiber = fiber.return) {
+      const value = fiber.memoizedProps?.[key];
+      if (value !== void 0 && value !== null) return value;
     }
-    host.append(group);
-  }
-
-  // src/printed-signs.js
-  var printedPrimarySigns = {
-    "close_call": "EXCLAMATION",
-    "narrow_escape": "EXCLAMATION",
-    "vantage_point": "PLUS",
-    "perfect_getaway": "EXCLAMATION",
-    "high_ground": "PLUS",
-    "brynn_high_ground": "PLUS",
-    "elevated_ambush": "PLUS",
-    "peak_precision": "PLUS",
-    "daring_strike": "PLUS",
-    "bold_thrust": "PLUS",
-    "fearless_lunge": "PLUS",
-    "shield_of_decay": "PLUS",
-    "vampiric_shield": "PLUS",
-    "aegis_of_doom": "PLUS",
-    "angry_strike": "PLUS",
-    "poof": "EXCLAMATION",
-    "vanish": "EXCLAMATION",
-    "ruse": "EXCLAMATION",
-    "knife_of_the_living_dead": "PLUS",
-    "crowd_control": "PLUS",
-    "quickdraw": "PLUS",
-    "gunslinger": "PLUS",
-    "dead_shot": "PLUS",
-    "rune_sigils": "PLUS",
-    "oath_of_endurance": "EXCLAMATION",
-    "oath_of_fortitude": "EXCLAMATION",
-    "oath_of_perseverance": "EXCLAMATION",
-    "winter_dagger": "PLUS",
-    "winter_spear": "PLUS",
-    "winter_scepter": "PLUS",
-    "dodge": "EXCLAMATION",
-    "sidestep": "EXCLAMATION",
-    "parry": "EXCLAMATION",
-    "backstab": "PLUS",
-    "evade": "EXCLAMATION",
-    "riposte": "EXCLAMATION",
-    "backstab_with_a_ballista": "PLUS",
-    "makeshift_minigun": "PLUS",
-    "gatling_gun": "PLUS",
-    "supercharged_cannon": "PLUS",
-    "cold_ire": "PLUS",
-    "eyes_of_flame": "PLUS",
-    "stop_projectiles": "EXCLAMATION",
-    "deflect_projectiles": "EXCLAMATION",
-    "reflect_projectiles": "EXCLAMATION",
-    "threatening_slash": "PLUS",
-    "deadly_swipe": "PLUS",
-    "lethal_spin": "PLUS",
-    "sunburst": "PLUS"
-  };
-  var printedModifierSigns = {
-    "long_thrust": "PLUS",
-    "rapid_thrusts": "PLUS",
-    "sunburst": "PLUS",
-    "dimension_door": "PLUS"
-  };
-
-  // src/tree-model.js
-  function deckCardIdentity(card) {
-    return card?.id || JSON.stringify([card?.color, card?.tier, card?.name]);
-  }
-  function deckTreeTier(card) {
-    return { I: 1, II: 2, III: 3, 1: 1, 2: 2, 3: 3 }[String(card?.tier).toUpperCase()] || 0;
-  }
-  function deckTreeVariant(card) {
-    const artwork = String(card?.image_id || "").match(/(?:II|III)([AB])$/i), identity = String(card?.id || "").match(/(?:[-_]|\d)([ab])$/i);
-    return (artwork?.[1] || identity?.[1] || "A").toUpperCase() === "B" ? 1 : 0;
-  }
-  function compareDeckTreeCards(a, b) {
-    return deckTreeVariant(a) - deckTreeVariant(b);
-  }
-  function deckTreeGroup(card) {
-    return String(card.color).toUpperCase() + ":" + deckTreeTier(card);
-  }
-  function deckTreePool(hero) {
-    return [
-      ...hero?.hand || [],
-      ...hero?.discard_pile || [],
-      ...hero?.played_cards || [],
-      ...hero?.cast_spells || [],
-      hero?.current_turn_card,
-      hero?.extra_turn_card,
-      Number(hero?.level) >= 8 ? hero?.ultimate_card : null
-    ].filter((card) => card && (!card.is_facedown || card.primary_action));
-  }
-
-  // src/card-highlight.js
-  var sources = /* @__PURE__ */ new WeakMap();
-  var viewed = /* @__PURE__ */ new Map();
-  function applyHighlight(element, source) {
-    const selected = viewed.get(source.viewer);
-    element.toggleAttribute("data-m2-viewed", !!selected && selected.owner === source.owner && selected.cardId === source.cardId);
-  }
-  function trackCardSource(element, card, viewer2, owner = "") {
-    const source = { viewer: viewer2, owner, cardId: deckCardIdentity(card) };
-    sources.set(element, source);
-    if (!element.classList.contains("m2-card-source")) element.classList.add("m2-card-source");
-    applyHighlight(element, source);
-  }
-  function highlightViewedCard(viewer2, card = null, owner = "") {
-    if (card) viewed.set(viewer2, { owner, cardId: deckCardIdentity(card) });
-    else viewed.delete(viewer2);
-    for (const element of document.querySelectorAll(".m2-card-source")) {
-      const source = sources.get(element);
-      if (source?.viewer === viewer2) applyHighlight(element, source);
-    }
-  }
-  function clearCardHighlights() {
-    viewed.clear();
-    for (const element of document.querySelectorAll(".m2-card-source")) {
-      element.classList.remove("m2-card-source");
-      element.removeAttribute("data-m2-viewed");
-    }
+    return null;
   }
 
   // src/styles.css
@@ -236,7 +69,7 @@ window.GOA2Mobile?.destroy();
   --m2-card-display-height: clamp(206px, 32.96dvh, 278.1px);
   --m2-board-pane-height: 43%;
 }
-&:is([data-m2-mode="hand"], [data-m2-mode="heroes"], [data-m2-deck-open]) {
+&:is([data-m2-mode="hand"], [data-m2-mode="heroes"], [data-m2-deck-open], [data-m2-spells-open]) {
   --m2-board-pane-height: calc(var(--m2-card-display-height) + 8px);
 }
 & body {
@@ -519,13 +352,15 @@ window.GOA2Mobile?.destroy();
   box-sizing: border-box;
   left: 8px !important;
   right: 8px !important;
-  top: auto !important;
-  bottom: calc(var(--m2-nav) + 8px) !important;
+  top: calc(var(--m2-head) + var(--m2-status-h) + 8px) !important;
+  bottom: auto !important;
   width: auto !important;
   max-width: none !important;
   max-height: 40dvh !important;
   overflow: auto !important;
-  padding: 10px !important;
+  padding: 10px 44px 10px 10px !important;
+  min-height: 44px;
+  gap: 6px;
   transform: none !important;
   background: #141b27f7;
   border: 1px solid #59667c;
@@ -533,6 +368,30 @@ window.GOA2Mobile?.destroy();
   visibility: visible !important;
   pointer-events: auto !important;
   z-index: 600 !important;
+}
+&[data-m2-panel="setup"] [data-m2="setup"]::before {
+  content: "Starting position";
+  font: 600 12px/1.4 system-ui;
+  color: #dbe2eb;
+}
+&[data-m2-panel="setup"] [data-m2="setup"] > :is(span, small) {
+  display: none !important;
+}
+&[data-m2-panel="setup"] [data-m2="setup"] > button:first-child {
+  position: absolute;
+  right: 3px;
+  bottom: 3px;
+  width: 28px;
+  min-height: 28px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #c4cedb;
+  font-size: 0;
+}
+&[data-m2-panel="setup"] [data-m2="setup"] > button:first-child::after {
+  content: "×";
+  font: 22px system-ui;
 }
 &[data-m2-panel="setup"] [data-m2="board"],
 &[data-m2-panel="tools"] [data-m2="board"] {
@@ -690,6 +549,7 @@ window.GOA2Mobile?.destroy();
     [data-m2-mode="hand"],
     [data-m2-mode="heroes"],
     [data-m2-deck-open],
+    [data-m2-spells-open],
     [data-m2-panel="tools"],
     [data-m2-panel="log"]
   )
@@ -943,10 +803,10 @@ window.GOA2Mobile?.destroy();
 & .m2-settings-actions button {
   min-height: 44px;
 }
-&[data-m2-deck-open] [data-m2="board"] {
+&:is([data-m2-deck-open], [data-m2-spells-open]) [data-m2="board"] {
   display: block !important;
 }
-&[data-m2-deck-open] [data-m2="sidebar"] {
+&:is([data-m2-deck-open], [data-m2-spells-open]) [data-m2="sidebar"] {
   display: block !important;
   visibility: hidden;
   pointer-events: none;
@@ -2895,10 +2755,9 @@ window.GOA2Mobile?.destroy();
 & [data-m2="hero"]:has(> .m2-hero-dashboard) [class*="_items_"] {
   display: none !important;
 }
+/* The dashboard replaces native metadata, including Gydion's extra counts row. */
 & [data-m2="hero"]:has(> .m2-hero-dashboard) > [class*="_details_"] {
-  grid-column: 2/-1;
-  grid-row: 2;
-  margin: 0;
+  display: none !important;
 }
 & [data-m2="hero"]:has(> .m2-hero-dashboard) > .m2-resolution-info {
   position: static;
@@ -2939,10 +2798,6 @@ window.GOA2Mobile?.destroy();
   height: 8px;
   border: 0;
   border-radius: 50%;
-}
-& [data-m2="hero"]:has(> .m2-hero-dashboard) > [class*="_details_"]:first-of-type,
-& [data-m2="hero"]:has(> .m2-hero-dashboard) > [class*="_name_"] + [class*="_details_"] {
-  display: none !important;
 }
 & .m2-hero-history > span:first-child {
   white-space: nowrap;
@@ -3178,8 +3033,9 @@ window.GOA2Mobile?.destroy();
   width: 30px;
   padding: 1px;
   overflow: hidden;
-  color: #eee4ff;
-  border-color: #b799de;
+  color: #dbe2eb;
+  border-color: #73777e;
+  background: rgb(190 195 205 / 10%);
   cursor: pointer;
 }
 & .m2-indicator-spells > img {
@@ -3187,8 +3043,8 @@ window.GOA2Mobile?.destroy();
   inset: 0;
   width: 100%;
   height: 100%;
-  object-fit: cover;
-  opacity: 0.4;
+  object-fit: contain;
+  opacity: 1;
 }
 & .m2-indicator-spells > b {
   position: relative;
@@ -3214,6 +3070,7 @@ window.GOA2Mobile?.destroy();
   justify-content: space-evenly;
 }
 & .m2-summary-indicators {
+  flex: 0 0 20px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -3242,78 +3099,141 @@ window.GOA2Mobile?.destroy();
   outline: 2px solid #ffe09c;
   outline-offset: 1px;
 }
-/* Public cast spells reuse the existing inspected-card surface and Back handling. */
-& .m2-cast-spells {
-  min-height: 100%;
+/* Spell browsing shares compact controls and the ordinary card palette. */
+& #goa2-m2-hero-display:has(> .m2-spell-card) {
+  height: auto !important;
+}
+& #goa2-m2-spells {
+  display: none;
+}
+&[data-m2-spells-open] #goa2-m2-spells {
+  display: block;
+  position: fixed;
+  inset: calc(var(--m2-head) + var(--m2-board-pane-height)) 0
+    calc(var(--m2-nav) + var(--m2-offset, 0px));
+  z-index: 10001;
+  padding: 6px;
+  background: #111722;
   box-sizing: border-box;
-  padding: 8px;
+}
+& .m2-spell-row[aria-pressed="true"] {
+  border-color: #e4d399;
+}
+& .m2-spell-tiny[data-spell-rank="4"] > .m2-list-band::before,
+& .m2-spell-tiny[data-spell-rank="4"] > .m2-list-band::after {
+  width: 6px;
+  background: var(--card-color);
+}
+& .m2-cast-spells {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  box-sizing: border-box;
+  padding: 4px;
   color: #dbe2eb;
   background: #141b25;
   border: 1px solid #647083;
-  border-radius: 9px;
+  border-radius: 7px;
+  overflow: hidden;
+}
+& .m2-cast-spells[data-selected="true"] {
+  height: auto;
 }
 & .m2-cast-spells > header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  font: 12px/1.3 system-ui;
+  gap: 4px;
+  padding-bottom: 4px;
+  flex: 0 0 auto;
+  font: 11px/1.3 system-ui;
+}
+& .m2-cast-spells > header > b {
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+& .m2-spells-content {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+& .m2-cast-spells[data-selected="true"] .m2-spells-content {
+  max-height: calc(var(--m2-card-display-height) - 34px);
 }
 & .m2-spells-control {
+  box-sizing: border-box;
   color: #c4ceda;
-  border: 1px solid #657084;
-  background: rgb(170 180 195 / 8%);
-  border-radius: 5px;
-  padding: 4px 8px;
+  border: 0;
+  background: transparent;
+  border-radius: 4px;
+  min-height: 26px;
+  padding: 2px 6px;
+  font: 10px/1.2 system-ui;
   cursor: pointer;
+  flex: 0 0 auto;
 }
-& .m2-spells-close {
-  font-size: 18px;
+& .m2-spells-control[aria-pressed="true"] {
+  background: #405473;
+  color: #fff;
+}
+& .m2-spells-close,
+& .m2-spells-back {
+  width: 26px;
+  padding: 0;
+  font-size: 20px;
+}
+& .m2-spell-formats {
+  display: flex;
+  gap: 2px;
+  flex: 0 0 auto;
 }
 & .m2-spell-group h3 {
-  color: #b9a4d4;
-  font: 11px/1.3 system-ui;
-  margin: 8px 0 5px;
+  color: #aabbd1;
+  text-transform: capitalize;
+  font: 10px/1.3 system-ui;
+  margin: 5px 0 3px;
+}
+& .m2-spell-group h3:empty {
+  display: none;
 }
 & .m2-spell-list {
   display: grid;
-  gap: 5px;
+  gap: 4px;
 }
 & .m2-spell-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
+  box-sizing: border-box;
+  display: block;
   min-width: 0;
-  min-height: 34px;
-  padding: 6px 8px;
+  height: 30px;
+  padding: 0;
   color: #dbe2eb;
   background: #202936;
   border: 1px solid #566273;
-  border-left: 3px solid #c4c8ce;
   border-radius: 5px;
   text-align: left;
-  font: 11px/1.3 system-ui;
   cursor: pointer;
+  overflow: hidden;
 }
-& .m2-spell-row > span {
-  color: #b5bfcc;
-  white-space: nowrap;
+& .m2-spell-tiny {
+  box-sizing: border-box;
+  min-height: 0;
+  gap: 0;
 }
-& .m2-spell-row[data-color="RED"] {
-  border-left-color: #de6262;
+& .m2-spell-tiny > .m2-list-band {
+  box-sizing: border-box;
+  height: 100%;
+  display: flex;
+  gap: 5px;
 }
-& .m2-spell-row[data-color="BLUE"] {
-  border-left-color: #67b1ef;
+& .m2-spell-tiny .m2-list-name {
+  font-size: 11px;
 }
-& .m2-spell-row[data-color="GREEN"] {
-  border-left-color: #6abd7d;
-}
-& .m2-spell-row[data-color="GOLD"] {
-  border-left-color: #e9c956;
-}
-& .m2-spell-row[data-color="PURPLE"] {
-  border-left-color: #b799de;
+& .m2-spell-tiny .m2-symbol {
+  font-size: 11px;
 }
 & .m2-spells-empty {
   color: #aab4c3;
@@ -3323,7 +3243,7 @@ window.GOA2Mobile?.destroy();
   grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
 }
 & .m2-spell-grid .m2-spell-row {
-  display: block;
+  height: auto;
   padding: 2px;
 }
 & .m2-spell-card {
@@ -3335,10 +3255,46 @@ window.GOA2Mobile?.destroy();
   overflow: hidden;
   background: #1b2330;
 }
+& #goa2-m2-hero-display > .m2-spell-large {
+  min-height: clamp(130px, 19dvh, 175px);
+}
+& .m2-spell-large > .m2-card-top {
+  grid-template-columns: minmax(0, 1fr) auto;
+  padding: 5px 8px;
+}
+& .m2-spell-large .m2-card-top > b {
+  font-size: 13px;
+}
+& .m2-spell-large .m2-card-top > span {
+  font-size: 10px;
+}
+& .m2-spell-large > .m2-card-body {
+  display: block;
+  padding: 6px 8px;
+}
+& .m2-spell-large .m2-card-type {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 5px;
+}
+& .m2-spell-large .m2-card-effect {
+  font-size: 12px;
+  line-height: 1.4;
+}
+& .m2-spell-large .m2-card-art > img {
+  object-position: 50% 34%;
+  filter: blur(2px);
+  transform: scale(3.5);
+  transform-origin: 50% 34%;
+}
 & .m2-spell-face {
   position: relative;
   width: 100%;
   aspect-ratio: 1192 / 831;
+}
+& .m2-spells-content .m2-spell-face {
+  height: calc(var(--m2-card-display-height) - 36px);
+  aspect-ratio: auto;
 }
 & .m2-spell-face > img {
   position: absolute;
@@ -3824,7 +3780,7 @@ window.GOA2Mobile?.destroy();
   height: 10px;
 }
 &[data-m2-panel="tools"] #goa2-m2-summary,
-&[data-m2-deck-open] #goa2-m2-summary {
+&:is([data-m2-deck-open], [data-m2-spells-open]) #goa2-m2-summary {
   display: none !important;
 }
 & #goa2-m2-summary article {
@@ -3845,6 +3801,7 @@ window.GOA2Mobile?.destroy();
   display: grid;
 }
 & #goa2-m2-summary .m2-summary-turn {
+  cursor: pointer;
   white-space: nowrap;
   flex-shrink: 0;
   height: 26px;
@@ -3866,6 +3823,7 @@ window.GOA2Mobile?.destroy();
 & #goa2-m2-summary .m2-summary-upgrades > .m2-symbol img {
   width: 11px;
 }
+& #goa2-m2-summary .m2-summary-turn:focus-visible,
 & #goa2-m2-summary .m2-summary-identity:focus-visible {
   outline: 1px solid #c0cad8;
   outline-offset: 2px;
@@ -3888,17 +3846,24 @@ window.GOA2Mobile?.destroy();
 & #goa2-m2-summary.m2-summary-focused {
   min-height: 0;
 }
+& #goa2-m2-summary .m2-summary-name-cell {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  width: 100%;
+  gap: 3px;
+}
 & #goa2-m2-summary .m2-summary-identity {
   align-items: center;
   white-space: nowrap;
   overflow: hidden;
-  flex: 1 1 112px;
+  flex: 1 1 0;
   cursor: pointer;
   max-width: none;
   display: flex;
   gap: 3px;
   min-width: 0;
-  width: 100%;
+  width: auto;
 }
 & #goa2-m2-summary .m2-summary-identity strong {
   font-size: 10px;
@@ -3908,6 +3873,11 @@ window.GOA2Mobile?.destroy();
   max-width: none;
   overflow: visible;
   text-overflow: clip;
+}
+& #goa2-m2-summary .m2-summary-name-cell:has(.m2-summary-indicators) .m2-summary-identity strong {
+  flex-shrink: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 & #goa2-m2-summary .m2-summary-player {
   color: #a0a6b0;
@@ -3944,14 +3914,14 @@ window.GOA2Mobile?.destroy();
   overflow: hidden;
   grid-template-columns:
     23px minmax(var(--m2-name-min, 70px), 1fr) 45px minmax(var(--m2-piles-width, 48px), max-content)
-    20px 70px 62px;
+    70px 62px;
   column-gap: 3px;
   overflow-x: auto;
 }
 & #goa2-m2-summary > article.m2-timed-hero {
   grid-template-columns:
     34px minmax(var(--m2-name-min, 70px), 1fr) 45px minmax(var(--m2-piles-width, 48px), max-content)
-    20px 70px 62px;
+    70px 62px;
 }
 & #goa2-m2-summary .m2-summary-clock {
   width: 34px;
@@ -4222,6 +4192,7 @@ window.GOA2Mobile?.destroy();
   pointer-events: auto;
 }
 & [data-m2-action-picker] {
+  border-top: 1px solid #435066 !important;
   box-sizing: border-box;
   width: min(100%, 500px) !important;
   min-width: 0 !important;
@@ -4270,7 +4241,7 @@ window.GOA2Mobile?.destroy();
 & [data-m2-action-picker] [class*="_titleRow_"] {
   gap: 8px;
 }
-& [data-m2-action-picker] button {
+& [data-m2-action-picker] button:not(.m2-inline-spell) {
   min-height: 36px;
   white-space: normal;
 }
@@ -4517,6 +4488,7 @@ html:not([data-m2-active]) .m2-choice-launchers {
       [data-m2-mode="hand"],
       [data-m2-mode="heroes"],
       [data-m2-deck-open],
+      [data-m2-spells-open],
       [data-m2-panel="tools"],
       [data-m2-panel="log"]
     )
@@ -4535,7 +4507,7 @@ html:not([data-m2-active]) .m2-choice-launchers {
     flex: 0 0 var(--m2-list-width) !important;
     border-left: 1px solid #3f4c61;
   }
-  &[data-m2-deck-open] [data-m2="board"] {
+  &:is([data-m2-deck-open], [data-m2-spells-open]) [data-m2="board"] {
     display: block !important;
   }
   & svg[data-m2-rotate] {
@@ -4641,16 +4613,20 @@ html:not([data-m2-active]) .m2-choice-launchers {
     bottom: var(--m2-offset, 0px);
   }
   &[data-m2-panel="setup"] [data-m2="setup"] {
-    top: var(--m2-head) !important;
+    top: calc(var(--m2-head) + 8px) !important;
     left: auto !important;
     right: var(--m2-nav-width) !important;
-    bottom: var(--m2-offset, 0px) !important;
+    bottom: auto !important;
     width: var(--m2-list-width) !important;
-    max-height: none !important;
+    max-height: calc(var(--m2-vh, 100dvh) - var(--m2-head) - 16px) !important;
   }
   /* Header icons protrude below their row; keep them above the native Deck modal. */
-  &[data-m2-deck-open] [data-m2="header"] {
+  &:is([data-m2-deck-open], [data-m2-spells-open]) [data-m2="header"] {
     z-index: 10002;
+  }
+  &[data-m2-spells-open] #goa2-m2-spells {
+    inset: calc(var(--m2-head) + 8px) var(--m2-nav-width) var(--m2-offset, 0px) auto;
+    width: var(--m2-list-width);
   }
   & [data-m2="deck"] {
     inset: calc(var(--m2-head) + 8px) var(--m2-nav-width) var(--m2-offset, 0px) auto !important;
@@ -4875,6 +4851,224 @@ html:not([data-m2-active]) .m2-choice-launchers {
 & .m2-deck-tree .m2-tree-card[data-tier="1"] {
   width: 116px;
 }
+
+& .m2-spell-group h4 {
+  color: #aabbd1;
+  text-transform: capitalize;
+  font: 10px/1.3 system-ui;
+  margin: 5px 0 3px;
+}
+& .m2-deck-browser .m2-spell-group > h3 {
+  margin: 12px 0 5px;
+  font-size: 12px;
+}
+& .m2-spell-rule-line {
+  margin: 3px 0;
+  line-height: 24px;
+}
+& .m2-spell-rule-note {
+  margin-top: 5px;
+}
+& .m2-text-card .m2-inline-spell {
+  box-sizing: border-box;
+  height: 26px;
+  min-height: 26px;
+  overflow: hidden;
+  background: transparent;
+}
+& .m2-text-card .m2-inline-spell .m2-symbol {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 20px;
+  width: 20px;
+  height: 20px;
+  vertical-align: middle;
+}
+& .m2-text-card .m2-inline-spell .m2-symbol img {
+  width: 19px;
+  height: 19px;
+}
+& .m2-text-card .m2-inline-spell .m2-symbol-value {
+  font-size: 12px;
+}
+& .m2-inline-spell .m2-list-band {
+  background: color-mix(
+    in srgb,
+    color-mix(in srgb, var(--card-color) 27%, #18202b) 80%,
+    transparent
+  );
+}
+& .m2-nested-spell-frame {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  padding: 12px;
+  width: 100%;
+  background: #0007;
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+}
+& .m2-nested-spell-frame > .m2-nested-spell {
+  max-height: 100%;
+  overflow-y: auto;
+  box-shadow: 0 0 10px 2px #0009;
+}
+& [data-m2-spell-choice] {
+  font-size: 0 !important;
+  padding: 0 !important;
+  background: transparent !important;
+}
+& [data-m2-spell-choice] > :not(.m2-spell-tiny) {
+  display: none !important;
+}
+& [data-m2-spell-choice] > .m2-spell-tiny {
+  width: 100%;
+}
+& [data-m2-action-picker] > button[data-m2-spell-choice] {
+  height: 30px;
+  min-height: 30px;
+  border: 1px solid #566273;
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+& [data-m2-gold-choice] {
+  font-size: 0 !important;
+  padding: 0 5px !important;
+  overflow: hidden;
+}
+& [data-m2-gold-choice] > :not(.m2-list-card) {
+  display: none !important;
+}
+& [data-m2-gold-choice] .m2-small-card {
+  min-height: 42px;
+}
+
+/* Inscription keeps rune and turn columns aligned as options disappear. */
+& [data-m2-rune-source] {
+  display: none !important;
+}
+& [data-m2-rune-heading] {
+  font-size: 0 !important;
+}
+& [data-m2-rune-heading]::after {
+  content: attr(data-m2-rune-heading);
+  font: 600 14px/1.4 system-ui;
+}
+& .m2-rune-choices {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+& :is(.m2-rune-options, .m2-rune-slots) {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 4px;
+}
+& :is(.m2-rune-choice-cell, .m2-rune-slot) {
+  min-width: 0;
+  min-height: 36px;
+}
+& :is(.m2-rune-choice-cell > button, .m2-rune-slot) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 100%;
+  padding: 4px 2px;
+  border: 1px solid #4b5667;
+  border-radius: 5px;
+  color: #dbe2eb;
+  font: 11px/1.3 system-ui;
+}
+& .m2-rune-choice-cell > button {
+  background: #202936;
+  cursor: pointer;
+}
+& .m2-rune-slot {
+  background: rgb(190 195 205 / 5%);
+}
+& .m2-rune-slot[data-current="true"] {
+  border-color: #fff;
+  box-shadow: inset 0 0 0 1px #fff;
+  color: #fff;
+}
+& .m2-rune-label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  white-space: nowrap;
+}
+& .m2-rune-label > img {
+  width: 17px;
+  height: 17px;
+  object-fit: contain;
+}
+
+& [data-m2="hero"]:has(> .m2-hero-dashboard) > [class*="_runes_"] {
+  display: none !important;
+}
+& .m2-indicator-rune > img {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+}
+& .m2-hero-micro-slots.m2-has-floating-runes {
+  /* Extend the scroll viewport upward without shifting its cards or the board. */
+  padding-top: 14px;
+  margin-top: -8px;
+  border-top-color: transparent;
+  background: linear-gradient(#ffffff16, #ffffff16) 0 12px / 100% 1px no-repeat;
+}
+& .m2-micro-history-slot:has(.m2-rune-floating) {
+  position: relative;
+}
+& .m2-micro-history-slot .m2-rune-label {
+  font-size: 9px;
+  color: #c4ceda;
+  gap: 2px;
+}
+& .m2-micro-history-slot .m2-rune-label > img {
+  width: 12px;
+  height: 12px;
+}
+& .m2-rune-floating {
+  position: absolute;
+  top: -12px;
+  left: 0;
+  right: 0;
+  z-index: 30;
+  pointer-events: none;
+}
+
+& .m2-summary-indicators .m2-indicator-rune {
+  color: #c8cfd8;
+  background: rgb(190 195 205 / 18%);
+}
+& .m2-summary-indicators .m2-indicator-rune > img {
+  opacity: 0.85;
+}
+& .m2-micro-history-slot .m2-rune-label.m2-turn-rune-active {
+  color: #ffd700;
+  font-weight: 700;
+}
+& .m2-turn-rune-active > img {
+  filter: brightness(2.2) drop-shadow(0 0 1px #ffd700) drop-shadow(0 0 3px #ffd700);
+}
+& .m2-rune-turn-labels {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 4px;
+  margin-bottom: -4px;
+  color: #929baa;
+  text-align: center;
+  font: 10px/1.3 system-ui;
+}
 `;
 
   // src/runtime.js
@@ -4915,40 +5109,66 @@ html:not([data-m2-active]) .m2-choice-launchers {
   var deckPreferencesKey = "goa2-mobile-deck";
   var style = document.createElement("style");
   style.id = "goa2-m2-style";
-  var inactiveCss = "html:not([data-m2-active]) :is(#goa2-m2-nav,#goa2-m2-close,#goa2-m2-summary,#goa2-m2-details,#goa2-m2-hero-display,#goa2-m2-settings,#goa2-m2-log,.m2-list-card,.m2-text-card,.m2-hero-dashboard,.m2-resolution-info,.m2-hud,.m2-hud-bottom,.m2-planning-actions,.m2-deck-browser,.m2-deck-zoom,.m2-upgrade-browser,.m2-own-colors,.m2-saved-events,.m2-hero-clock){display:none!important}";
+  var inactiveCss = "html:not([data-m2-active]) :is(#goa2-m2-nav,#goa2-m2-close,#goa2-m2-summary,#goa2-m2-details,#goa2-m2-hero-display,#goa2-m2-spells,#goa2-m2-settings,#goa2-m2-log,.m2-list-card,.m2-text-card,.m2-hero-dashboard,.m2-resolution-info,.m2-hud,.m2-hud-bottom,.m2-planning-actions,.m2-deck-browser,.m2-deck-zoom,.m2-upgrade-browser,.m2-own-colors,.m2-saved-events,.m2-hero-clock){display:none!important}";
   style.textContent = inactiveCss + styles_default.replaceAll("&", "html[data-m2-active]");
   document.head.append(style);
 
-  // src/react.js
-  var committedFiberCache = /* @__PURE__ */ new Map();
-  function currentFiber(element) {
-    const key = element && Object.keys(element).find((k) => k.startsWith("__reactFiber$"));
-    const original = key ? element[key] : null;
-    if (!original) return null;
-    let top = original;
-    while (top.return) top = top.return;
-    const rootState = top.stateNode, current = rootState?.current;
-    if (!current) return original;
-    let cache = committedFiberCache.get(rootState);
-    if (!cache || cache.current !== current) {
-      const hosts = /* @__PURE__ */ new WeakMap(), stack = [current];
-      while (stack.length) {
-        const node = stack.pop();
-        if (node.stateNode && typeof node.stateNode === "object") hosts.set(node.stateNode, node);
-        for (let child = node.child; child; child = child.sibling) stack.push(child);
-      }
-      cache = { current, hosts };
-      committedFiberCache.set(rootState, cache);
-    }
-    return cache.hosts.get(element) || null;
+  // src/tree-model.js
+  function deckCardIdentity(card) {
+    return card?.id || JSON.stringify([card?.color, card?.tier, card?.name]);
   }
-  function componentProp(element, key) {
-    let fiber = currentFiber(element);
-    for (let i = 0; fiber && i < 32; i++, fiber = fiber.return) {
-      const value = fiber.memoizedProps?.[key];
-      if (value !== void 0 && value !== null) return value;
+  function deckTreeTier(card) {
+    return { I: 1, II: 2, III: 3, 1: 1, 2: 2, 3: 3 }[String(card?.tier).toUpperCase()] || 0;
+  }
+  function deckTreeVariant(card) {
+    const artwork = String(card?.image_id || "").match(/(?:II|III)([AB])$/i), identity = String(card?.id || "").match(/(?:[-_]|\d)([ab])$/i);
+    return (artwork?.[1] || identity?.[1] || "A").toUpperCase() === "B" ? 1 : 0;
+  }
+  function compareDeckTreeCards(a, b) {
+    return deckTreeVariant(a) - deckTreeVariant(b);
+  }
+  function deckTreeGroup(card) {
+    return String(card.color).toUpperCase() + ":" + deckTreeTier(card);
+  }
+  function deckTreePool(hero) {
+    return [
+      ...hero?.hand || [],
+      ...hero?.discard_pile || [],
+      ...hero?.played_cards || [],
+      ...hero?.cast_spells || [],
+      hero?.current_turn_card,
+      hero?.extra_turn_card,
+      Number(hero?.level) >= 8 ? hero?.ultimate_card : null
+    ].filter((card) => card && (!card.is_facedown || card.primary_action));
+  }
+
+  // src/card-highlight.js
+  var sources = /* @__PURE__ */ new WeakMap();
+  var viewed = /* @__PURE__ */ new Map();
+  function applyHighlight(element, source) {
+    const selected = viewed.get(source.viewer);
+    element.toggleAttribute("data-m2-viewed", !!selected && selected.owner === source.owner && selected.cardId === source.cardId);
+  }
+  function trackCardSource(element, card, viewer2, owner = "") {
+    const source = { viewer: viewer2, owner, cardId: deckCardIdentity(card) };
+    sources.set(element, source);
+    if (!element.classList.contains("m2-card-source")) element.classList.add("m2-card-source");
+    applyHighlight(element, source);
+  }
+  function highlightViewedCard(viewer2, card = null, owner = "") {
+    if (card) viewed.set(viewer2, { owner, cardId: deckCardIdentity(card) });
+    else viewed.delete(viewer2);
+    for (const element of document.querySelectorAll(".m2-card-source")) {
+      const source = sources.get(element);
+      if (source?.viewer === viewer2) applyHighlight(element, source);
     }
-    return null;
+  }
+  function clearCardHighlights() {
+    viewed.clear();
+    for (const element of document.querySelectorAll(".m2-card-source")) {
+      element.classList.remove("m2-card-source");
+      element.removeAttribute("data-m2-viewed");
+    }
   }
 
   // src/ui.js
@@ -4983,6 +5203,9 @@ html:not([data-m2-active]) .m2-choice-launchers {
   var extras = /* @__PURE__ */ new Set();
   var heroPanel = document.createElement("section");
   heroPanel.id = "goa2-m2-hero-display";
+  var spellPanel = document.createElement("section");
+  spellPanel.id = "goa2-m2-spells";
+  document.body.append(spellPanel);
   var settingsPanel = document.createElement("section");
   settingsPanel.id = "goa2-m2-settings";
   settingsPanel.className = "m2-utility-panel";
@@ -4992,7 +5215,7 @@ html:not([data-m2-active]) .m2-choice-launchers {
   logPanel.className = "m2-utility-panel";
   logPanel.setAttribute("aria-label", "Match log");
   document.body.append(settingsPanel, logPanel);
-  var generatedRoots = new WeakSet([nav, close, summary, detailsPanel, heroPanel, settingsPanel, logPanel]);
+  var generatedRoots = new WeakSet([nav, close, summary, detailsPanel, heroPanel, spellPanel, settingsPanel, logPanel]);
   function addExtra(element) {
     extras.add(element);
     generatedRoots.add(element);
@@ -5002,12 +5225,393 @@ html:not([data-m2-active]) .m2-choice-launchers {
     f,
     e instanceof Node && e !== document ? options : { ...options, signal: ac.signal }
   );
+  function clearSpellBrowser() {
+    document.documentElement.removeAttribute("data-m2-spells-open");
+    if (spellPanel.firstChild) spellPanel.replaceChildren();
+    delete spellPanel.dataset.key;
+  }
   function clearHeroCard() {
+    clearSpellBrowser();
     uiState.selectedHeroCard = null;
     highlightViewedCard("hero");
     heroPanel.replaceChildren();
     delete heroPanel.dataset.key;
   }
+
+  // src/rune-choices.js
+  var runes = ["bird", "axe", "anvil", "horn"];
+  var state = null;
+  var progress = null;
+  var progressKey = "goa2-mobile-rune-progress";
+  function inscriptionProgress(turn, available, hero, view) {
+    const context = JSON.stringify([location.pathname, hero.id, view?.round, view?.turn]);
+    if (progress?.context !== context) {
+      let saved;
+      try {
+        saved = JSON.parse(window.sessionStorage.getItem(progressKey) || "null");
+      } catch {
+      }
+      const valid = saved?.context === context && Number.isInteger(saved.turn) && saved.turn >= 1 && saved.turn <= 5 && Array.isArray(saved.available) && saved.available.every((rune) => runes.includes(rune));
+      progress = valid ? { ...saved, chosen: Object.fromEntries(Object.entries(saved.chosen || {}).filter(([slot, rune]) => /^[1-4]$/.test(slot) && runes.includes(rune))) } : { context, turn, available: [...available], chosen: {} };
+    }
+    const before = JSON.stringify(progress);
+    if (turn < progress.turn) {
+      for (const slot of Object.keys(progress.chosen))
+        if (Number(slot) >= turn) delete progress.chosen[slot];
+    }
+    if (turn === progress.turn + 1) {
+      const removed = progress.available.filter((rune) => !available.has(rune));
+      const added = [...available].filter((rune) => !progress.available.includes(rune));
+      if (removed.length === 1 && !added.length) progress.chosen[progress.turn] = removed[0];
+    }
+    if (turn === 5) {
+      for (let slot = 1; slot <= 4; slot++)
+        if (runes.includes(hero.rune_slots?.[slot])) progress.chosen[slot] = hero.rune_slots[slot];
+    }
+    progress.turn = turn;
+    progress.available = [...available];
+    const after = JSON.stringify(progress);
+    try {
+      if (before !== after || window.sessionStorage.getItem(progressKey) !== after)
+        window.sessionStorage.setItem(progressKey, after);
+    } catch {
+    }
+    return progress.chosen;
+  }
+  function clearRuneProgress() {
+    progress = null;
+    try {
+      window.sessionStorage.removeItem(progressKey);
+    } catch {
+    }
+  }
+  var requestKey = (request) => JSON.stringify([
+    request?.request_id,
+    request?.type,
+    request?.player_id,
+    request?.prompt,
+    request?.options
+  ]);
+  var runeName = (rune) => rune[0].toUpperCase() + rune.slice(1);
+  function runeLabel(rune) {
+    const label = document.createElement("span");
+    label.className = "m2-rune-label";
+    const icon = document.createElement("img");
+    icon.src = "/icons/rune_" + rune + ".png";
+    icon.alt = "";
+    label.append(icon, document.createTextNode(runeName(rune)));
+    return label;
+  }
+  function clearRuneChoices() {
+    if (!state) return;
+    for (const button of state.sources) managedAttribute(button, "data-m2-rune-source", null);
+    managedAttribute(state.title, "data-m2-rune-heading", null);
+    managedAttribute(state.title, "aria-label", state.ariaLabel);
+    state.root.remove();
+    extras.delete(state.root);
+    state = null;
+  }
+  function updateRuneChoices(picker, request, hero, view) {
+    let turn = Number(String(request?.prompt || "").match(/place a rune (?:below turn slot|for turn)\s*([1-4])/i)?.[1]);
+    const current = hero?.current_turn_card || hero?.played_cards?.[Number(view?.turn) - 1];
+    const context = JSON.stringify([location.pathname, hero?.id, view?.round, view?.turn]);
+    let saved = progress;
+    if (!saved) {
+      try {
+        saved = JSON.parse(window.sessionStorage.getItem(progressKey) || "null");
+      } catch {
+      }
+    }
+    const confirming = !turn && ["CHOOSE_ACTION", "SELECT_OPTION"].includes(request?.type) && /confirm your action/i.test(request.prompt || "") && (saved?.context === context && saved.turn >= 4 || /inscribe.*runes/i.test((current?.id || "") + " " + (current?.name || "")) && [1, 2, 3, 4].every((slot) => runes.includes(hero?.rune_slots?.[slot])));
+    if (confirming) turn = 5;
+    const options = Array.isArray(request?.options) ? request.options : [];
+    const buttons = picker ? Array.from(picker.children).filter((el) => el.tagName === "BUTTON") : [];
+    const available = /* @__PURE__ */ new Map();
+    for (const option of options) {
+      const name = (typeof option === "string" ? option : option?.text)?.trim().toLowerCase();
+      if (!runes.includes(name)) continue;
+      const source = buttons.find((button) => button.textContent.trim().toLowerCase() === name);
+      if (!source) {
+        clearRuneChoices();
+        return;
+      }
+      available.set(name, source);
+    }
+    const title = picker && (q(c("title"), picker) || q(c("titleRow") + " > :not(button)", picker));
+    if (!turn || !title || !hero || !confirming && request?.type !== "SELECT_OPTION" || !confirming && !available.size || request.player_id && request.player_id !== hero.id) {
+      clearRuneChoices();
+      if (request && !turn) clearRuneProgress();
+      return;
+    }
+    const chosen = inscriptionProgress(turn, new Set(available.keys()), hero, view);
+    if (state && (state.picker !== picker || state.title !== title)) clearRuneChoices();
+    if (!state) {
+      const root2 = document.createElement("section");
+      root2.className = "m2-rune-choices";
+      root2.setAttribute("aria-label", "Inscribe runes");
+      picker.insertBefore(root2, buttons[0]);
+      addExtra(root2);
+      state = { root: root2, picker, title, ariaLabel: title.getAttribute("aria-label"), sources: [], key: "" };
+    }
+    for (const source of state.sources)
+      if (![...available.values()].includes(source)) managedAttribute(source, "data-m2-rune-source", null);
+    const sources2 = [...available.values()];
+    for (const source of sources2) managedAttribute(source, "data-m2-rune-source", "true");
+    const heading = confirming ? null : "Place a rune for turn " + turn;
+    managedAttribute(title, "data-m2-rune-heading", heading);
+    managedAttribute(title, "aria-label", heading || state.ariaLabel);
+    const key = JSON.stringify([requestKey(request), chosen, sources2.map((button) => button.disabled)]);
+    if (state.key === key && state.sources.every((button, i) => button === sources2[i])) return;
+    state.sources = sources2;
+    state.key = key;
+    const choices = document.createElement("div"), slots = document.createElement("div");
+    choices.className = "m2-rune-options";
+    slots.className = "m2-rune-slots";
+    const offerKey = requestKey(request);
+    for (const rune of runes) {
+      const cell = document.createElement("div");
+      cell.className = "m2-rune-choice-cell";
+      cell.dataset.rune = rune;
+      const source = available.get(rune);
+      if (source) {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.disabled = source.disabled;
+        button.setAttribute("aria-label", "Place " + runeName(rune));
+        button.append(runeLabel(rune));
+        button.onclick = () => {
+          if (source.isConnected && !source.disabled && state?.picker === picker && requestKey(componentProp(picker, "inputRequest")) === offerKey) source.click();
+        };
+        cell.append(button);
+      } else cell.setAttribute("aria-hidden", "true");
+      choices.append(cell);
+    }
+    for (let slot = 1; slot <= 4; slot++) {
+      const cell = document.createElement("div");
+      cell.className = "m2-rune-slot";
+      cell.dataset.turn = String(slot);
+      cell.dataset.current = String(slot === turn);
+      const rune = slot < turn ? chosen[slot] : null;
+      if (runes.includes(rune)) cell.append(runeLabel(rune));
+      else cell.textContent = "Turn " + slot;
+      cell.setAttribute("aria-label", "Turn " + slot + (runes.includes(rune) ? ": " + runeName(rune) : ""));
+      if (slot === turn) cell.setAttribute("aria-current", "step");
+      slots.append(cell);
+    }
+    if (confirming) {
+      const labels = document.createElement("div");
+      labels.className = "m2-rune-turn-labels";
+      labels.setAttribute("aria-hidden", "true");
+      for (let slot = 1; slot <= 4; slot++) {
+        const label = document.createElement("span");
+        label.textContent = "Turn " + slot;
+        labels.append(label);
+      }
+      state.root.replaceChildren(labels, slots);
+    } else state.root.replaceChildren(choices, slots);
+  }
+
+  // src/spells.js
+  function isSpellCard(card) {
+    return card?.spell_rank != null || ["SPELLBOOK", "OUTSIDE_SPELLBOOK"].includes(card?.state);
+  }
+  function spellColorName(card) {
+    if (/^Ultimate$/i.test(card?.image_id || "")) return "PURPLE";
+    return card?.color || String(card?.image_id || "").match(/^(Gold|Silver|Red|Blue|Green|Purple)/i)?.[1].toUpperCase() || "SILVER";
+  }
+  function spellRankLabel(card) {
+    const rank = Number(card.spell_rank ?? 0);
+    return rank === 0 ? "Cantrip" : "Rank " + (["", "I", "II", "III", "IV"][rank] || rank);
+  }
+  function knownSpells(cards, prepared = false) {
+    return (Array.isArray(cards) ? cards : []).filter((card) => card?.id && card.name && (!card.is_facedown || prepared && isSpellCard(card) && card.image_id)).map((card) => ({ ...card, is_facedown: false }));
+  }
+  function spellFace(card) {
+    const box = document.createElement("article");
+    box.className = "m2-text-card m2-spell-card";
+    const face = document.createElement("div");
+    face.className = "m2-spell-face";
+    const fallback = document.createElement("div");
+    fallback.className = "m2-spell-fallback";
+    const name = document.createElement("b"), rank = document.createElement("span");
+    name.textContent = card.name;
+    rank.textContent = spellRankLabel(card);
+    fallback.append(name, rank);
+    if (card.effect_text) {
+      const rules = document.createElement("p");
+      rules.textContent = card.effect_text;
+      fallback.append(rules);
+    }
+    face.append(fallback);
+    if (!card.is_facedown && /^[a-zA-Z0-9_-]+$/.test(card.image_id || "")) {
+      const img = document.createElement("img");
+      img.alt = card.name + " — " + spellRankLabel(card);
+      img.src = "/cards/spells/" + card.image_id + ".webp";
+      img.decoding = "async";
+      img.onload = () => face.classList.add("m2-spell-loaded");
+      img.onerror = () => {
+        face.classList.remove("m2-spell-loaded");
+        img.remove();
+      };
+      face.append(img);
+    }
+    const foot = document.createElement("footer");
+    foot.className = "m2-card-foot";
+    box.append(face, foot);
+    return box;
+  }
+  var spellPreferences = { sort: "tier", view: "large" };
+  try {
+    const saved = JSON.parse(localStorage.getItem("goa2-mobile-spells") || "{}");
+    if (["tier", "color"].includes(saved?.sort)) spellPreferences.sort = saved.sort;
+    if (["large", "image"].includes(saved?.view)) spellPreferences.view = saved.view;
+  } catch {
+  }
+  function setSpellPreference(key, value) {
+    if (!(key === "sort" && ["tier", "color"].includes(value) || key === "view" && ["large", "image"].includes(value))) return;
+    spellPreferences[key] = value;
+    try {
+      localStorage.setItem("goa2-mobile-spells", JSON.stringify(spellPreferences));
+    } catch {
+    }
+  }
+  function spellTinyCard(card) {
+    const row = document.createElement("span");
+    row.className = "m2-list-card m2-mini-card m2-spell-tiny";
+    row.dataset.spellRank = String(card.spell_rank ?? 0);
+    const band = document.createElement("span");
+    band.className = "m2-list-band";
+    band.style.setProperty("--card-color", cardColors[spellColorName(card)] || "#c4c8ce");
+    band.style.setProperty("--m2-tier-lines", String(Math.max(1, Math.min(3, Number(card.spell_rank) || 1))));
+    if (card.primary_action) {
+      const primary = cardSymbol(card.primary_action, primaryCardValue(card));
+      primary.classList.add("m2-list-primary");
+      band.append(primary);
+    }
+    const name = document.createElement("span");
+    name.className = "m2-list-name";
+    name.textContent = card.name;
+    band.append(name);
+    for (const key of ["RANGE", "RADIUS"]) {
+      const value = modifierCardValue(card, key);
+      if (relevantStat(card, key, value)) band.append(cardSymbol(key, value));
+    }
+    row.append(band);
+    return row;
+  }
+  function spellRow(card, inspect, grid = false, source = {}) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "m2-spell-row";
+    button.dataset.spellId = card.id;
+    button.dataset.color = spellColorName(card);
+    button.setAttribute("aria-label", "View " + card.name + " — " + spellRankLabel(card));
+    button.append(grid ? spellFace(card) : spellTinyCard(card));
+    if (source.viewer) trackCardSource(button, card, source.viewer, source.owner || "");
+    button.onclick = () => inspect(card);
+    return button;
+  }
+  function appendSpellGroup(host, title, cards, inspect, grid = false, source = {}) {
+    const group = document.createElement("section");
+    group.className = "m2-spell-group";
+    const heading = document.createElement(source.heading || "h3");
+    heading.textContent = title;
+    const list = document.createElement("div");
+    list.className = "m2-spell-list" + (grid ? " m2-spell-grid" : "");
+    for (const card of cards) list.append(spellRow(card, inspect, grid, source));
+    if (title) group.append(heading);
+    group.append(list);
+    if (!cards.length) {
+      const empty = document.createElement("p");
+      empty.className = "m2-spells-empty";
+      empty.textContent = source.emptyText || "No spells cast.";
+      group.append(empty);
+    }
+    host.append(group);
+  }
+  function sortSpells(cards, sort) {
+    const colors = ["GOLD", "RED", "BLUE", "GREEN", "PURPLE", "SILVER"];
+    const colorRank = (card) => {
+      const rank = colors.indexOf(spellColorName(card));
+      return rank < 0 ? 99 : rank;
+    };
+    return [...cards].sort((a, b) => sort === "tier" ? Number(a.spell_rank || 0) - Number(b.spell_rank || 0) || colorRank(a) - colorRank(b) : colorRank(a) - colorRank(b) || Number(a.spell_rank || 0) - Number(b.spell_rank || 0));
+  }
+  function appendCastSpellGroups(host, cards, inspect, options = {}) {
+    const sort = options.sort || spellPreferences.sort;
+    const sorted = sortSpells(cards, sort);
+    if (options.flat) {
+      appendSpellGroup(host, "", sorted, inspect, !!options.grid, options);
+      return;
+    }
+    const groups = /* @__PURE__ */ new Map();
+    for (const card of sorted) {
+      const title = sort === "color" ? spellColorName(card).toLowerCase() : Number(card.spell_rank || 0) === 0 ? "Cantrips" : spellRankLabel(card).replace("Rank", options.rankLabels ? "Rank" : "Tier");
+      if (!groups.has(title)) groups.set(title, []);
+      groups.get(title).push(card);
+    }
+    if (!sorted.length) appendSpellGroup(host, "", [], inspect, !!options.grid, options);
+    else for (const [title, group] of groups) appendSpellGroup(host, title, group, inspect, !!options.grid, options);
+  }
+
+  // src/printed-signs.js
+  var printedPrimarySigns = {
+    "close_call": "EXCLAMATION",
+    "narrow_escape": "EXCLAMATION",
+    "vantage_point": "PLUS",
+    "perfect_getaway": "EXCLAMATION",
+    "high_ground": "PLUS",
+    "brynn_high_ground": "PLUS",
+    "elevated_ambush": "PLUS",
+    "peak_precision": "PLUS",
+    "daring_strike": "PLUS",
+    "bold_thrust": "PLUS",
+    "fearless_lunge": "PLUS",
+    "shield_of_decay": "PLUS",
+    "vampiric_shield": "PLUS",
+    "aegis_of_doom": "PLUS",
+    "angry_strike": "PLUS",
+    "poof": "EXCLAMATION",
+    "vanish": "EXCLAMATION",
+    "ruse": "EXCLAMATION",
+    "knife_of_the_living_dead": "PLUS",
+    "crowd_control": "PLUS",
+    "quickdraw": "PLUS",
+    "gunslinger": "PLUS",
+    "dead_shot": "PLUS",
+    "rune_sigils": "PLUS",
+    "oath_of_endurance": "EXCLAMATION",
+    "oath_of_fortitude": "EXCLAMATION",
+    "oath_of_perseverance": "EXCLAMATION",
+    "winter_dagger": "PLUS",
+    "winter_spear": "PLUS",
+    "winter_scepter": "PLUS",
+    "dodge": "EXCLAMATION",
+    "sidestep": "EXCLAMATION",
+    "parry": "EXCLAMATION",
+    "backstab": "PLUS",
+    "evade": "EXCLAMATION",
+    "riposte": "EXCLAMATION",
+    "backstab_with_a_ballista": "PLUS",
+    "makeshift_minigun": "PLUS",
+    "gatling_gun": "PLUS",
+    "supercharged_cannon": "PLUS",
+    "cold_ire": "PLUS",
+    "eyes_of_flame": "PLUS",
+    "stop_projectiles": "EXCLAMATION",
+    "deflect_projectiles": "EXCLAMATION",
+    "reflect_projectiles": "EXCLAMATION",
+    "threatening_slash": "PLUS",
+    "deadly_swipe": "PLUS",
+    "lethal_spin": "PLUS",
+    "sunburst": "PLUS"
+  };
+  var printedModifierSigns = {
+    "long_thrust": "PLUS",
+    "rapid_thrusts": "PLUS",
+    "sunburst": "PLUS",
+    "dimension_door": "PLUS"
+  };
 
   // src/camera.js
   var boardRotation = null;
@@ -5039,48 +5643,48 @@ html:not([data-m2-active]) .m2-choice-launchers {
     return scale ? Number(scale[1]) : null;
   }
   async function centerBoardHero(heroId) {
-    const state2 = boardRotation;
-    if (!state2 || uiState.dead || !root.hasAttribute("data-m2-active") || document.hidden) return;
-    state2.centerTarget = heroId;
-    if (state2.centerPending) return;
-    const live = () => !uiState.dead && boardRotation === state2 && state2.centerTarget && root.hasAttribute("data-m2-active") && !document.hidden;
-    const handlers = () => Object.fromEntries(["onPointerDown", "onPointerMove", "onPointerUp", "onClickCapture"].map((key) => [key, componentProp(state2.host, key)]));
+    const state3 = boardRotation;
+    if (!state3 || uiState.dead || !root.hasAttribute("data-m2-active") || document.hidden) return;
+    state3.centerTarget = heroId;
+    if (state3.centerPending) return;
+    const live = () => !uiState.dead && boardRotation === state3 && state3.centerTarget && root.hasAttribute("data-m2-active") && !document.hidden;
+    const handlers = () => Object.fromEntries(["onPointerDown", "onPointerMove", "onPointerUp", "onClickCapture"].map((key) => [key, componentProp(state3.host, key)]));
     const available = (props) => ["onPointerDown", "onPointerMove", "onPointerUp"].every((key) => typeof props[key] === "function");
-    if (!available(handlers()) || !boardHeroPoint(state2.svg, heroId)) {
-      state2.centerTarget = null;
+    if (!available(handlers()) || !boardHeroPoint(state3.svg, heroId)) {
+      state3.centerTarget = null;
       return;
     }
-    const rect = state2.host.getBoundingClientRect(), zoom = nativeBoardZoom(state2.svg);
+    const rect = state3.host.getBoundingClientRect(), zoom = nativeBoardZoom(state3.svg);
     if (!rect.width || !rect.height || !zoom) {
-      state2.centerTarget = null;
+      state3.centerTarget = null;
       return;
     }
-    state2.centerPending = true;
-    state2.host.style.removeProperty("--m2-center-x");
-    state2.host.style.removeProperty("--m2-center-y");
+    state3.centerPending = true;
+    state3.host.style.removeProperty("--m2-center-x");
+    state3.host.style.removeProperty("--m2-center-y");
     try {
       const midpoint = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
       if (Math.abs(zoom - 2.5) > 1e-4) {
-        state2.host.dispatchEvent(new WheelEvent("wheel", {
+        state3.host.dispatchEvent(new WheelEvent("wheel", {
           bubbles: true,
           cancelable: true,
           clientX: midpoint.x,
           clientY: midpoint.y,
           deltaY: -Math.log(2.5 / zoom) / 2e-3
         }));
-        for (let frames = 0; frames < 6 && live() && Math.abs((nativeBoardZoom(state2.svg) || 0) - 2.5) > 1e-4; frames++) await boardFrame();
+        for (let frames = 0; frames < 6 && live() && Math.abs((nativeBoardZoom(state3.svg) || 0) - 2.5) > 1e-4; frames++) await boardFrame();
       }
-      if (!live() || Math.abs((nativeBoardZoom(state2.svg) || 0) - 2.5) > 1e-4) return;
-      const translate = getComputedStyle(state2.svg).translate.split(/\s+/).map(parseFloat);
+      if (!live() || Math.abs((nativeBoardZoom(state3.svg) || 0) - 2.5) > 1e-4) return;
+      const translate = getComputedStyle(state3.svg).translate.split(/\s+/).map(parseFloat);
       const destination = { x: midpoint.x + (translate[0] || 0), y: midpoint.y + (translate[1] || 0) };
-      const point = boardScreenPoint(state2.svg, boardHeroPoint(state2.svg, state2.centerTarget));
+      const point = boardScreenPoint(state3.svg, boardHeroPoint(state3.svg, state3.centerTarget));
       const props = handlers();
       if (!point || !available(props)) return;
       const pointer = {
         pointerId: -250,
         pointerType: "mouse",
         buttons: 1,
-        currentTarget: state2.host,
+        currentTarget: state3.host,
         clientX: midpoint.x,
         clientY: midpoint.y,
         stopPropagation() {
@@ -5101,28 +5705,28 @@ html:not([data-m2-active]) .m2-choice-launchers {
       }
       await boardFrame();
       if (!live()) return;
-      const centered = boardScreenPoint(state2.svg, boardHeroPoint(state2.svg, state2.centerTarget));
+      const centered = boardScreenPoint(state3.svg, boardHeroPoint(state3.svg, state3.centerTarget));
       if (!centered) return;
-      state2.host.style.setProperty("--m2-center-x", destination.x - centered.x + "px");
-      state2.host.style.setProperty("--m2-center-y", destination.y - centered.y + "px");
-      state2.sync();
+      state3.host.style.setProperty("--m2-center-x", destination.x - centered.x + "px");
+      state3.host.style.setProperty("--m2-center-y", destination.y - centered.y + "px");
+      state3.sync();
     } catch {
     } finally {
-      state2.centerPending = false;
-      state2.centerTarget = null;
+      state3.centerPending = false;
+      state3.centerTarget = null;
     }
   }
   function clearBoardRotation() {
     if (!boardRotation) return;
-    const state2 = boardRotation;
-    state2.observer.disconnect();
-    state2.resize?.disconnect();
-    state2.gestures.abort();
-    state2.controls.remove();
-    state2.svg.removeAttribute("data-m2-rotate");
-    state2.host.removeAttribute("data-m2-rotation-host");
+    const state3 = boardRotation;
+    state3.observer.disconnect();
+    state3.resize?.disconnect();
+    state3.gestures.abort();
+    state3.controls.remove();
+    state3.svg.removeAttribute("data-m2-rotate");
+    state3.host.removeAttribute("data-m2-rotation-host");
     for (const key of ["--m2-native-transform", "--m2-angle", "--m2-rotation-fit", "--m2-center-x", "--m2-center-y"])
-      state2.host.style.removeProperty(key);
+      state3.host.style.removeProperty(key);
     boardRotation = null;
   }
   function updateBoardRotation() {
@@ -5139,7 +5743,7 @@ html:not([data-m2-active]) .m2-choice-launchers {
     const host = svg.parentElement, controls = document.createElement("div");
     controls.className = "m2-board-controls";
     controls.setAttribute("aria-label", "Board orientation");
-    const state2 = {
+    const state3 = {
       svg,
       host,
       controls,
@@ -5149,7 +5753,7 @@ html:not([data-m2-active]) .m2-choice-launchers {
       sync: null,
       gestures: new AbortController()
     };
-    boardRotation = state2;
+    boardRotation = state3;
     svg.setAttribute("data-m2-rotate", "");
     host.setAttribute("data-m2-rotation-host", "");
     const put = (key, value) => {
@@ -5161,10 +5765,10 @@ html:not([data-m2-active]) .m2-choice-launchers {
     const fullscreen = document.createElement("button");
     fullscreen.type = "button";
     fullscreen.className = "m2-board-fullscreen";
-    state2.sync = () => {
+    state3.sync = () => {
       const native = svg.style.transform || "translate(0px,0px) scale(1)";
       put("--m2-native-transform", native);
-      put("--m2-angle", state2.angle + "deg");
+      put("--m2-angle", state3.angle + "deg");
       put("--m2-rotation-fit", "1");
       const nativeReset = q(c("zoomReset"), host), zoom = nativeReset?.textContent.match(/\d+%/)?.[0] || "100%";
       const label = zoom + " · Reset";
@@ -5182,7 +5786,7 @@ html:not([data-m2-active]) .m2-choice-launchers {
       const [a, b] = Array.from(touches.values());
       return Math.atan2(b.y - a.y, b.x - a.x) * 180 / Math.PI;
     };
-    const listen = (event, fn) => host.addEventListener(event, fn, { capture: true, signal: state2.gestures.signal });
+    const listen = (event, fn) => host.addEventListener(event, fn, { capture: true, signal: state3.gestures.signal });
     listen("pointerdown", (e) => {
       if (e.pointerType !== "touch" || controls.contains(e.target) || !root.hasAttribute("data-m2-active"))
         return;
@@ -5196,8 +5800,8 @@ html:not([data-m2-active]) .m2-choice-launchers {
       const next = pairAngle();
       if (previousAngle !== null) {
         const delta = (next - previousAngle + 540) % 360 - 180;
-        state2.angle = (state2.angle + delta + 360) % 360;
-        state2.sync();
+        state3.angle = (state3.angle + delta + 360) % 360;
+        state3.sync();
       }
       previousAngle = next;
     });
@@ -5207,14 +5811,14 @@ html:not([data-m2-active]) .m2-choice-launchers {
     };
     for (const event of ["pointerup", "pointercancel", "lostpointercapture"]) listen(event, end);
     on(reset, "click", () => {
-      state2.centerTarget = null;
-      state2.host.style.removeProperty("--m2-center-x");
-      state2.host.style.removeProperty("--m2-center-y");
+      state3.centerTarget = null;
+      state3.host.style.removeProperty("--m2-center-x");
+      state3.host.style.removeProperty("--m2-center-y");
       touches.clear();
       previousAngle = null;
-      state2.angle = 0;
+      state3.angle = 0;
       q(c("zoomReset"), host)?.click();
-      state2.sync();
+      state3.sync();
     });
     on(fullscreen, "click", toggleFullscreen);
     controls.append(reset, fullscreen);
@@ -5229,13 +5833,13 @@ html:not([data-m2-active]) .m2-choice-launchers {
       on(controls, event, (e) => e.stopPropagation());
     host.append(controls);
     addExtra(controls);
-    state2.observer = new MutationObserver(state2.sync);
-    state2.observer.observe(svg, { attributes: true, attributeFilter: ["style", "viewBox"] });
+    state3.observer = new MutationObserver(state3.sync);
+    state3.observer.observe(svg, { attributes: true, attributeFilter: ["style", "viewBox"] });
     if (typeof ResizeObserver !== "undefined") {
-      state2.resize = new ResizeObserver(state2.sync);
-      state2.resize.observe(svg);
+      state3.resize = new ResizeObserver(state3.sync);
+      state3.resize.observe(svg);
     }
-    state2.sync();
+    state3.sync();
   }
 
   // src/settings.js
@@ -5438,6 +6042,7 @@ html:not([data-m2-active]) .m2-choice-launchers {
     }));
     for (const [key, label, options] of [
       ["deck-view", "Deck view", [["tree", "Tree"], ["compact", "List"], ["grid", "Grid"]]],
+      ["spell-view", "Spell cards", [["large", "Large"], ["image", "Image"]]],
       ["deck-sort", "Deck sort", [["tier", "Tier"], ["color", "Color"]]]
     ]) {
       const row = document.createElement("label"), select = document.createElement("select");
@@ -5452,7 +6057,10 @@ html:not([data-m2-active]) .m2-choice-launchers {
         select.append(option);
       }
       on(select, "change", () => {
-        if (key === "deck-view") selectDeckOption(select.value);
+        if (key === "spell-view") {
+          setSpellPreference("view", select.value);
+          schedule();
+        } else if (key === "deck-view") selectDeckOption(select.value);
         else if (select.value !== uiState.deckSort) selectDeckOption("sort");
         updateSettings();
       });
@@ -5503,6 +6111,7 @@ html:not([data-m2-active]) .m2-choice-launchers {
     q('[data-setting="hand-cards"]', settingsPanel).value = displayPreferences.handCards;
     q('[data-setting="deck-options"]', settingsPanel).setAttribute("aria-checked", String(displayPreferences.deckOptions));
     q('[data-setting="deck-view"]', settingsPanel).value = uiState.deckView;
+    q('[data-setting="spell-view"]', settingsPanel).value = spellPreferences.view;
     q('[data-setting="deck-sort"]', settingsPanel).value = uiState.deckSort;
     for (const [key, value] of [
       ["art", displayPreferences.cardArt],
@@ -5558,11 +6167,11 @@ html:not([data-m2-active]) .m2-choice-launchers {
   });
 
   // src/card-rows.js
-  function updateCardRow(row, card, knownItems) {
+  function updateCardRow(row, card, knownItems, size) {
     const items = knownItems || cardUpgrades(card, row);
     const symbol = (key2, value) => upgradedSymbol(items, key2, value);
-    const small = !!row.closest('[data-m2="hand-list"], .m2-discard-choices');
-    const tiny = small && handCardSize() === "tiny";
+    const small = size === "small" || !!row.closest('[data-m2="hand-list"], .m2-discard-choices');
+    const tiny = small && size !== "small" && handCardSize() === "tiny";
     if (small) trackCardSource(row, card, "hand");
     const owner = small ? cardHero(card, row)?.id : null;
     const key = JSON.stringify([card, items, small, owner, tiny]);
@@ -5908,13 +6517,13 @@ html:not([data-m2-active]) .m2-choice-launchers {
         const lowerTier = deckTreeTier(card) > 0 && [...build.chosen.keys()].some(
           (key) => key.split(":")[0] === String(card.color).toUpperCase() && Number(key.split(":")[1]) > deckTreeTier(card)
         );
-        const state2 = pool.has(id) ? "current" : itemCards.has(id) ? "item" : !chosen && planned === id ? "planned" : chosen || planned || lowerTier ? "unavailable" : "standard";
-        const selected = state2 === "current" || state2 === "planned";
-        button.dataset.state = state2;
-        button.classList.toggle("m2-tree-chosen", state2 === "current");
-        button.classList.toggle("m2-tree-planned", state2 === "planned");
-        button.classList.toggle("m2-tree-item", state2 === "item");
-        button.classList.toggle("m2-tree-unavailable", state2 === "unavailable");
+        const state3 = pool.has(id) ? "current" : itemCards.has(id) ? "item" : !chosen && planned === id ? "planned" : chosen || planned || lowerTier ? "unavailable" : "standard";
+        const selected = state3 === "current" || state3 === "planned";
+        button.dataset.state = state3;
+        button.classList.toggle("m2-tree-chosen", state3 === "current");
+        button.classList.toggle("m2-tree-planned", state3 === "planned");
+        button.classList.toggle("m2-tree-item", state3 === "item");
+        button.classList.toggle("m2-tree-unavailable", state3 === "unavailable");
         button.setAttribute("aria-pressed", String(selected));
         const status = {
           current: "In current card pool",
@@ -5922,7 +6531,7 @@ html:not([data-m2-active]) .m2-choice-launchers {
           planned: "Planned",
           unavailable: "Not chosen",
           standard: ""
-        }[state2];
+        }[state3];
         button.setAttribute("aria-label", "View " + card.name + (status ? ". " + status : ""));
         button.title = card.name + (status ? " · " + status : "");
       }
@@ -7455,17 +8064,17 @@ html:not([data-m2-active]) .m2-choice-launchers {
   var basicPaintStates = /* @__PURE__ */ new WeakMap();
   function retryBasicArtwork() {
     for (const canvas of basicCanvases.values()) {
-      const state2 = basicPaintStates.get(canvas);
-      if (state2 && !state2.painted) {
-        state2.retryAt = 0;
-        if (state2.pending) state2.retryRequested = true;
+      const state3 = basicPaintStates.get(canvas);
+      if (state3 && !state3.painted) {
+        state3.retryAt = 0;
+        if (state3.pending) state3.retryRequested = true;
       }
     }
   }
   function paintBasicArtwork(canvas, card, hero, cacheKey) {
-    const state2 = basicPaintStates.get(canvas);
-    if (state2.pending || state2.painted || Date.now() < state2.retryAt || navigator.onLine === false) return;
-    state2.pending = true;
+    const state3 = basicPaintStates.get(canvas);
+    if (state3.pending || state3.painted || Date.now() < state3.retryAt || navigator.onLine === false) return;
+    state3.pending = true;
     (async () => {
       try {
         await m2Painter.ensureCardAssetsReady();
@@ -7479,16 +8088,16 @@ html:not([data-m2-active]) .m2-choice-launchers {
         if (!ctx || !target) return;
         m2Painter.paintCard(staging, ctx, { ...card, is_facedown: false }, background);
         target.drawImage(staging, 0, 0);
-        state2.painted = !card.image_id || !!background;
+        state3.painted = !card.image_id || !!background;
       } catch (error) {
         if (!uiState.dead) console.warn("GoA mobile: basic card artwork unavailable", error);
       } finally {
-        state2.pending = false;
-        state2.retryAt = Date.now() + 5e3;
-        if (state2.retryRequested) {
-          state2.retryRequested = false;
-          state2.retryAt = 0;
-          if (!uiState.dead && !state2.painted) schedule();
+        state3.pending = false;
+        state3.retryAt = Date.now() + 5e3;
+        if (state3.retryRequested) {
+          state3.retryRequested = false;
+          state3.retryAt = 0;
+          if (!uiState.dead && !state3.painted) schedule();
         }
       }
     })();
@@ -7537,17 +8146,21 @@ html:not([data-m2-active]) .m2-choice-launchers {
     if (!hero || componentProp(own, "hero")?.id !== hero.id || !Array.isArray(hero.spellbook)) return null;
     return { prepared: knownSpells(hero.spellbook, true), cast: knownSpells(hero.cast_spells) };
   }
-  function appendDeckSpells(host, spells, inspect) {
+  function appendDeckSpells(host, spells, inspect, owner) {
     if (!spells) return;
-    const groups = /* @__PURE__ */ new Map();
-    for (const card of [...spells.prepared].sort((a, b) => (a.spell_rank || 0) - (b.spell_rank || 0))) {
-      const label = "Spellbook · " + (Number(card.spell_rank || 0) === 0 ? "Cantrips" : spellRankLabel(card));
-      if (!groups.has(label)) groups.set(label, []);
-      groups.get(label).push(card);
-    }
-    for (const [label, cards] of groups)
-      appendSpellGroup(host, label, cards, inspect, uiState.deckView === "grid");
-    appendSpellGroup(host, "Cast spells (" + spells.cast.length + ")", spells.cast, inspect, uiState.deckView === "grid");
+    const source = { viewer: "deck", owner, sort: uiState.deckSort, grid: uiState.deckView === "grid" };
+    appendSpellGroup(
+      host,
+      "Cast Spells (" + spells.cast.length + ")",
+      sortSpells(spells.cast, uiState.deckSort),
+      inspect,
+      source.grid,
+      source
+    );
+    const heading = document.createElement("h3");
+    heading.textContent = "Spellbook";
+    host.append(heading);
+    appendCastSpellGroups(host, spells.prepared, inspect, { ...source, heading: "h4", rankLabels: true, emptyText: "No prepared spells." });
   }
   function deckUpdate(upgradeRequest) {
     const modal = q('[data-m2="deck"]');
@@ -7587,13 +8200,13 @@ html:not([data-m2-active]) .m2-choice-launchers {
       modal.setAttribute("data-m2-deck-ready", "");
       uiState.deckState = { modal, host, zoom, key: "", copies: [], dirty: true, watchers: [] };
     }
-    const state2 = uiState.deckState;
+    const state3 = uiState.deckState;
     const hero = componentProp(modal, "hero");
     const spells = ownDeckSpells(hero);
     const spellCards = spells ? [...spells.prepared, ...spells.cast] : [];
     const ownerKey = JSON.stringify([location.pathname, hero?.id || hero?.name || entries.map((e) => deckCardIdentity(e.card))]);
-    if (state2.ownerKey !== ownerKey) state2.selectedCard = null;
-    state2.ownerKey = ownerKey;
+    if (state3.ownerKey !== ownerKey) state3.selectedCard = null;
+    state3.ownerKey = ownerKey;
     if (upgradeRequest === void 0) upgradeRequest = currentUpgradeRequest();
     rememberDeckTreeChoices(hero, entries.map((e) => e.card), upgradeRequest);
     const build = uiState.deckView === "tree" ? deckTreeBuild(hero, entries.map((e) => e.card)) : null;
@@ -7610,23 +8223,23 @@ html:not([data-m2-active]) .m2-choice-launchers {
         deckTreePool(hero).map(deckCardIdentity)
       ] : null
     ]);
-    if (state2.key === key && state2.sources?.every((v, i) => v === sources2[i])) return;
-    state2.watchers?.forEach((stop) => stop());
-    state2.watchers = [];
-    state2.key = key;
-    state2.sources = sources2;
-    state2.copies = [];
-    state2.dirty = true;
-    for (const source of entries.map((e) => e.canvas)) watchDeckCanvas(state2, source);
-    state2.zoom.hidden = true;
+    if (state3.key === key && state3.sources?.every((v, i) => v === sources2[i])) return;
+    state3.watchers?.forEach((stop) => stop());
+    state3.watchers = [];
+    state3.key = key;
+    state3.sources = sources2;
+    state3.copies = [];
+    state3.dirty = true;
+    for (const source of entries.map((e) => e.canvas)) watchDeckCanvas(state3, source);
+    state3.zoom.hidden = true;
     highlightViewedCard("deck");
-    state2.zoom.replaceChildren();
-    state2.host.replaceChildren();
-    if (state2.preview) {
-      state2.preview.remove();
-      extras.delete(state2.preview);
+    state3.zoom.replaceChildren();
+    state3.host.replaceChildren();
+    if (state3.preview) {
+      state3.preview.remove();
+      extras.delete(state3.preview);
     }
-    state2.host.dataset.view = uiState.deckView;
+    state3.host.dataset.view = uiState.deckView;
     const controls = document.createElement("div");
     controls.className = "m2-deck-controls";
     for (const [value, label] of [
@@ -7660,15 +8273,15 @@ html:not([data-m2-active]) .m2-choice-launchers {
       on(b, "click", () => selectDeckOption(value));
       controls.append(b);
     }
-    state2.host.append(controls);
+    state3.host.append(controls);
     const preview = document.createElement("section");
     preview.className = "m2-deck-preview";
     preview.setAttribute("aria-label", "Selected deck card");
-    (q('[data-m2="board"]') || state2.host).append(preview);
-    state2.preview = preview;
+    (q('[data-m2="board"]') || state3.host).append(preview);
+    state3.preview = preview;
     addExtra(preview);
     function selectPreview(card) {
-      state2.selectedCard = card;
+      state3.selectedCard = card;
       highlightViewedCard("deck", card, hero?.id || "");
       preview.replaceChildren();
       if (card) {
@@ -7690,16 +8303,16 @@ html:not([data-m2-active]) .m2-choice-launchers {
         foot.append(close2);
         preview.append(display);
       }
-      for (const row of state2.host.querySelectorAll(".m2-deck-compact .m2-deck-card"))
+      for (const row of state3.host.querySelectorAll(".m2-deck-compact .m2-deck-card"))
         row.setAttribute("aria-pressed", String(row.dataset.cardKey === JSON.stringify(card)));
     }
     const listHost = document.createElement("div");
     listHost.className = "m2-deck-row-list";
-    state2.host.append(listHost);
+    state3.host.append(listHost);
     if (uiState.deckView === "tree") {
       renderDeckTree(listHost, entries, hero, selectPreview);
-      appendDeckSpells(listHost, spells, selectPreview);
-      const selected = [...entries, ...spellCards.map((card) => ({ card }))].find((e) => state2.selectedCard && deckCardIdentity(e.card) === deckCardIdentity(state2.selectedCard));
+      appendDeckSpells(listHost, spells, selectPreview, hero?.id || "");
+      const selected = [...entries, ...spellCards.map((card) => ({ card }))].find((e) => state3.selectedCard && deckCardIdentity(e.card) === deckCardIdentity(state3.selectedCard));
       selectPreview(selected?.card || null);
       deckPaint();
       return;
@@ -7725,7 +8338,7 @@ html:not([data-m2-active]) .m2-choice-launchers {
       canvas.height = Math.round(canvas.width * entry.canvas.height / entry.canvas.width);
       canvas.setAttribute("role", "img");
       canvas.setAttribute("aria-label", entry.card.name);
-      state2.copies.push([entry.canvas, canvas]);
+      state3.copies.push([entry.canvas, canvas]);
       return canvas;
     }
     for (const [title, cards] of groups) {
@@ -7750,14 +8363,14 @@ html:not([data-m2-active]) .m2-choice-launchers {
         group.append(b);
       }
     }
-    appendDeckSpells(listHost, spells, selectPreview);
+    appendDeckSpells(listHost, spells, selectPreview, hero?.id || "");
     if (preview) {
-      const selected = [...entries, ...spellCards.map((card) => ({ card }))].find((e) => state2.selectedCard && (e.card.id ? e.card.id === state2.selectedCard.id : e.card.name === state2.selectedCard.name));
+      const selected = [...entries, ...spellCards.map((card) => ({ card }))].find((e) => state3.selectedCard && (e.card.id ? e.card.id === state3.selectedCard.id : e.card.name === state3.selectedCard.name));
       selectPreview(selected?.card || null);
     }
     deckPaint();
   }
-  function watchDeckCanvas(state2, canvas) {
+  function watchDeckCanvas(state3, canvas) {
     let ctx;
     try {
       ctx = canvas.getContext("2d");
@@ -7778,7 +8391,7 @@ html:not([data-m2-active]) .m2-choice-launchers {
     ]) {
       let wrapped = function(...args) {
         const result = original.apply(this, args);
-        state2.dirty = true;
+        state3.dirty = true;
         schedule();
         return result;
       };
@@ -7787,7 +8400,7 @@ html:not([data-m2-active]) .m2-choice-launchers {
       const own = Object.hasOwn(ctx, method);
       try {
         ctx[method] = wrapped;
-        state2.watchers.push(() => {
+        state3.watchers.push(() => {
           if (ctx[method] === wrapped) {
             if (own) ctx[method] = original;
             else delete ctx[method];
@@ -7799,10 +8412,10 @@ html:not([data-m2-active]) .m2-choice-launchers {
   }
   function deckPaint() {
     if (!uiState.deckState || !uiState.deckOpen || !uiState.deckState.dirty) return;
-    const state2 = uiState.deckState;
-    state2.dirty = false;
-    state2.copies = state2.copies.filter(([, dst]) => dst.isConnected);
-    for (const [src, dst] of state2.copies) {
+    const state3 = uiState.deckState;
+    state3.dirty = false;
+    state3.copies = state3.copies.filter(([, dst]) => dst.isConnected);
+    for (const [src, dst] of state3.copies) {
       try {
         dst.getContext("2d").drawImage(src, 0, 0, dst.width, dst.height);
       } catch {
@@ -7812,6 +8425,7 @@ html:not([data-m2-active]) .m2-choice-launchers {
 
   // src/navigation.js
   function dismiss() {
+    if (closeNestedCard()) return;
     const tip = q('[data-m2="tip"]');
     if (tip) {
       uiState.dismissedTip = tip;
@@ -7825,7 +8439,72 @@ html:not([data-m2-active]) .m2-choice-launchers {
   var menuHistoryActive = false;
   var menuHistoryClosing = false;
   var navigating = false;
-  var menuSelection = () => uiState.deckOpen ? "deck" : uiState.panel || uiState.mode;
+  var nestedCard = null;
+  var nestedHistoryClosing = false;
+  function restoreNestedCard() {
+    if (!nestedCard) return;
+    const { parent, frame, source, scroll, blocked } = nestedCard;
+    nestedCard = null;
+    parent.classList.remove("m2-nested-open");
+    frame.remove();
+    for (const [element, inert] of blocked) {
+      if (inert === null) element.removeAttribute("inert");
+      else element.setAttribute("inert", inert);
+    }
+    if (parent.isConnected) {
+      if (source?.isConnected) source.focus({ preventScroll: true });
+      for (const [element, top, left] of scroll) {
+        element.scrollTop = top;
+        element.scrollLeft = left;
+      }
+    }
+  }
+  function closeNestedCard() {
+    if (!nestedCard) return false;
+    const token = nestedCard.token;
+    restoreNestedCard();
+    if (window.history.state?.goa2Mobile2DCard === token) {
+      nestedHistoryClosing = true;
+      window.history.back();
+    }
+    return true;
+  }
+  function openNestedCard(parent, display, source) {
+    if (!parent.isConnected || nestedCard || nestedHistoryClosing) return;
+    syncMenuHistory();
+    const token = menuHistoryToken + "-spell";
+    const scroll = [];
+    for (let element = parent.parentElement; element; element = element.parentElement)
+      scroll.push([element, element.scrollTop, element.scrollLeft]);
+    const frame = document.createElement("div");
+    frame.className = "m2-nested-spell-frame";
+    frame.append(display);
+    const blocked = Array.from(parent.children).filter((element) => element.matches(".m2-card-top,.m2-card-body,.m2-card-foot")).map((element) => [element, element.getAttribute("inert")]);
+    for (const [element] of blocked) element.setAttribute("inert", "");
+    nestedCard = { parent, display, frame, source, token, scroll, blocked };
+    display.classList.add("m2-nested-spell");
+    const back = document.createElement("button");
+    back.type = "button";
+    back.className = "m2-card-dismiss";
+    back.textContent = "×";
+    back.setAttribute("aria-label", "Back to card");
+    back.onclick = (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      closeNestedCard();
+    };
+    const foot = q(".m2-card-foot", display);
+    foot.classList.add("m2-has-dismiss");
+    foot.append(back);
+    parent.classList.add("m2-nested-open");
+    parent.append(frame);
+    try {
+      window.history.pushState({ ...window.history.state, goa2Mobile2DCard: token }, "", window.location.href);
+    } catch {
+    }
+    back.focus({ preventScroll: true });
+  }
+  var menuSelection = () => uiState.selectedHeroCard?.spells ? "spells" : uiState.deckOpen ? "deck" : uiState.panel || uiState.mode;
   function openDecisionDialog() {
     return q(c("picker") + "," + c("pickerUpgrade") + ',[data-m2="report-dialog"],[data-m2="fix-dialog"]');
   }
@@ -7850,6 +8529,9 @@ html:not([data-m2-active]) .m2-choice-launchers {
     }
   }
   function syncMenuHistory() {
+    if (nestedCard && (!nestedCard.display.isConnected || !root.hasAttribute("data-m2-active")))
+      closeNestedCard();
+    if (nestedHistoryClosing) return;
     if (navigating || menuHistoryClosing || uiState.dead) return;
     const open = root.hasAttribute("data-m2-active") && (menuSelection() !== "board" || openCardView() || !!openDecisionDialog());
     if (open && !menuHistoryActive) {
@@ -7867,6 +8549,16 @@ html:not([data-m2-active]) .m2-choice-launchers {
     }
   }
   on(window, "popstate", () => {
+    if (nestedHistoryClosing) {
+      nestedHistoryClosing = false;
+      syncMenuHistory();
+      return;
+    }
+    if (nestedCard) {
+      restoreNestedCard();
+      syncMenuHistory();
+      return;
+    }
     if (menuHistoryClosing) {
       menuHistoryClosing = false;
       syncMenuHistory();
@@ -7882,6 +8574,15 @@ html:not([data-m2-active]) .m2-choice-launchers {
     else refresh();
   });
   function clearMenuHistory() {
+    if (nestedCard) {
+      const owned = window.history.state?.goa2Mobile2DCard === nestedCard.token;
+      restoreNestedCard();
+      if (owned) {
+        window.history.go(menuHistoryActive ? -2 : -1);
+        menuHistoryActive = false;
+        return;
+      }
+    }
     if (menuHistoryActive && window.history.state?.goa2Mobile2DMenu === menuHistoryToken)
       window.history.back();
     menuHistoryActive = false;
@@ -7898,8 +8599,9 @@ html:not([data-m2-active]) .m2-choice-launchers {
   }
   function navigate(key) {
     if (!key) return;
+    closeNestedCard();
     navigating = true;
-    const selected = uiState.deckOpen ? "deck" : uiState.panel || uiState.mode;
+    const selected = uiState.selectedHeroCard?.spells ? "spells" : uiState.deckOpen ? "deck" : uiState.panel || uiState.mode;
     const closing = selected === key;
     if (uiState.deckOpen) q('[data-m2="deck"] ' + c("closeBtn"))?.click();
     setDeckOpen(false);
@@ -7949,7 +8651,7 @@ html:not([data-m2-active]) .m2-choice-launchers {
       uiState.panel = "";
       root.dataset.m2Panel = "";
     }
-    const selected = uiState.deckOpen ? "deck" : uiState.panel || uiState.mode;
+    const selected = uiState.selectedHeroCard?.spells ? "spells" : uiState.deckOpen ? "deck" : uiState.panel || uiState.mode;
     for (const button of nav.children) {
       const pressed = String(button.dataset.mode === selected);
       if (button.getAttribute("aria-pressed") !== pressed)
@@ -7984,6 +8686,7 @@ html:not([data-m2-active]) .m2-choice-launchers {
   );
   on(document, "keydown", (e) => {
     if (e.key === "Escape") {
+      if (closeNestedCard()) return;
       uiState.focusedHeroId = null;
       uiState.panel = "";
       clearHeroCard();
@@ -8212,7 +8915,8 @@ html:not([data-m2-active]) .m2-choice-launchers {
     ]))
   };
   function appendRulesText(effect, text, symbol) {
-    for (const part of String(text || "").split(/(:[a-z_]+:)/g)) {
+    const rules = String(text || "").replace(/(^|\n|\\n)([ \t]*)[•·*-][ \t]+(?=:rune_(?:bird|axe|anvil|horn)(?:_marker)?:)/g, "$1$2");
+    for (const part of rules.split(/(:[a-z_]+:)/g)) {
       const key = /^:([a-z_]+):$/.exec(part)?.[1];
       if (key && /^(attack|defense|movement|range|radius|initiative)$/.test(key))
         effect.append(symbol(key.toUpperCase()));
@@ -8225,6 +8929,84 @@ html:not([data-m2-active]) .m2-choice-launchers {
         effect.append(img);
       } else effect.append(document.createTextNode(part));
     }
+  }
+  function appendSpellRules(effect, card, heroId, symbol, inspect) {
+    const own = q('[data-m2="sidebar"] [data-m2="hero"]:not([data-m2-other])');
+    const hero = own && componentProp(own, "hero");
+    if (!hero || hero.id !== heroId || !Array.isArray(hero.spellbook)) return false;
+    const catalog = [...knownSpells(hero.spellbook, true), ...knownSpells(hero.cast_spells)];
+    const cards = [...new Map(catalog.map((spell) => [spell.name.toLowerCase().replace(/[’']/g, ""), spell])).values()].sort((a, b) => b.name.length - a.name.length);
+    const escaped = (name) => [...name].map((char) => /['’]/.test(char) ? "['’]?" : /[a-z0-9 ]/i.test(char) ? char : String.fromCharCode(92) + char).join("");
+    const source = String(card.effect_text || "").replace(/\\n/g, "\n");
+    let main = "", depth = 0, parenthetical = "";
+    const notes = [];
+    for (const char of source) {
+      if (char === "(") depth++;
+      if (depth) parenthetical += char;
+      else main += char;
+      if (char === ")" && depth && --depth === 0) {
+        notes.push(parenthetical);
+        parenthetical = "";
+      }
+    }
+    main += parenthetical;
+    const seen = /* @__PURE__ */ new Set(), deferred = [];
+    let choosing = false, matched = false;
+    const addSpell = (spell) => {
+      const row = document.createElement("button");
+      row.type = "button";
+      row.className = "m2-current-card-mini m2-inline-spell";
+      row.dataset.spellId = spell.id;
+      row.setAttribute("aria-label", "View " + spell.name);
+      row.title = spell.name;
+      row.append(spellTinyCard(spell));
+      row.onclick = (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        inspect(spell, row);
+      };
+      const line = document.createElement("div");
+      line.className = "m2-spell-rule-line";
+      line.append(row);
+      effect.append(line);
+    };
+    for (const line of main.split(/\r?\n/)) {
+      if (/choose one/i.test(line)) choosing = true;
+      const matches = [];
+      let text = line;
+      for (const spell of cards) {
+        const pattern = new RegExp('(^|[^a-z0-9])(["“]?' + escaped(spell.name) + '["”]?)(?=$|[^a-z0-9])', "ig");
+        text = text.replace(pattern, (reference, prefix) => {
+          matched = true;
+          const key = spell.name.toLowerCase().replace(/[’']/g, "");
+          if (!seen.has(key)) {
+            seen.add(key);
+            matches.push(spell);
+          }
+          return choosing ? prefix : reference;
+        });
+      }
+      text = text.replace(/^\s*[•>*-]\s*(?=[.\s]*$)/, "").trim();
+      if (text && !/^[.\s]*$/.test(text)) {
+        const paragraph = document.createElement("div");
+        appendRulesText(paragraph, text, symbol);
+        effect.append(paragraph);
+      }
+      if (choosing) for (const spell of matches) addSpell(spell);
+      else deferred.push(...matches);
+    }
+    if (!matched) {
+      effect.replaceChildren();
+      return false;
+    }
+    for (const spell of deferred) addSpell(spell);
+    for (const note of notes) {
+      const paragraph = document.createElement("div");
+      paragraph.className = "m2-spell-rule-note";
+      appendRulesText(paragraph, note, symbol);
+      effect.append(paragraph);
+    }
+    return true;
   }
   function relevantStat(card, key, value) {
     if (value == null) return false;
@@ -8281,7 +9063,7 @@ html:not([data-m2-active]) .m2-choice-launchers {
       box.classList.remove("m2-has-art");
       art.remove();
     };
-    const url = "/cards/backgrounds/" + slug + "/" + imageId + ".webp";
+    const url = isSpellCard(card) ? "/cards/spells/" + imageId + ".webp" : "/cards/backgrounds/" + slug + "/" + imageId + ".webp";
     image.src = url;
     art.append(image);
     box.append(art);
@@ -8308,6 +9090,7 @@ html:not([data-m2-active]) .m2-choice-launchers {
     return symbol;
   }
   function syncHandActions(foot, card, tip, items) {
+    if (foot.closest(".m2-nested-spell")) return;
     const sec = card.secondary_actions || {};
     const original = tip ? Array.from(tip.querySelectorAll("button")).filter((b) => !b.closest(".m2-text-card")) : [];
     const key = JSON.stringify([
@@ -8371,8 +9154,40 @@ html:not([data-m2-active]) .m2-choice-launchers {
       }
     if (dismissButton) foot.append(dismissButton);
   }
+  function spellLargeCard(card, heroId) {
+    const box = document.createElement("article");
+    box.className = "m2-text-card m2-spell-card m2-spell-large";
+    box.style.setProperty("--card-color", cardColors[spellColorName(card)] || "#bfc7d2");
+    appendCardArtwork(box, card, null, heroId);
+    const top = document.createElement("header");
+    top.className = "m2-card-top";
+    const name = document.createElement("b"), tier = document.createElement("span");
+    name.textContent = card.name;
+    tier.textContent = spellRankLabel(card).replace("Rank ", "");
+    top.append(name, tier);
+    const body = document.createElement("div"), head = document.createElement("div");
+    body.className = "m2-card-body";
+    head.className = "m2-card-type";
+    if (card.primary_action) head.append(cardSymbol(card.primary_action, primaryCardValue(card)));
+    const type = document.createElement("b");
+    type.textContent = (card.color === "GOLD" ? "Basic " : "") + (actionNames[card.primary_action] || "Spell");
+    head.append(type);
+    for (const key of ["RANGE", "RADIUS"]) {
+      const value = modifierCardValue(card, key);
+      if (relevantStat(card, key, value)) head.append(cardSymbol(key, value));
+    }
+    const effect = document.createElement("div");
+    effect.className = "m2-card-effect";
+    appendRulesText(effect, card.effect_text, cardSymbol);
+    if (!card.effect_text) effect.textContent = "See the printed spell face for its rules.";
+    body.append(head, effect);
+    const foot = document.createElement("footer");
+    foot.className = "m2-card-foot";
+    box.append(top, body, foot);
+    return box;
+  }
   function textCard(card, context, tip, heroId, grantedItem) {
-    if (isSpellCard(card)) return spellFace(card);
+    if (isSpellCard(card)) return spellPreferences.view === "image" ? spellFace(card) : spellLargeCard(card, heroId);
     const items = context === "deck" ? {} : cardUpgrades(card);
     const symbol = (key, value) => upgradedSymbol(items, key, value);
     const ultimate = card.tier === "IV" || card.color === "PURPLE";
@@ -8418,7 +9233,8 @@ html:not([data-m2-active]) .m2-choice-launchers {
       head.append(symbol("RADIUS", modifierCardValue(card, "RADIUS")));
     const effect = document.createElement("div");
     effect.className = "m2-card-effect";
-    appendRulesText(effect, card.effect_text, symbol);
+    if (!appendSpellRules(effect, card, heroId || cardHero(card, tip)?.id, symbol, (spell, source) => openNestedCard(box, textCard(spell, context, null, heroId), source)))
+      appendRulesText(effect, card.effect_text, symbol);
     main.append(head, effect);
     body.append(side, main);
     const foot = document.createElement("footer");
@@ -8460,9 +9276,11 @@ html:not([data-m2-active]) .m2-choice-launchers {
   }
 
   // src/hero-indicators.js
-  function heroIndicators(hero, view) {
+  function heroIndicators(hero, view, compact = false) {
     if (!hero) return [];
     const indicators = [];
+    const rune = hero.rune_slots?.[String(view?.turn)];
+    if (compact && runes.includes(rune)) indicators.push({ type: "rune", rune });
     if (hero.spellbook != null || /^(?:hero_)?gydion$/i.test(hero.id || hero.name || ""))
       indicators.push({
         type: "spells",
@@ -8490,7 +9308,7 @@ html:not([data-m2-active]) .m2-choice-launchers {
     [0, 1, 2, 3, 4, 5, 6, 7, 8]
   ];
   function indicatorLabel(indicator) {
-    return indicator.type === "spells" ? "Spells cast: " + indicator.count : indicator.type === "bounty" ? "Bounty" : "Poison";
+    return indicator.type === "rune" ? "Active rune: " + indicator.rune[0].toUpperCase() + indicator.rune.slice(1) : indicator.type === "spells" ? "Spells cast: " + indicator.count : indicator.type === "bounty" ? "Bounty" : "Poison";
   }
   function renderHeroIndicators(indicators, compact, openSpells) {
     const host = document.createElement("span");
@@ -8517,7 +9335,7 @@ html:not([data-m2-active]) .m2-choice-launchers {
           openSpells();
         };
         const img = document.createElement("img");
-        img.src = "/hero-images/gydion.webp";
+        img.src = "/cards/logos/gydion.png";
         img.alt = "";
         node.append(img);
         if (compact || indicator.count === 0 || indicator.count > 9) {
@@ -8538,6 +9356,11 @@ html:not([data-m2-active]) .m2-choice-launchers {
           });
           node.append(pips);
         }
+      } else if (indicator.type === "rune") {
+        const img = document.createElement("img");
+        img.src = "/icons/rune_" + indicator.rune + ".png";
+        img.alt = "";
+        node.append(img);
       } else node.textContent = compact ? indicator.type[0].toUpperCase() : indicatorLabel(indicator);
       host.append(node);
     }
@@ -8751,18 +9574,18 @@ html:not([data-m2-active]) .m2-choice-launchers {
   }
 
   // src/discard-choices.js
-  var state = null;
+  var state2 = null;
   function clearDiscardChoices() {
-    if (!state) return;
-    for (const button of state.sources) managedAttribute(button, "data-m2-discard-source", null);
-    managedAttribute(state.picker, "data-m2-discard-picker", null);
-    managedAttribute(state.overlay, "data-m2-discard-overlay", null);
+    if (!state2) return;
+    for (const button of state2.sources) managedAttribute(button, "data-m2-discard-source", null);
+    managedAttribute(state2.picker, "data-m2-discard-picker", null);
+    managedAttribute(state2.overlay, "data-m2-discard-overlay", null);
     for (const element of [...extras])
-      if (element === state.root || state.root.contains(element)) extras.delete(element);
-    state.root.remove();
-    state = null;
+      if (element === state2.root || state2.root.contains(element)) extras.delete(element);
+    state2.root.remove();
+    state2 = null;
   }
-  function requestKey(request) {
+  function requestKey2(request) {
     return JSON.stringify([
       request?.request_id,
       request?.type,
@@ -8781,9 +9604,9 @@ html:not([data-m2-active]) .m2-choice-launchers {
       clearDiscardChoices();
       return false;
     }
-    const key = requestKey(request);
-    if (state && (state.picker !== picker || state.key !== key || state.sources.some((source, i) => source !== sources2[i]))) clearDiscardChoices();
-    if (!state) {
+    const key = requestKey2(request);
+    if (state2 && (state2.picker !== picker || state2.key !== key || state2.sources.some((source, i) => source !== sources2[i]))) clearDiscardChoices();
+    if (!state2) {
       const root2 = document.createElement("section");
       root2.className = "m2-discard-choices";
       root2.setAttribute("aria-label", "Choose a card to discard");
@@ -8796,7 +9619,7 @@ html:not([data-m2-active]) .m2-choice-launchers {
       confirm.disabled = true;
       root2.append(detail, list, confirm);
       addExtra(root2);
-      state = {
+      state2 = {
         root: root2,
         detail,
         list,
@@ -8808,12 +9631,12 @@ html:not([data-m2-active]) .m2-choice-launchers {
         selected: null,
         submitted: false
       };
-      const offer = state;
+      const offer = state2;
       on(confirm, "click", () => {
         const current = componentProp(picker, "inputRequest");
         const index = ids.indexOf(offer.selected);
         const source = offer.sources[index];
-        if (state !== offer || offer.submitted || requestKey(current) !== key || !source?.isConnected || source.disabled) return;
+        if (state2 !== offer || offer.submitted || requestKey2(current) !== key || !source?.isConnected || source.disabled) return;
         offer.submitted = true;
         confirm.disabled = true;
         source.click();
@@ -8825,7 +9648,7 @@ html:not([data-m2-active]) .m2-choice-launchers {
         button.setAttribute("aria-pressed", "false");
         list.append(button);
         on(button, "click", () => {
-          if (state !== offer || offer.submitted || sources2[index].disabled || requestKey(componentProp(picker, "inputRequest")) !== key) return;
+          if (state2 !== offer || offer.submitted || sources2[index].disabled || requestKey2(componentProp(picker, "inputRequest")) !== key) return;
           offer.selected = id;
           offer.detailKey = null;
           renderOffer(offer, cards, hero);
@@ -8836,7 +9659,7 @@ html:not([data-m2-active]) .m2-choice-launchers {
     managedAttribute(picker, "data-m2-discard-picker", "true");
     managedAttribute(picker.parentElement, "data-m2-discard-overlay", "true");
     sources2.forEach((button) => managedAttribute(button, "data-m2-discard-source", "true"));
-    renderOffer(state, cards, hero);
+    renderOffer(state2, cards, hero);
     return true;
   }
   function renderOffer(offer, cards, hero) {
@@ -8948,12 +9771,12 @@ html:not([data-m2-active]) .m2-choice-launchers {
       planningActions = { element, sources: [] };
       addExtra(element);
     }
-    const state2 = planningActions;
-    state2.element.classList.toggle("m2-on-board", uiState.mode === "board");
-    if (state2.element.parentElement !== host) host.append(state2.element);
-    if (sources2.length !== state2.sources.length || sources2.some((source, i) => source !== state2.sources[i])) {
-      state2.sources = sources2;
-      state2.element.replaceChildren(
+    const state3 = planningActions;
+    state3.element.classList.toggle("m2-on-board", uiState.mode === "board");
+    if (state3.element.parentElement !== host) host.append(state3.element);
+    if (sources2.length !== state3.sources.length || sources2.some((source, i) => source !== state3.sources[i])) {
+      state3.sources = sources2;
+      state3.element.replaceChildren(
         ...sources2.map((source) => {
           const button = document.createElement("button");
           button.type = "button";
@@ -8963,7 +9786,7 @@ html:not([data-m2-active]) .m2-choice-launchers {
       );
     }
     sources2.forEach((source, i) => {
-      const button = state2.element.children[i];
+      const button = state3.element.children[i];
       if (button.textContent !== source.textContent) button.textContent = source.textContent;
       button.disabled = source.disabled;
     });
@@ -8972,6 +9795,14 @@ html:not([data-m2-active]) .m2-choice-launchers {
     const copy = source.cloneNode(true);
     copy.querySelectorAll("kbd").forEach((hint) => hint.remove());
     return copy.textContent.replace(/\s+/g, " ").trim();
+  }
+  function startingPositionPrompt() {
+    const setup = q('[data-m2="setup"]');
+    if (!setup) return "";
+    const supplied = componentProp(setup, "choosing");
+    const choosing = typeof supplied === "boolean" ? supplied : /^Done/i.test(q(":scope > button", setup)?.textContent.trim() || "");
+    if (!choosing) return "";
+    return q(":scope > span", setup)?.textContent.trim() || "Choose a highlighted space or request a swap.";
   }
   function updateChoiceLaunchers(boardControls = []) {
     const board = q('[data-m2="board"]');
@@ -9114,6 +9945,7 @@ html:not([data-m2-active]) .m2-choice-launchers {
       hero.can_commit_second_card,
       upgradeRemaining,
       hero.played_cards,
+      hero.rune_slots,
       hero.discard_pile,
       hero.items,
       indicators,
@@ -9283,6 +10115,7 @@ html:not([data-m2-active]) .m2-choice-launchers {
         const slot = document.createElement("div");
         slot.className = "m2-micro-history-slot";
         const label2 = i < 4 ? "Turn " + (i + 1) : "Discard";
+        const rune = i < 4 && runes.includes(hero.rune_slots?.[i + 1]) ? hero.rune_slots[i + 1] : null;
         slot.setAttribute("aria-label", label2);
         const cards2 = i < 4 ? [hero.played_cards[i]].filter(Boolean) : hero.discard_pile || [];
         slot.classList.toggle("m2-history-empty", !cards2.length);
@@ -9297,8 +10130,23 @@ html:not([data-m2-active]) .m2-choice-launchers {
         if (!cards2.length || i === 4) {
           const placeholder = document.createElement("span");
           placeholder.className = "m2-micro-placeholder";
-          placeholder.textContent = label2;
+          if (rune) {
+            const marker = runeLabel(rune);
+            marker.classList.toggle("m2-turn-rune-active", Number(view?.turn) === i + 1);
+            placeholder.append(marker);
+          } else placeholder.textContent = label2;
           slot.append(placeholder);
+        }
+        if (rune) {
+          const runeName2 = rune[0].toUpperCase() + rune.slice(1);
+          slot.setAttribute("aria-label", label2 + ": " + runeName2 + (Number(view?.turn) === i + 1 ? " (active)" : ""));
+          if (cards2.length) {
+            const marker = runeLabel(rune);
+            marker.classList.add("m2-rune-floating");
+            marker.classList.toggle("m2-turn-rune-active", Number(view?.turn) === i + 1);
+            slot.append(marker);
+            slots.classList.add("m2-has-floating-runes");
+          }
         }
         slots.append(slot);
       }
@@ -9341,6 +10189,7 @@ html:not([data-m2-active]) .m2-choice-launchers {
     info.setAttribute("aria-label", entry ? "Turn " + marker + ", initiative " + entry.initiative : info.title);
   }
   function updateHeroCardDisplay() {
+    if (!uiState.selectedHeroCard?.spells) clearSpellBrowser();
     if (!uiState.selectedHeroCard) {
       highlightViewedCard("hero");
       return;
@@ -9356,40 +10205,73 @@ html:not([data-m2-active]) .m2-choice-launchers {
     if (uiState.selectedHeroCard.spells) {
       const cards2 = knownSpells(hero.cast_spells);
       const selected = cards2.find((card2) => card2.id === uiState.selectedHeroCard.cardId);
-      const key2 = JSON.stringify(["cast-spells", hero.id, cards2, selected?.id]);
-      if (heroPanel.dataset.key === key2) return;
+      document.documentElement.setAttribute("data-m2-spells-open", "");
+      const key2 = JSON.stringify(["cast-spells", hero.id, cards2, spellPreferences.sort]);
+      if (spellPanel.dataset.key !== key2) {
+        const list = document.createElement("section");
+        list.className = "m2-cast-spells";
+        list.setAttribute("aria-label", (hero.name || "Gydion") + " cast spells");
+        const header = document.createElement("header");
+        const title = document.createElement("b");
+        title.textContent = (hero.name || "Gydion") + " · Spells (" + cards2.length + ")";
+        const sort = document.createElement("button");
+        sort.type = "button";
+        sort.className = "m2-spells-control m2-sort-switch";
+        sort.setAttribute("role", "switch");
+        sort.setAttribute("aria-label", "Sort spells by color instead of rank");
+        sort.setAttribute("aria-checked", String(spellPreferences.sort === "color"));
+        const labels = document.createElement("span");
+        for (const text of ["Rank", "Color"]) {
+          const label = document.createElement("span");
+          label.textContent = text;
+          labels.append(label);
+        }
+        sort.append(labels, document.createElement("i"));
+        sort.onclick = () => {
+          setSpellPreference("sort", spellPreferences.sort === "tier" ? "color" : "tier");
+          updateHeroCardDisplay();
+        };
+        const close3 = document.createElement("button");
+        close3.type = "button";
+        close3.className = "m2-spells-control m2-spells-close";
+        close3.textContent = "×";
+        close3.setAttribute("aria-label", "Close cast spells");
+        close3.onclick = () => {
+          clearHeroCard();
+          schedule();
+        };
+        header.append(title, sort, close3);
+        const content = document.createElement("div");
+        content.className = "m2-spells-content";
+        appendCastSpellGroups(content, cards2, (card2) => {
+          uiState.selectedHeroCard = { heroId: hero.id, spells: true, cardId: card2.id };
+          updateHeroCardDisplay();
+        }, { viewer: "hero", owner: hero.id, flat: true });
+        list.append(header, content);
+        spellPanel.replaceChildren(list);
+        spellPanel.dataset.key = key2;
+      }
+      for (const row of spellPanel.querySelectorAll("[data-spell-id]"))
+        row.setAttribute("aria-pressed", String(row.dataset.spellId === selected?.id));
       highlightViewedCard("hero", selected || null, hero.id);
-      heroPanel.replaceChildren();
-      const list = document.createElement("section");
-      list.className = "m2-cast-spells";
-      list.setAttribute("aria-label", (hero.name || "Gydion") + " cast spells");
-      const header = document.createElement("header");
-      const title = document.createElement("b");
-      title.textContent = (hero.name || "Gydion") + " · Spells cast";
-      const close3 = document.createElement("button");
-      close3.type = "button";
-      close3.className = "m2-spells-control m2-spells-close";
-      close3.textContent = "×";
-      close3.setAttribute("aria-label", "Close cast spells");
-      close3.onclick = () => {
-        clearHeroCard();
-        schedule();
-      };
-      header.append(title, close3);
-      list.append(header);
-      if (selected) {
-        const back = document.createElement("button");
-        back.type = "button";
-        back.className = "m2-spells-control m2-spells-back";
-        back.textContent = "‹ Cast spells";
-        back.onclick = () => openCastSpells(hero.id);
-        list.append(back, textCard(selected, "hero", null, hero.id));
-      } else appendSpellGroup(list, "Cast spells (" + cards2.length + ")", cards2, (card2) => {
-        uiState.selectedHeroCard = { heroId: hero.id, spells: true, cardId: card2.id };
-        updateHeroCardDisplay();
-      });
-      heroPanel.append(list);
-      heroPanel.dataset.key = key2;
+      const viewerKey = JSON.stringify([selected, spellPreferences.view]);
+      if (heroPanel.dataset.key !== viewerKey) {
+        heroPanel.replaceChildren();
+        if (selected) {
+          const display2 = textCard(selected, "hero", null, hero.id);
+          const close3 = document.createElement("button");
+          close3.type = "button";
+          close3.className = "m2-card-dismiss";
+          close3.textContent = "×";
+          close3.setAttribute("aria-label", "Close spell details");
+          close3.onclick = () => openCastSpells(hero.id);
+          const foot2 = q(".m2-card-foot", display2);
+          foot2.classList.add("m2-has-dismiss");
+          foot2.append(close3);
+          heroPanel.append(display2);
+        }
+        heroPanel.dataset.key = viewerKey;
+      }
       return;
     }
     const cards = [
@@ -9482,12 +10364,12 @@ html:not([data-m2-active]) .m2-choice-launchers {
   var viewer = null;
   var choiceLabels = /* @__PURE__ */ new Map();
   function clearChoiceLabel(button) {
-    const state2 = choiceLabels.get(button);
-    if (!state2) return;
-    state2.label.remove();
-    extras.delete(state2.label);
+    const state3 = choiceLabels.get(button);
+    if (!state3) return;
+    state3.label.remove();
+    extras.delete(state3.label);
     managedAttribute(button, "data-m2-action-choice", null);
-    managedAttribute(button, "aria-label", state2.ariaLabel);
+    managedAttribute(button, "aria-label", state3.ariaLabel);
     choiceLabels.delete(button);
   }
   function updateChoiceLabels(picker, request) {
@@ -9496,35 +10378,117 @@ html:not([data-m2-active]) .m2-choice-launchers {
       for (const button of picker.querySelectorAll("button")) {
         const previous = choiceLabels.get(button);
         const text = Array.from(button.childNodes).filter((node) => node !== previous?.label).map((node) => node.textContent).join("").trim();
-        const match = text.match(/^(?:(Primary|Secondary):\s*)?(ATTACK|MOVEMENT|HOLD|HELD|CLEAR)\s*(?:\((\d+\+?)\))?$/i);
+        const match = text.match(/^(?:(Primary|Secondary):\s*)?(ATTACK|MOVEMENT|DEFENSE|DEFENSE_SKILL|SKILL|FAST_TRAVEL|HOLD|HELD|CLEAR)\s*(?:\((\d+\+?|[-–!])\))?$/i);
         if (!match) continue;
         const [, kind, action, value] = match;
         const key = action.toUpperCase();
-        const symbol = ["ATTACK", "MOVEMENT"].includes(key);
-        if (symbol ? value === void 0 : value !== void 0 && value !== "0") continue;
+        const symbol = ["ATTACK", "MOVEMENT", "SKILL", "DEFENSE_SKILL", "DEFENSE"].includes(key);
+        if (!symbol && value !== void 0 && value !== "0") continue;
+        if (["ATTACK", "MOVEMENT"].includes(key) && (value === void 0 || /[-–]/.test(value))) continue;
+        const shownValue = value && !/[-–]/.test(value) ? value : void 0;
+        const actionLabel = key === "FAST_TRAVEL" ? "FAST TRAVEL" : action;
         live.add(button);
-        let state2 = previous;
-        if (!state2) {
+        let state3 = previous;
+        if (!state3) {
           const label = document.createElement("span");
           label.className = "m2-action-choice-label";
           label.setAttribute("aria-hidden", "true");
           addExtra(label);
-          state2 = { label, ariaLabel: button.getAttribute("aria-label"), text: null };
-          choiceLabels.set(button, state2);
+          state3 = { label, ariaLabel: button.getAttribute("aria-label"), text: null };
+          choiceLabels.set(button, state3);
         }
-        if (state2.text !== text) {
-          state2.label.replaceChildren();
-          if (kind) state2.label.append(document.createTextNode(kind + ": "));
-          state2.label.append(symbol ? cardSymbol(key, value) : document.createTextNode(action));
-          state2.text = text;
+        if (state3.text !== text) {
+          state3.label.replaceChildren();
+          if (kind) state3.label.append(document.createTextNode(kind + ": "));
+          state3.label.append(symbol ? cardSymbol(key, shownValue) : document.createTextNode(actionLabel));
+          state3.text = text;
         }
-        if (state2.label.parentElement !== button) button.append(state2.label);
+        if (state3.label.parentElement !== button) button.append(state3.label);
         managedAttribute(button, "data-m2-action-choice", "true");
-        managedAttribute(button, "aria-label", (kind ? kind + ": " : "") + action + (symbol ? " " + value : ""));
+        managedAttribute(button, "aria-label", (kind ? kind + ": " : "") + actionLabel + (symbol && shownValue !== void 0 ? " " + shownValue : ""));
       }
     }
     for (const button of choiceLabels.keys())
       if (!live.has(button)) clearChoiceLabel(button);
+  }
+  var goldChoices = /* @__PURE__ */ new Map();
+  function clearGoldChoice(button) {
+    const previous = goldChoices.get(button);
+    if (!previous) return;
+    const row = q(":scope > .m2-list-card", button);
+    if (row) {
+      extras.delete(row);
+      row.remove();
+    }
+    if (!previous.adapted) button.classList.remove("m2-adapted-row");
+    managedAttribute(button, "data-m2-gold-choice", null);
+    managedAttribute(button, "aria-label", previous.ariaLabel);
+    goldChoices.delete(button);
+  }
+  function updateGoldChoices(picker, request, hero) {
+    const live = /* @__PURE__ */ new Set();
+    if (picker && request?.type === "SELECT_CARD" && /gold/i.test(request.prompt || "") && (!request.player_id || request.player_id === hero?.id) && Array.isArray(hero?.deck) && Array.isArray(request.valid_options) && request.valid_options.length) {
+      const buttons = Array.from(picker.children).filter((node) => node.tagName === "BUTTON");
+      const offers = request.valid_options.map((id) => {
+        const card = hero.deck.find((card2) => card2.id === id && card2.color === "GOLD" && card2.name && card2.primary_action);
+        const button = card && buttons.find((button2) => Array.from(button2.childNodes).filter((node) => !node.classList?.contains("m2-list-card")).map((node) => node.textContent).join("").trim() === card.name);
+        return { card, button };
+      });
+      if (offers.every((offer) => offer.button)) for (const { card, button } of offers) {
+        live.add(button);
+        if (!goldChoices.has(button)) goldChoices.set(button, {
+          adapted: button.classList.contains("m2-adapted-row"),
+          ariaLabel: button.getAttribute("aria-label")
+        });
+        managedAttribute(button, "data-m2-gold-choice", "true");
+        managedAttribute(button, "aria-label", card.name);
+        updateCardRow(button, { ...card, is_facedown: false }, {}, "small");
+      }
+    }
+    for (const button of goldChoices.keys()) if (!live.has(button)) clearGoldChoice(button);
+  }
+  var spellChoices = /* @__PURE__ */ new Map();
+  function clearSpellChoice(button) {
+    const state3 = spellChoices.get(button);
+    if (!state3) return;
+    state3.row.remove();
+    extras.delete(state3.row);
+    managedAttribute(button, "data-m2-spell-choice", null);
+    managedAttribute(button, "aria-label", state3.ariaLabel);
+    spellChoices.delete(button);
+  }
+  function updateSpellChoices(picker, request, hero) {
+    const live = /* @__PURE__ */ new Set();
+    if (picker && ["SELECT_CARD", "SELECT_OPTION"].includes(request?.type) && /spell.*cast|cast.*spell/i.test(request.prompt || "") && (!request.player_id || request.player_id === hero?.id) && Array.isArray(hero?.spellbook)) {
+      const cards = knownSpells(hero.spellbook, true);
+      const normalize = (text) => String(text || "").toLowerCase().replace(/[_-]/g, " ").trim();
+      const buttons = Array.from(picker.children).filter((node) => node.tagName === "BUTTON");
+      const offers = request.type === "SELECT_CARD" && Array.isArray(request.valid_options) ? request.valid_options : Array.isArray(request.options) ? request.options : [];
+      for (const option of offers) {
+        const id = typeof option === "string" ? option : option.id;
+        const label = typeof option === "string" ? option : option.text;
+        const card = cards.find((card2) => normalize(card2.id) === normalize(id) || normalize(card2.name) === normalize(label));
+        if (!card) continue;
+        const button = buttons.find((button2) => {
+          const text = Array.from(button2.childNodes).filter((node) => node !== spellChoices.get(button2)?.row).map((node) => node.textContent).join("").trim();
+          return [id, label, card.id, card.name].some((value) => normalize(value) === normalize(text));
+        });
+        if (!button) continue;
+        live.add(button);
+        let state3 = spellChoices.get(button);
+        const key = JSON.stringify(card);
+        if (state3?.key === key) continue;
+        if (state3) clearSpellChoice(button);
+        const row = spellTinyCard(card);
+        state3 = { row, key, ariaLabel: button.getAttribute("aria-label") };
+        spellChoices.set(button, state3);
+        button.append(row);
+        addExtra(row);
+        managedAttribute(button, "data-m2-spell-choice", "true");
+        managedAttribute(button, "aria-label", card.name);
+      }
+    }
+    for (const button of spellChoices.keys()) if (!live.has(button)) clearSpellChoice(button);
   }
   function mark(element, attribute, value = "true") {
     managedAttribute(element, attribute, value);
@@ -9532,6 +10496,9 @@ html:not([data-m2-active]) .m2-choice-launchers {
   }
   function clearActionChoices() {
     clearDiscardChoices();
+    clearRuneChoices();
+    for (const button of spellChoices.keys()) clearSpellChoice(button);
+    for (const button of goldChoices.keys()) clearGoldChoice(button);
     for (const button of choiceLabels.keys()) clearChoiceLabel(button);
     for (const element of adapted)
       for (const attribute of [
@@ -9563,8 +10530,13 @@ html:not([data-m2-active]) .m2-choice-launchers {
     const ownBox = Array.from(document.querySelectorAll('[data-m2="sidebar"] [data-m2="hero"]')).find((box) => !box.hasAttribute("data-m2-other") && (!myHeroId || componentProp(box, "hero")?.id === myHeroId));
     const hero = ownBox && componentProp(ownBox, "hero");
     const discarding = updateDiscardChoices(picker, request, hero);
+    updateGoldChoices(picker, request, hero);
+    updateSpellChoices(picker, request, hero);
+    updateRuneChoices(picker, request, hero, view);
     const ownAction = request && hero && /^RESOLUTION$/i.test(view?.phase || "") && request.type !== "UPGRADE_PHASE" && request.type !== "SELECT_CARD_OR_PASS" && (!request.player_id || request.player_id === hero.id) && (view.current_actor_id ? view.current_actor_id === hero.id : ["CHOOSE_ACTION", "SELECT_OPTION"].includes(request.type));
-    const candidate = ownAction && !discarding ? heroTurnCard(ownBox, hero, view) : null;
+    const actionTarget = request?.type === "CHOOSE_ACTION" && String(request.prompt || "").match(/^Choose an? action (?:to perform on|for(?: card)?)\s+["“]?(.+?)["”]?[.!]?$/i)?.[1];
+    const spellTarget = actionTarget && [...knownSpells(hero?.spellbook, true), ...knownSpells(hero?.cast_spells)].find((spell) => [spell.name, spell.id].some((name) => name?.toLowerCase() === actionTarget.toLowerCase()));
+    const candidate = ownAction && !discarding ? spellTarget || heroTurnCard(ownBox, hero, view) : null;
     const card = candidate && !candidate.is_facedown ? candidate : null;
     const activeElements = /* @__PURE__ */ new Set();
     const set = (element, attribute, value) => {
@@ -9764,7 +10736,7 @@ html:not([data-m2-active]) .m2-choice-launchers {
       status = h.offboard ? "Off board" : h.done ? "Turn completed" : "No card played";
     }
     turn.title = status;
-    turn.setAttribute("aria-label", status);
+    turn.setAttribute("aria-label", status + (turn.dataset.heroName ? " · Open " + turn.dataset.heroName : ""));
   }
   function renderSummary(heroes, upgradeRequest = null) {
     if (summary.classList.contains("m2-summary-focused") !== !!uiState.focusedHeroId) {
@@ -9806,6 +10778,9 @@ html:not([data-m2-active]) .m2-choice-launchers {
       if (h.done) row.classList.add("m2-done-hero");
       const turn = document.createElement("span");
       turn.className = "m2-summary-turn";
+      turn.dataset.heroName = h.name;
+      turn.setAttribute("role", "button");
+      turn.tabIndex = 0;
       updateSummaryTurn(turn, row, h);
       const identity = document.createElement("span");
       identity.className = "m2-summary-identity";
@@ -9826,6 +10801,8 @@ html:not([data-m2-active]) .m2-choice-launchers {
           focus();
         }
       };
+      turn.onclick = focus;
+      turn.onkeydown = identity.onkeydown;
       identity.title = h.name;
       const [heroName, ...playerParts] = h.name.split(/[·•]/);
       const name = document.createElement("strong");
@@ -9839,6 +10816,11 @@ html:not([data-m2-active]) .m2-choice-launchers {
         player.textContent = playerName.includes("(You)") ? "(You)" : playerName;
         identity.append(separator(), player);
       }
+      const nameCell = document.createElement("span");
+      nameCell.className = "m2-summary-name-cell";
+      nameCell.append(identity);
+      if (h.indicators?.length)
+        nameCell.append(renderHeroIndicators(h.indicators, true, () => openCastSpells(h.id)));
       const level = document.createElement("span");
       level.className = "m2-summary-level";
       level.textContent = h.level == null ? "Lv.—" : "Lv." + h.level;
@@ -9866,7 +10848,7 @@ html:not([data-m2-active]) .m2-choice-launchers {
       const resources = document.createElement("span");
       resources.className = "m2-summary-resources";
       resources.append(level, separator(), gold);
-      row.append(turn, identity, resources, h.isOwn ? navigationShortcut(piles, "hand", "Open your Hand") : piles);
+      row.append(turn, nameCell, resources, h.isOwn ? navigationShortcut(piles, "hand", "Open your Hand") : piles);
       const currentSlot = document.createElement("span");
       currentSlot.className = "m2-summary-current-slot";
       const paired = h.committedCards?.length === 2;
@@ -9898,7 +10880,6 @@ html:not([data-m2-active]) .m2-choice-launchers {
       }
       const upgrades = itemUpgradeSymbols(h.upgrades, "m2-summary-upgrades");
       upgrades.prepend(ultimateIndicator(h, true));
-      row.append(renderHeroIndicators(h.indicators || [], true, () => openCastSpells(h.id)));
       row.append(currentSlot, h.isOwn ? navigationShortcut(upgrades, "deck", "Open your Deck") : upgrades);
       summary.append(row);
     }
@@ -10103,40 +11084,40 @@ html:not([data-m2-active]) .m2-choice-launchers {
       resetDecisionHistory();
       decisionHistory.scope = key;
     }
-    const state2 = decisionHistory;
-    if (state2.request || !force && Date.now() < state2.due) return;
+    const state3 = decisionHistory;
+    if (state3.request || !force && Date.now() < state3.due) return;
     const request = new AbortController();
-    state2.request = request;
-    state2.status = "Loading match history…";
-    state2.due = Date.now() + 1e4;
-    state2.timer = setTimeout(() => {
-      if (uiState.dead || state2 !== decisionHistory || state2.request !== request) return;
+    state3.request = request;
+    state3.status = "Loading match history…";
+    state3.due = Date.now() + 1e4;
+    state3.timer = setTimeout(() => {
+      if (uiState.dead || state3 !== decisionHistory || state3.request !== request) return;
       request.abort();
-      state2.request = null;
-      state2.timer = null;
-      state2.due = Date.now() + 1e4;
-      state2.status = "Match history timed out. Select Refresh to retry.";
+      state3.request = null;
+      state3.timer = null;
+      state3.due = Date.now() + 1e4;
+      state3.status = "Match history timed out. Select Refresh to retry.";
       renderLogPanel();
     }, 15e3);
     const headers = {};
     if (scope.token) headers.Authorization = "Bearer " + scope.token;
-    if (state2.etag) headers["If-None-Match"] = state2.etag;
+    if (state3.etag) headers["If-None-Match"] = state3.etag;
     fetch("/api/games/" + encodeURIComponent(scope.gameId) + "/overrides/history", {
       method: "GET",
       headers,
       signal: request.signal
     }).then(async (response) => {
-      if (request.signal.aborted || state2 !== decisionHistory) return;
+      if (request.signal.aborted || state3 !== decisionHistory) return;
       if (response.status === 304) {
-        state2.status = "Match decision history";
+        state3.status = "Match decision history";
         return;
       }
       if (!response.ok) {
-        state2.due = Date.now() + ([401, 403, 404].includes(response.status) ? 6e4 : 1e4);
+        state3.due = Date.now() + ([401, 403, 404].includes(response.status) ? 6e4 : 1e4);
         throw new Error("History unavailable");
       }
       const data = await response.json();
-      if (request.signal.aborted || state2 !== decisionHistory) return;
+      if (request.signal.aborted || state3 !== decisionHistory) return;
       if (!Number.isInteger(data?.total) || data.total < 0 || !Array.isArray(data.decisions) || !data.decisions.every(validDecision)) throw new Error("Invalid history");
       const rows = [...new Map(data.decisions.map((row) => [row.index, {
         index: row.index,
@@ -10147,20 +11128,20 @@ html:not([data-m2-active]) .m2-choice-launchers {
         hero_id: row.hero_id,
         superseded: row.superseded === true
       }])).values()].sort((a, b) => a.index - b.index).slice(-EVENT_LIMIT);
-      if (JSON.stringify(rows) !== JSON.stringify(state2.rows) || data.total !== state2.total) state2.revision++;
-      state2.rows = rows;
-      state2.total = data.total;
-      state2.etag = response.headers?.get("ETag") || "";
-      state2.status = "Match decision history";
+      if (JSON.stringify(rows) !== JSON.stringify(state3.rows) || data.total !== state3.total) state3.revision++;
+      state3.rows = rows;
+      state3.total = data.total;
+      state3.etag = response.headers?.get("ETag") || "";
+      state3.status = "Match decision history";
       if (!logTabChosen && !savedEvents.length && rows.length) logTab = "decisions";
     }).catch(() => {
-      if (request.signal.aborted || state2 !== decisionHistory) return;
-      state2.status = "Match history unavailable. Saved events are still available.";
+      if (request.signal.aborted || state3 !== decisionHistory) return;
+      state3.status = "Match history unavailable. Saved events are still available.";
     }).finally(() => {
-      if (request.signal.aborted || state2 !== decisionHistory || state2.request !== request) return;
-      clearTimeout(state2.timer);
-      state2.timer = null;
-      state2.request = null;
+      if (request.signal.aborted || state3 !== decisionHistory || state3.request !== request) return;
+      clearTimeout(state3.timer);
+      state3.timer = null;
+      state3.request = null;
       renderLogPanel();
     });
   }
@@ -10176,18 +11157,18 @@ html:not([data-m2-active]) .m2-choice-launchers {
   }
   function renderLogPanel() {
     if (!logPanel.firstChild) buildLogPanel();
-    const state2 = decisionHistory, entries = q(".m2-log-entries", logPanel), key = JSON.stringify([logTab, historyRevision, state2.revision, historyError]);
+    const state3 = decisionHistory, entries = q(".m2-log-entries", logPanel), key = JSON.stringify([logTab, historyRevision, state3.revision, historyError]);
     for (const button of logPanel.querySelectorAll("[data-log-tab]"))
       button.setAttribute("aria-pressed", String(button.dataset.logTab === logTab));
-    q(".m2-panel-title button", logPanel).disabled = !!state2.request;
-    q(".m2-log-status", logPanel).textContent = logTab === "decisions" ? state2.status || "Match history is fetched when Log opens." : historyError || "Events received on this device · " + savedEvents.length;
+    q(".m2-panel-title button", logPanel).disabled = !!state3.request;
+    q(".m2-log-status", logPanel).textContent = logTab === "decisions" ? state3.status || "Match history is fetched when Log opens." : historyError || "Events received on this device · " + savedEvents.length;
     if (logPanel.dataset.key === key) return;
     logPanel.dataset.key = key;
     const open = new Set([...entries.querySelectorAll("details[open]")].map((row) => row.dataset.key));
     const atBottom = entries.scrollHeight - entries.clientHeight - entries.scrollTop < 30;
     const oldScroll = entries.scrollTop;
     entries.replaceChildren();
-    const rows = logTab === "decisions" ? state2.rows : savedEvents;
+    const rows = logTab === "decisions" ? state3.rows : savedEvents;
     if (!rows.length) {
       const empty = document.createElement("p");
       empty.className = "m2-log-empty";
@@ -10388,12 +11369,12 @@ html:not([data-m2-active]) .m2-choice-launchers {
   var upgradeColors = ["RED", "BLUE", "GREEN"];
   function clearUpgradeTree() {
     highlightViewedCard("upgrade");
-    const state2 = upgradeTreeState;
-    if (!state2) return;
-    clearTimeout(state2.timer);
-    state2.picker.removeAttribute("data-m2-upgrade-tree");
-    state2.host.remove();
-    extras.delete(state2.host);
+    const state3 = upgradeTreeState;
+    if (!state3) return;
+    clearTimeout(state3.timer);
+    state3.picker.removeAttribute("data-m2-upgrade-tree");
+    state3.host.remove();
+    extras.delete(state3.host);
     upgradeTreeState = null;
   }
   function upgradeSource() {
@@ -10448,8 +11429,8 @@ html:not([data-m2-active]) .m2-choice-launchers {
     }
     return null;
   }
-  function upgradeSelectionValid(state2) {
-    const source = state2.source, tiers = { ...source.tiers }, choices = [...state2.selected.values()].map((id) => state2.catalog.get(id)).sort((a, b) => deckTreeTier(a) - deckTreeTier(b));
+  function upgradeSelectionValid(state3) {
+    const source = state3.source, tiers = { ...source.tiers }, choices = [...state3.selected.values()].map((id) => state3.catalog.get(id)).sort((a, b) => deckTreeTier(a) - deckTreeTier(b));
     if (choices.length !== source.player.remaining) return false;
     for (const card of choices) {
       if (!card) return false;
@@ -10460,181 +11441,181 @@ html:not([data-m2-active]) .m2-choice-launchers {
     }
     return true;
   }
-  function upgradeSelectable(state2, card) {
-    if (state2.busy || state2.uncertain) return false;
-    const source = state2.source, tier = deckTreeTier(card);
+  function upgradeSelectable(state3, card) {
+    if (state3.busy || state3.uncertain) return false;
+    const source = state3.source, tier = deckTreeTier(card);
     if (tier === 2) return source.required2 > 0 && source.tiers[card.color] === 1 && source.eligible.has(card.id);
-    const all2 = [...state2.selected.keys()].filter((key) => key.endsWith(":2")).length === source.required2;
-    return tier === 3 && source.required3 > 0 && all2 && source.tiers[card.color] < 3 && (source.tiers[card.color] === 2 || state2.selected.has(card.color + ":2")) && (source.required2 > 0 || source.eligible.has(card.id));
+    const all2 = [...state3.selected.keys()].filter((key) => key.endsWith(":2")).length === source.required2;
+    return tier === 3 && source.required3 > 0 && all2 && source.tiers[card.color] < 3 && (source.tiers[card.color] === 2 || state3.selected.has(card.color + ":2")) && (source.required2 > 0 || source.eligible.has(card.id));
   }
-  function pauseUpgradeCommit(state2, message, uncertain = false) {
-    clearTimeout(state2.timer);
-    state2.busy = false;
-    state2.uncertain = uncertain;
-    if (!uncertain) state2.pending = null;
-    state2.message = message;
-    renderUpgradeTreeState(state2);
+  function pauseUpgradeCommit(state3, message, uncertain = false) {
+    clearTimeout(state3.timer);
+    state3.busy = false;
+    state3.uncertain = uncertain;
+    if (!uncertain) state3.pending = null;
+    state3.message = message;
+    renderUpgradeTreeState(state3);
   }
-  function sendNextUpgrade(state2) {
-    if (state2 !== upgradeTreeState || !state2.busy || state2.pending || uiState.dead || !root.hasAttribute("data-m2-active") || document.visibilityState === "hidden") return;
+  function sendNextUpgrade(state3) {
+    if (state3 !== upgradeTreeState || !state3.busy || state3.pending || uiState.dead || !root.hasAttribute("data-m2-active") || document.visibilityState === "hidden") return;
     const source = upgradeSource();
-    if (!source || source.owner !== state2.source.owner || source.signature !== state2.source.signature || !upgradeSelectionValid(state2)) {
-      pauseUpgradeCommit(state2, "Upgrade choices changed. Review the remaining selections.");
+    if (!source || source.owner !== state3.source.owner || source.signature !== state3.source.signature || !upgradeSelectionValid(state3)) {
+      pauseUpgradeCommit(state3, "Upgrade choices changed. Review the remaining selections.");
       return;
     }
-    const card = [...state2.selected.values()].map((id) => state2.catalog.get(id)).sort((a, b) => deckTreeTier(a) - deckTreeTier(b) || upgradeColors.indexOf(a.color) - upgradeColors.indexOf(b.color))[0];
+    const card = [...state3.selected.values()].map((id) => state3.catalog.get(id)).sort((a, b) => deckTreeTier(a) - deckTreeTier(b) || upgradeColors.indexOf(a.color) - upgradeColors.indexOf(b.color))[0];
     if (!card || !source.eligible.has(card.id)) {
-      pauseUpgradeCommit(state2, "This upgrade is not currently allowed. Review your choices.");
+      pauseUpgradeCommit(state3, "This upgrade is not currently allowed. Review your choices.");
       return;
     }
-    state2.pending = { id: card.id, group: deckTreeGroup(card), before: source.player.remaining };
-    state2.message = "Committing " + card.name + "…";
-    state2.timer = setTimeout(() => {
-      if (state2 === upgradeTreeState && state2.pending)
-        pauseUpgradeCommit(state2, "Waiting for acknowledgement. No more upgrades will be sent until this choice is confirmed.", true);
+    state3.pending = { id: card.id, group: deckTreeGroup(card), before: source.player.remaining };
+    state3.message = "Committing " + card.name + "…";
+    state3.timer = setTimeout(() => {
+      if (state3 === upgradeTreeState && state3.pending)
+        pauseUpgradeCommit(state3, "Waiting for acknowledgement. No more upgrades will be sent until this choice is confirmed.", true);
     }, 15e3);
-    renderUpgradeTreeState(state2);
+    renderUpgradeTreeState(state3);
     try {
       const result = source.onSelect({ hero_id: source.heroId, card_id: card.id });
       Promise.resolve(result).catch(() => {
-        if (state2 === upgradeTreeState && state2.pending?.id === card.id)
-          pauseUpgradeCommit(state2, "The upgrade could not be confirmed. Waiting for the game to update.", true);
+        if (state3 === upgradeTreeState && state3.pending?.id === card.id)
+          pauseUpgradeCommit(state3, "The upgrade could not be confirmed. Waiting for the game to update.", true);
       });
     } catch {
-      pauseUpgradeCommit(state2, "The upgrade could not be confirmed. Waiting for the game to update.", true);
+      pauseUpgradeCommit(state3, "The upgrade could not be confirmed. Waiting for the game to update.", true);
     }
   }
-  function selectUpgradeTreeCard(state2, card) {
-    if (state2.busy || state2.uncertain) return;
+  function selectUpgradeTreeCard(state3, card) {
+    if (state3.busy || state3.uncertain) return;
     const group = deckTreeGroup(card), id = card.id;
-    state2.message = "";
-    if (state2.previewMode) {
-      if (deckTreeTier(card) >= 2 && !state2.acquired.has(group)) {
-        if (state2.preview.get(group) === id) state2.preview.delete(group);
-        else state2.preview.set(group, id);
+    state3.message = "";
+    if (state3.previewMode) {
+      if (deckTreeTier(card) >= 2 && !state3.acquired.has(group)) {
+        if (state3.preview.get(group) === id) state3.preview.delete(group);
+        else state3.preview.set(group, id);
       }
-    } else if (upgradeSelectable(state2, card)) {
+    } else if (upgradeSelectable(state3, card)) {
       if (deckTreeTier(card) === 2) {
-        for (const key of state2.selected.keys()) if (key.endsWith(":3")) state2.selected.delete(key);
+        for (const key of state3.selected.keys()) if (key.endsWith(":3")) state3.selected.delete(key);
       }
-      if (state2.selected.get(group) === id) state2.selected.delete(group);
+      if (state3.selected.get(group) === id) state3.selected.delete(group);
       else {
-        const tier = deckTreeTier(card), required = tier === 2 ? state2.source.required2 : state2.source.required3, sameTier = [...state2.selected.keys()].filter((key) => key.endsWith(":" + tier));
-        if (!state2.selected.has(group) && sameTier.length >= required) state2.selected.delete(sameTier.at(-1));
-        state2.selected.set(group, id);
+        const tier = deckTreeTier(card), required = tier === 2 ? state3.source.required2 : state3.source.required3, sameTier = [...state3.selected.keys()].filter((key) => key.endsWith(":" + tier));
+        if (!state3.selected.has(group) && sameTier.length >= required) state3.selected.delete(sameTier.at(-1));
+        state3.selected.set(group, id);
       }
-    } else state2.message = deckTreeTier(card) === 3 && state2.source.required2 ? "Select all required Tier 2 upgrades first, or enable Preview to plan ahead." : "This card is not an available upgrade for this level-up.";
-    state2.detailCard = id;
-    showUpgradeDetails(state2);
-    renderUpgradeTreeState(state2);
+    } else state3.message = deckTreeTier(card) === 3 && state3.source.required2 ? "Select all required Tier 2 upgrades first, or enable Preview to plan ahead." : "This card is not an available upgrade for this level-up.";
+    state3.detailCard = id;
+    showUpgradeDetails(state3);
+    renderUpgradeTreeState(state3);
   }
-  function showUpgradeDetails(state2) {
-    state2.details.replaceChildren();
-    const card = state2.catalog.get(state2.detailCard);
-    highlightViewedCard("upgrade", card, state2.source.heroId);
+  function showUpgradeDetails(state3) {
+    state3.details.replaceChildren();
+    const card = state3.catalog.get(state3.detailCard);
+    highlightViewedCard("upgrade", card, state3.source.heroId);
     if (!card) return;
     const display = textCard(
       card,
       "deck",
       null,
-      state2.source.heroId,
-      cardGrantedItem(card, [...state2.catalog.values()])
+      state3.source.heroId,
+      cardGrantedItem(card, [...state3.catalog.values()])
     ), close2 = document.createElement("button");
     close2.type = "button";
     close2.className = "m2-card-dismiss";
     close2.textContent = "×";
     close2.setAttribute("aria-label", "Close card details");
     on(close2, "click", () => {
-      state2.detailCard = null;
-      showUpgradeDetails(state2);
+      state3.detailCard = null;
+      showUpgradeDetails(state3);
     });
     const foot = q(".m2-card-foot", display);
     foot.classList.add("m2-has-dismiss");
     foot.append(close2);
-    state2.details.append(display);
+    state3.details.append(display);
   }
-  function buildUpgradeTree(state2) {
-    const host = state2.host;
+  function buildUpgradeTree(state3) {
+    const host = state3.host;
     host.replaceChildren();
     host.innerHTML = '<h2 class="m2-upgrade-heading">Upgrades</h2>';
-    state2.details = document.createElement("section");
-    state2.details.className = "m2-deck-preview m2-upgrade-details";
-    state2.details.setAttribute("aria-label", "Selected upgrade card");
+    state3.details = document.createElement("section");
+    state3.details.className = "m2-deck-preview m2-upgrade-details";
+    state3.details.setAttribute("aria-label", "Selected upgrade card");
     const scroll = document.createElement("div");
     scroll.className = "m2-deck-row-list";
-    state2.content = document.createElement("div");
-    state2.content.className = "m2-upgrade-content";
-    state2.content.append(state2.details, scroll);
+    state3.content = document.createElement("div");
+    state3.content.className = "m2-upgrade-content";
+    state3.content.append(state3.details, scroll);
     const { tree, headings } = createTreeView("Level-up upgrade paths");
     headings.children[1].dataset.upgradeTier = "2";
     headings.children[2].dataset.upgradeTier = "3";
     scroll.append(tree);
-    state2.buttons = [];
-    const catalog = [...state2.catalog.values()];
+    state3.buttons = [];
+    const catalog = [...state3.catalog.values()];
     for (const color of upgradeColors) {
       const tiers = new Map([1, 2, 3].map((tier) => [
         tier,
         catalog.filter((card) => card.color === color && deckTreeTier(card) === tier)
       ]));
       appendTreePath(tree, color, tiers, (card) => {
-        const button = createTreeCard(card, catalog, () => selectUpgradeTreeCard(state2, card));
-        trackCardSource(button, card, "upgrade", state2.source.heroId);
-        state2.buttons.push({ card, button });
+        const button = createTreeCard(card, catalog, () => selectUpgradeTreeCard(state3, card));
+        trackCardSource(button, card, "upgrade", state3.source.heroId);
+        state3.buttons.push({ card, button });
         return button;
       });
     }
-    state2.totals = document.createElement("div");
-    state2.totals.className = "m2-tree-build-stats m2-upgrade-totals";
-    state2.totals.setAttribute("aria-label", "Item totals after selected upgrades");
+    state3.totals = document.createElement("div");
+    state3.totals.className = "m2-tree-build-stats m2-upgrade-totals";
+    state3.totals.setAttribute("aria-label", "Item totals after selected upgrades");
     const controls = document.createElement("div");
     controls.className = "m2-upgrade-controls";
     controls.innerHTML = '<button type="button" class="m2-upgrade-preview-toggle" role="switch">Preview</button><button type="button" class="m2-upgrade-reset">Reset</button>';
-    controls.insertBefore(state2.totals, controls.lastElementChild);
-    state2.status = document.createElement("p");
-    state2.status.className = "m2-upgrade-status";
-    state2.status.setAttribute("role", "status");
+    controls.insertBefore(state3.totals, controls.lastElementChild);
+    state3.status = document.createElement("p");
+    state3.status.className = "m2-upgrade-status";
+    state3.status.setAttribute("role", "status");
     const actions = document.createElement("div");
     actions.className = "m2-upgrade-actions";
     actions.innerHTML = '<button type="button" class="m2-upgrade-commit">Commit upgrades</button>';
-    host.append(state2.content, state2.status, controls, actions);
+    host.append(state3.content, state3.status, controls, actions);
     on(q(".m2-upgrade-preview-toggle", host), "click", () => {
-      if (state2.busy || state2.uncertain) return;
-      state2.previewMode = !state2.previewMode;
-      state2.preview.clear();
-      state2.message = "";
-      renderUpgradeTreeState(state2);
+      if (state3.busy || state3.uncertain) return;
+      state3.previewMode = !state3.previewMode;
+      state3.preview.clear();
+      state3.message = "";
+      renderUpgradeTreeState(state3);
     });
     on(q(".m2-upgrade-reset", host), "click", () => {
-      if (state2.busy || state2.uncertain) return;
-      state2.selected.clear();
-      state2.preview.clear();
-      state2.previewMode = false;
-      state2.message = "";
-      renderUpgradeTreeState(state2);
+      if (state3.busy || state3.uncertain) return;
+      state3.selected.clear();
+      state3.preview.clear();
+      state3.previewMode = false;
+      state3.message = "";
+      renderUpgradeTreeState(state3);
     });
     on(q(".m2-upgrade-commit", host), "click", () => {
-      if (state2.busy || state2.uncertain || state2.previewMode || state2.preview.size || !upgradeSelectionValid(state2)) return;
-      state2.busy = true;
-      sendNextUpgrade(state2);
+      if (state3.busy || state3.uncertain || state3.previewMode || state3.preview.size || !upgradeSelectionValid(state3)) return;
+      state3.busy = true;
+      sendNextUpgrade(state3);
     });
-    showUpgradeDetails(state2);
+    showUpgradeDetails(state3);
   }
-  function renderUpgradeTreeState(state2) {
-    const source = state2.source, pool = new Set(deckTreePool(source.hero).map((card) => card.id));
-    state2.acquired = new Map(state2.observed);
+  function renderUpgradeTreeState(state3) {
+    const source = state3.source, pool = new Set(deckTreePool(source.hero).map((card) => card.id));
+    state3.acquired = new Map(state3.observed);
     for (const card of deckTreePool(source.hero))
       if (deckTreeTier(card) >= 2) {
-        state2.acquired.set(deckTreeGroup(card), card.id);
-        state2.observed.set(deckTreeGroup(card), card.id);
+        state3.acquired.set(deckTreeGroup(card), card.id);
+        state3.observed.set(deckTreeGroup(card), card.id);
       }
     for (const tier of [2, 3]) {
-      const required = tier === 2 ? source.required2 : source.required3, selected = [...state2.selected.keys()].filter((key) => key.endsWith(":" + tier)).length;
-      for (const label of state2.host.querySelectorAll('[data-upgrade-tier="' + tier + '"]'))
+      const required = tier === 2 ? source.required2 : source.required3, selected = [...state3.selected.keys()].filter((key) => key.endsWith(":" + tier)).length;
+      for (const label of state3.host.querySelectorAll('[data-upgrade-tier="' + tier + '"]'))
         label.textContent = "Tier " + tier + " · " + selected + "/" + required;
     }
-    for (const { card, button } of state2.buttons) {
-      const group = deckTreeGroup(card), picked = state2.selected.get(group), planned2 = state2.preview.get(group), selected = picked === card.id || planned2 === card.id, eligible = upgradeSelectable(state2, card), pair = state2.acquired.get(group), isItem = pair && pair !== card.id && !pool.has(pair) && !!card.item;
-      const unavailable = !selected && !pool.has(card.id) && !isItem && (!!picked || !!planned2 || !!pair || deckTreeTier(card) < source.tiers[card.color] || !state2.previewMode && !eligible);
+    for (const { card, button } of state3.buttons) {
+      const group = deckTreeGroup(card), picked = state3.selected.get(group), planned2 = state3.preview.get(group), selected = picked === card.id || planned2 === card.id, eligible = upgradeSelectable(state3, card), pair = state3.acquired.get(group), isItem = pair && pair !== card.id && !pool.has(pair) && !!card.item;
+      const unavailable = !selected && !pool.has(card.id) && !isItem && (!!picked || !!planned2 || !!pair || deckTreeTier(card) < source.tiers[card.color] || !state3.previewMode && !eligible);
       button.dataset.state = pool.has(card.id) ? "current" : selected ? "planned" : isItem ? "item" : unavailable ? "unavailable" : "standard";
       button.dataset.eligible = String(eligible);
       button.classList.toggle("m2-tree-chosen", pool.has(card.id));
@@ -10643,27 +11624,27 @@ html:not([data-m2-active]) .m2-choice-launchers {
       button.classList.toggle("m2-tree-item", !!isItem);
       button.classList.toggle("m2-tree-unavailable", unavailable);
       button.setAttribute("aria-pressed", String(selected));
-      button.disabled = state2.busy || state2.uncertain;
+      button.disabled = state3.busy || state3.uncertain;
       button.title = card.name + (planned2 === card.id ? " · Preview only" : picked === card.id ? " · Selected upgrade" : eligible ? " · Available upgrade" : " · View card");
       button.setAttribute("aria-label", button.title);
     }
-    const future = {}, planned = new Map(state2.selected);
-    for (const [group, id] of state2.preview) planned.set(group, id);
+    const future = {}, planned = new Map(state3.selected);
+    for (const [group, id] of state3.preview) planned.set(group, id);
     for (const id of planned.values()) {
-      const item = cardGrantedItem(state2.catalog.get(id), [...state2.catalog.values()]), stat = item === "AREA" ? "RADIUS" : item;
+      const item = cardGrantedItem(state3.catalog.get(id), [...state3.catalog.values()]), stat = item === "AREA" ? "RADIUS" : item;
       if (stat) future[stat] = (future[stat] || 0) + 1;
     }
-    state2.totals.replaceChildren(deckTreeItemTotals(source.hero.items || {}, future));
-    state2.host.dataset.preview = String(state2.previewMode);
-    const complete = upgradeSelectionValid(state2), locked = state2.busy || state2.uncertain;
-    state2.status.textContent = state2.message || (state2.previewMode ? "Preview only. Turn Preview off before committing." : complete ? "All upgrades selected. Ready to commit." : "Select all " + source.player.remaining + " upgrades before committing.");
-    const toggle = q(".m2-upgrade-preview-toggle", state2.host);
-    toggle.setAttribute("aria-checked", String(state2.previewMode));
+    state3.totals.replaceChildren(deckTreeItemTotals(source.hero.items || {}, future));
+    state3.host.dataset.preview = String(state3.previewMode);
+    const complete = upgradeSelectionValid(state3), locked = state3.busy || state3.uncertain;
+    state3.status.textContent = state3.message || (state3.previewMode ? "Preview only. Turn Preview off before committing." : complete ? "All upgrades selected. Ready to commit." : "Select all " + source.player.remaining + " upgrades before committing.");
+    const toggle = q(".m2-upgrade-preview-toggle", state3.host);
+    toggle.setAttribute("aria-checked", String(state3.previewMode));
     toggle.disabled = locked;
-    q(".m2-upgrade-reset", state2.host).disabled = locked || !state2.selected.size && !state2.preview.size;
-    const commit = q(".m2-upgrade-commit", state2.host);
-    commit.disabled = locked || state2.previewMode || state2.preview.size > 0 || !complete;
-    commit.textContent = state2.busy ? "Committing…" : "Commit " + source.player.remaining + (source.player.remaining === 1 ? " upgrade" : " upgrades");
+    q(".m2-upgrade-reset", state3.host).disabled = locked || !state3.selected.size && !state3.preview.size;
+    const commit = q(".m2-upgrade-commit", state3.host);
+    commit.disabled = locked || state3.previewMode || state3.preview.size > 0 || !complete;
+    commit.textContent = state3.busy ? "Committing…" : "Commit " + source.player.remaining + (source.player.remaining === 1 ? " upgrade" : " upgrades");
   }
   function updateUpgradeTree() {
     if (!root.hasAttribute("data-m2-active") || uiState.dead) {
@@ -10676,13 +11657,13 @@ html:not([data-m2-active]) .m2-choice-launchers {
       return;
     }
     if (upgradeTreeState?.source.owner !== source.owner) clearUpgradeTree();
-    let state2 = upgradeTreeState;
-    if (!state2) {
+    let state3 = upgradeTreeState;
+    if (!state3) {
       const host = document.createElement("section");
       host.className = "m2-upgrade-browser";
       host.setAttribute("aria-label", "Choose level-up upgrades");
       addExtra(host);
-      state2 = upgradeTreeState = {
+      state3 = upgradeTreeState = {
         host,
         picker: source.picker,
         source,
@@ -10699,42 +11680,42 @@ html:not([data-m2-active]) .m2-choice-launchers {
         timer: null,
         detailCard: null
       };
-      buildUpgradeTree(state2);
+      buildUpgradeTree(state3);
     }
-    const oldSource = state2.source;
-    if (state2.pending && source.player.remaining !== state2.pending.before) {
-      const acknowledged = source.player.remaining === state2.pending.before - 1 && deckTreePool(source.hero).some((card) => card.id === state2.pending.id);
+    const oldSource = state3.source;
+    if (state3.pending && source.player.remaining !== state3.pending.before) {
+      const acknowledged = source.player.remaining === state3.pending.before - 1 && deckTreePool(source.hero).some((card) => card.id === state3.pending.id);
       if (acknowledged) {
-        clearTimeout(state2.timer);
-        const build = deckTreeBuild(source.hero, [...state2.catalog.values()]);
-        build.chosen.set(state2.pending.group, state2.pending.id);
-        build.planned.delete(state2.pending.group);
+        clearTimeout(state3.timer);
+        const build = deckTreeBuild(source.hero, [...state3.catalog.values()]);
+        build.chosen.set(state3.pending.group, state3.pending.id);
+        build.planned.delete(state3.pending.group);
         saveDeckTreeBuild(build);
-        state2.selected.delete(state2.pending.group);
-        state2.pending = null;
-        state2.uncertain = false;
-        state2.message = "";
+        state3.selected.delete(state3.pending.group);
+        state3.pending = null;
+        state3.uncertain = false;
+        state3.message = "";
       } else {
-        state2.observed.clear();
-        state2.selected.clear();
-        pauseUpgradeCommit(state2, "Upgrade state changed. Review the remaining choices.");
+        state3.observed.clear();
+        state3.selected.clear();
+        pauseUpgradeCommit(state3, "Upgrade state changed. Review the remaining choices.");
       }
     } else if (source.signature !== oldSource.signature) {
-      state2.observed.clear();
-      state2.selected.clear();
-      state2.preview.clear();
-      state2.previewMode = false;
-      pauseUpgradeCommit(state2, "Upgrade choices changed. Select the remaining upgrades again.");
+      state3.observed.clear();
+      state3.selected.clear();
+      state3.preview.clear();
+      state3.previewMode = false;
+      pauseUpgradeCommit(state3, "Upgrade choices changed. Select the remaining upgrades again.");
     }
-    state2.source = source;
-    if (state2.picker !== source.picker) {
-      state2.picker.removeAttribute("data-m2-upgrade-tree");
-      state2.picker = source.picker;
+    state3.source = source;
+    if (state3.picker !== source.picker) {
+      state3.picker.removeAttribute("data-m2-upgrade-tree");
+      state3.picker = source.picker;
     }
-    if (!source.picker.contains(state2.host)) source.picker.append(state2.host);
+    if (!source.picker.contains(state3.host)) source.picker.append(state3.host);
     managedAttribute(source.picker, "data-m2-upgrade-tree", "");
-    renderUpgradeTreeState(state2);
-    if (state2.busy && !state2.pending) sendNextUpgrade(state2);
+    renderUpgradeTreeState(state3);
+    if (state3.busy && !state3.pending) sendNextUpgrade(state3);
   }
   on(document, "visibilitychange", () => {
     if (document.visibilityState === "hidden" && upgradeTreeState?.busy)
@@ -10869,7 +11850,7 @@ html:not([data-m2-active]) .m2-choice-launchers {
     updateUpgradeCards();
     updateUpgradeTree();
     const actionChoices = updateActionChoices();
-    updateMobileHeader(header, actionChoices.prompt);
+    updateMobileHeader(header, actionChoices.prompt || startingPositionPrompt());
     updateChoiceLaunchers(actionChoices.controls);
     const queue = resolutionEntries();
     const resolving = /^RESOLUTION$/i.test(
@@ -10912,7 +11893,7 @@ html:not([data-m2-active]) .m2-choice-launchers {
         return {
           id: hero?.id,
           isOwn: !box.hasAttribute("data-m2-other"),
-          indicators: heroIndicators(hero, publicView),
+          indicators: heroIndicators(hero, publicView, true),
           level: hero?.level,
           gold: hero?.gold,
           currentCard: hero ? heroTurnCard(box, hero, publicView) : null,
@@ -11055,7 +12036,7 @@ html:not([data-m2-active]) .m2-choice-launchers {
   }
   on(media, "change", schedule);
   window.GOA2Mobile2D = {
-    version: "1.2.0",
+    version: "1.3.0",
     destroy() {
       flushEventHistory();
       uiState.dead = true;
@@ -11100,6 +12081,7 @@ html:not([data-m2-active]) .m2-choice-launchers {
       summary.remove();
       detailsPanel.remove();
       heroPanel.remove();
+      spellPanel.remove();
       settingsPanel.remove();
       logPanel.remove();
       cancelDecisionHistory();
@@ -11126,6 +12108,7 @@ html:not([data-m2-active]) .m2-choice-launchers {
         "data-m2-hand-cards",
         "data-m2-hide-deck-options",
         "data-m2-deck-open",
+        "data-m2-spells-open",
         "data-m2-active",
         "data-m2-mode",
         "data-m2-panel"

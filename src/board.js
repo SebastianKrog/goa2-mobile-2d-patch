@@ -148,7 +148,7 @@ function updateSummaryTurn(turn, row, h) {
     status = h.offboard ? 'Off board' : h.done ? 'Turn completed' : 'No card played';
   }
   turn.title = status;
-  turn.setAttribute('aria-label', status);
+  turn.setAttribute('aria-label', status + (turn.dataset.heroName ? ' · Open ' + turn.dataset.heroName : ''));
 }
 
 function renderSummary(heroes, upgradeRequest = null) {
@@ -189,6 +189,9 @@ function renderSummary(heroes, upgradeRequest = null) {
     if (h.done) row.classList.add('m2-done-hero');
     const turn = document.createElement('span');
     turn.className = 'm2-summary-turn';
+    turn.dataset.heroName = h.name;
+    turn.setAttribute('role', 'button');
+    turn.tabIndex = 0;
     updateSummaryTurn(turn, row, h);
 
     const identity = document.createElement('span');
@@ -201,6 +204,8 @@ function renderSummary(heroes, upgradeRequest = null) {
     identity.onkeydown = event => {
       if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); focus(); }
     };
+    turn.onclick = focus;
+    turn.onkeydown = identity.onkeydown;
     identity.title = h.name;
     const [heroName, ...playerParts] = h.name.split(/[·•]/);
     const name = document.createElement('strong');
@@ -214,6 +219,13 @@ function renderSummary(heroes, upgradeRequest = null) {
       player.textContent = playerName.includes('(You)') ? '(You)' : playerName;
       identity.append(separator(), player);
     }
+    // Indicators share the name column, so only marked rows surrender name
+    // space. Keep the spell button outside the independently focusable name.
+    const nameCell = document.createElement('span');
+    nameCell.className = 'm2-summary-name-cell';
+    nameCell.append(identity);
+    if (h.indicators?.length)
+      nameCell.append(renderHeroIndicators(h.indicators, true, () => openCastSpells(h.id)));
     const level = document.createElement('span');
     level.className = 'm2-summary-level';
     level.textContent = h.level == null ? 'Lv.—' : 'Lv.' + h.level;
@@ -241,7 +253,7 @@ function renderSummary(heroes, upgradeRequest = null) {
     const resources = document.createElement('span');
     resources.className = 'm2-summary-resources';
     resources.append(level, separator(), gold);
-    row.append(turn, identity, resources, h.isOwn ? navigationShortcut(piles, 'hand', 'Open your Hand') : piles);
+    row.append(turn, nameCell, resources, h.isOwn ? navigationShortcut(piles, 'hand', 'Open your Hand') : piles);
     // Keep a just-resolved card in its fixed column, with a subdued appearance.
     const currentSlot = document.createElement('span');
     currentSlot.className = 'm2-summary-current-slot';
@@ -272,7 +284,6 @@ function renderSummary(heroes, upgradeRequest = null) {
     }
     const upgrades = itemUpgradeSymbols(h.upgrades, 'm2-summary-upgrades');
     upgrades.prepend(ultimateIndicator(h, true));
-    row.append(renderHeroIndicators(h.indicators || [], true, () => openCastSpells(h.id)));
     row.append(currentSlot, h.isOwn ? navigationShortcut(upgrades, 'deck', 'Open your Deck') : upgrades);
     summary.append(row);
   }
@@ -284,8 +295,8 @@ function renderSummary(heroes, upgradeRequest = null) {
     return Math.ceil(24 + counts.reduce((width, count) => width + (count ? count * 5.5 : 4.5), 0));
   }));
   summary.style.setProperty('--m2-piles-width', pileWidth + 'px');
-  // Portrait hero names never ellipsize. Player names surrender space first; at very narrow
-  // widths the row can scroll rather than cropping the hero name or overlapping stats.
+  // Share one name-column minimum across rows. Marked entries fit their indicator
+  // inside that column; unmarked entries retain all of their name space.
   const names = Array.from(summary.querySelectorAll('.m2-summary-identity strong'));
   const nameWidth = Math.max(0, ...names.map(name =>
     name.getBoundingClientRect().width || name.textContent.length * 6.2));

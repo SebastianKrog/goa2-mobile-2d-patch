@@ -37,7 +37,7 @@ w.eval(
 try {
   assert.deepEqual(
     [...d.querySelectorAll('.m2-summary-turn')].map((x) => x.getAttribute('aria-label')),
-    ['Upgrading', 'Committed'],
+    ['Upgrading · Open Hanu (You)', 'Committed · Open Garrus'],
   );
   assert.equal(d.querySelector('.m2-selection-status').textContent, 'Upgrading...');
   assert.equal(d.querySelectorAll('.m2-selection-status')[1].textContent, 'Committed ✓');
@@ -49,12 +49,18 @@ try {
   assert.equal(d.querySelector('.m2-choice-launchers button'), proxy);
   request.players.hanu.remaining = 0;
   w.testRefresh();
-  assert.equal(d.querySelector('.m2-summary-turn').getAttribute('aria-label'), 'Committed');
+  assert.equal(
+    d.querySelector('.m2-summary-turn').getAttribute('aria-label'),
+    'Committed · Open Hanu (You)',
+  );
   assert(!d.querySelector('.m2-summary-turn .m2-selecting-dots'));
   assert.equal(d.querySelector('.m2-selection-status').textContent, 'Committed ✓');
   delete request.players.hanu;
   w.testRefresh();
-  assert.equal(d.querySelector('.m2-summary-turn').getAttribute('aria-label'), 'Upgrading');
+  assert.equal(
+    d.querySelector('.m2-summary-turn').getAttribute('aria-label'),
+    'Upgrading · Open Hanu (You)',
+  );
   assert(d.querySelector('.m2-summary-turn .m2-selecting-dots'));
   assert.equal(d.querySelector('.m2-selection-status').textContent, 'Upgrading...');
   const sidebarProps = d.querySelector('._sidebar_x').__reactFiber$t.memoizedProps;

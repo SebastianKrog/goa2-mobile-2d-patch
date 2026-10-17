@@ -101,3 +101,11 @@ Gydion's colored dice pips and numeric fallback, compact combined counts,
 public cast-spell inspection and resets, Back and layout transitions, and
 owner-only prepared spells across Tree/List/Grid Deck layouts. It also checks
 missing artwork fallbacks and that native prepared cards remain facedown.
+
+Spell presentation checks also cover Tiny rows without initiative or empty stat
+slots, Tier/Color grouping, saved display preferences, the shorter Large default,
+printed Image switching, rank IV, and compact Back controls. Embedded spells use
+unique slim full-width Tiny rows across owner card viewers, retain parenthetical text, and
+restore the parent card and focus through browser Back or the spell Close control.
+Action-choice checks cover native Tiny spell casting options and the subsequent
+spell action preview.

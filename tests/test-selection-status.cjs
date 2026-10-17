@@ -41,7 +41,10 @@ const tick = () => new Promise((r) => setTimeout(r, 50));
       'Committed ✓',
     );
     assert(!doc.querySelector('.m2-current-card-slot .m2-selecting-dots'));
-    assert.equal(doc.querySelector('.m2-summary-turn').getAttribute('aria-label'), 'Committed');
+    assert.equal(
+      doc.querySelector('.m2-summary-turn').getAttribute('aria-label'),
+      'Committed · Open Hanu (You)',
+    );
     doc.querySelector('section').__reactFiber$t.memoizedProps.hero.current_turn_card = null;
     doc.querySelector('._row_x').className = '_row_x _selected_x';
     await tick();

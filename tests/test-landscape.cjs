@@ -457,7 +457,10 @@ test('Settings, Log and starting-position controls occupy the right pane above t
     navigate(mode);
     assert.equal(css(selector).right, 'var(--m2-nav-width)');
     assert.equal(css(selector).width, 'var(--m2-list-width)');
-    assert.equal(css(selector).top, 'var(--m2-head)');
+    assert.equal(
+      css(selector).top,
+      mode === 'setup' ? 'calc(var(--m2-head) + 8px)' : 'var(--m2-head)',
+    );
     assert.equal(css('[data-m2="board"]').visibility, 'visible');
   }
   const viewport = new w.EventTarget();

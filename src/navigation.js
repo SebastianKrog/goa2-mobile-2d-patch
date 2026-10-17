@@ -6,6 +6,7 @@ import { clearHeroCard, close, detailsPanel, heroPanel, nav, on } from './ui.js'
 
 // Hide the current native tooltip without changing the website’s selected card.
 function dismiss() {
+  if (closeNestedCard()) return;
   const tip = q('[data-m2="tip"]');
   if (tip) {
     uiState.dismissedTip = tip;
@@ -19,7 +20,69 @@ const menuHistoryToken = Date.now() + '-' + Math.random();
 let menuHistoryActive = false;
 let menuHistoryClosing = false;
 let navigating = false;
-const menuSelection = () => uiState.deckOpen ? 'deck' : uiState.panel || uiState.mode;
+let nestedCard = null;
+let nestedHistoryClosing = false;
+function restoreNestedCard() {
+  if (!nestedCard) return;
+  const { parent, frame, source, scroll, blocked } = nestedCard;
+  nestedCard = null;
+  parent.classList.remove('m2-nested-open');
+  frame.remove();
+  for (const [element, inert] of blocked) {
+    if (inert === null) element.removeAttribute('inert');
+    else element.setAttribute('inert', inert);
+  }
+  if (parent.isConnected) {
+    if (source?.isConnected) source.focus({ preventScroll: true });
+    for (const [element, top, left] of scroll) {
+      element.scrollTop = top;
+      element.scrollLeft = left;
+    }
+  }
+}
+function closeNestedCard() {
+  if (!nestedCard) return false;
+  const token = nestedCard.token;
+  restoreNestedCard();
+  if (window.history.state?.goa2Mobile2DCard === token) {
+    nestedHistoryClosing = true;
+    window.history.back();
+  }
+  return true;
+}
+function openNestedCard(parent, display, source) {
+  if (!parent.isConnected || nestedCard || nestedHistoryClosing) return;
+  syncMenuHistory();
+  const token = menuHistoryToken + '-spell';
+  const scroll = [];
+  for (let element = parent.parentElement; element; element = element.parentElement)
+    scroll.push([element, element.scrollTop, element.scrollLeft]);
+  const frame = document.createElement('div');
+  frame.className = 'm2-nested-spell-frame';
+  frame.append(display);
+  const blocked = Array.from(parent.children).filter(element =>
+    element.matches('.m2-card-top,.m2-card-body,.m2-card-foot'))
+    .map(element => [element, element.getAttribute('inert')]);
+  for (const [element] of blocked) element.setAttribute('inert', '');
+  nestedCard = { parent, display, frame, source, token, scroll, blocked };
+  display.classList.add('m2-nested-spell');
+  const back = document.createElement('button');
+  back.type = 'button';
+  back.className = 'm2-card-dismiss';
+  back.textContent = '×';
+  back.setAttribute('aria-label', 'Back to card');
+  back.onclick = event => { event.preventDefault(); event.stopPropagation(); closeNestedCard(); };
+  const foot = q('.m2-card-foot', display);
+  foot.classList.add('m2-has-dismiss');
+  foot.append(back);
+  parent.classList.add('m2-nested-open');
+  parent.append(frame);
+  try {
+    window.history.pushState({ ...window.history.state, goa2Mobile2DCard: token }, '', window.location.href);
+  } catch { /* The explicit close control still returns to the parent card. */ }
+  back.focus({ preventScroll: true });
+}
+const menuSelection = () => uiState.selectedHeroCard?.spells ? 'spells' : uiState.deckOpen ? 'deck' : uiState.panel || uiState.mode;
 function openDecisionDialog() {
   return q(c('picker') + ',' + c('pickerUpgrade') + ',[data-m2="report-dialog"],[data-m2="fix-dialog"]');
 }
@@ -50,6 +113,9 @@ function dismissViews() {
   }
 }
 function syncMenuHistory() {
+  if (nestedCard && (!nestedCard.display.isConnected || !root.hasAttribute('data-m2-active')))
+    closeNestedCard();
+  if (nestedHistoryClosing) return;
   if (navigating || menuHistoryClosing || uiState.dead) return;
   const open = root.hasAttribute('data-m2-active') &&
     (menuSelection() !== 'board' || openCardView() || !!openDecisionDialog());
@@ -67,6 +133,16 @@ function syncMenuHistory() {
   }
 }
 on(window, 'popstate', () => {
+  if (nestedHistoryClosing) {
+    nestedHistoryClosing = false;
+    syncMenuHistory();
+    return;
+  }
+  if (nestedCard) {
+    restoreNestedCard();
+    syncMenuHistory();
+    return;
+  }
   if (menuHistoryClosing) {
     menuHistoryClosing = false;
     // A menu reopened while the asynchronous Back was pending gets one fresh entry.
@@ -83,6 +159,15 @@ on(window, 'popstate', () => {
   else refresh();
 });
 function clearMenuHistory() {
+  if (nestedCard) {
+    const owned = window.history.state?.goa2Mobile2DCard === nestedCard.token;
+    restoreNestedCard();
+    if (owned) {
+      window.history.go(menuHistoryActive ? -2 : -1);
+      menuHistoryActive = false;
+      return;
+    }
+  }
   if (menuHistoryActive && window.history.state?.goa2Mobile2DMenu === menuHistoryToken)
     window.history.back();
   menuHistoryActive = false;
@@ -102,8 +187,9 @@ function syncDeckMount(nativeDeck) {
 // switching controls replaces the active pane instead of retaining a hidden tab.
 function navigate(key) {
   if (!key) return;
+  closeNestedCard();
   navigating = true;
-  const selected = uiState.deckOpen ? 'deck' : uiState.panel || uiState.mode;
+  const selected = uiState.selectedHeroCard?.spells ? 'spells' : uiState.deckOpen ? 'deck' : uiState.panel || uiState.mode;
   const closing = selected === key;
   // Close through React's own handler so a dismissed Deck cannot resurface
   // when mobile styling is removed. Reopening uses the native Deck button.
@@ -156,7 +242,7 @@ function syncNavigation() {
     uiState.panel = '';
     root.dataset.m2Panel = '';
   }
-  const selected = uiState.deckOpen ? 'deck' : uiState.panel || uiState.mode;
+  const selected = uiState.selectedHeroCard?.spells ? 'spells' : uiState.deckOpen ? 'deck' : uiState.panel || uiState.mode;
   for (const button of nav.children) {
     const pressed = String(button.dataset.mode === selected);
     if (button.getAttribute('aria-pressed') !== pressed)
@@ -191,6 +277,7 @@ on(
 );
 on(document, 'keydown', (e) => {
   if (e.key === 'Escape') {
+    if (closeNestedCard()) return;
     uiState.focusedHeroId = null;
     uiState.panel = '';
     clearHeroCard();
@@ -199,4 +286,4 @@ on(document, 'keydown', (e) => {
   }
 });
 
-export { syncMenuHistory, clearMenuHistory, dismiss, navigate, navigationShortcut, setDeckOpen, syncDeckMount, syncNavigation };
+export { openNestedCard, syncMenuHistory, clearMenuHistory, dismiss, navigate, navigationShortcut, setDeckOpen, syncDeckMount, syncNavigation };

@@ -1,4 +1,4 @@
-import { appendSpellGroup, knownSpells, spellRankLabel } from './spells.js';
+import { appendSpellGroup, appendCastSpellGroups, knownSpells, sortSpells } from './spells.js';
 import { highlightViewedCard, trackCardSource } from './card-highlight.js';
 import { updateCardRow } from './card-rows.js';
 import { cardGrantedItem, textCard } from './cards.js';
@@ -135,17 +135,15 @@ function ownDeckSpells(hero) {
   if (!hero || componentProp(own, 'hero')?.id !== hero.id || !Array.isArray(hero.spellbook)) return null;
   return { prepared: knownSpells(hero.spellbook, true), cast: knownSpells(hero.cast_spells) };
 }
-function appendDeckSpells(host, spells, inspect) {
+function appendDeckSpells(host, spells, inspect, owner) {
   if (!spells) return;
-  const groups = new Map();
-  for (const card of [...spells.prepared].sort((a, b) => (a.spell_rank || 0) - (b.spell_rank || 0))) {
-    const label = 'Spellbook · ' + (Number(card.spell_rank || 0) === 0 ? 'Cantrips' : spellRankLabel(card));
-    if (!groups.has(label)) groups.set(label, []);
-    groups.get(label).push(card);
-  }
-  for (const [label, cards] of groups)
-    appendSpellGroup(host, label, cards, inspect, uiState.deckView === 'grid');
-  appendSpellGroup(host, 'Cast spells (' + spells.cast.length + ')', spells.cast, inspect, uiState.deckView === 'grid');
+  const source = { viewer: 'deck', owner, sort: uiState.deckSort, grid: uiState.deckView === 'grid' };
+  appendSpellGroup(host, 'Cast Spells (' + spells.cast.length + ')',
+    sortSpells(spells.cast, uiState.deckSort), inspect, source.grid, source);
+  const heading = document.createElement('h3');
+  heading.textContent = 'Spellbook';
+  host.append(heading);
+  appendCastSpellGroups(host, spells.prepared, inspect, { ...source, heading: 'h4', rankLabels: true, emptyText: 'No prepared spells.' });
 }
 function deckUpdate(upgradeRequest) {
   const modal = q('[data-m2="deck"]');
@@ -286,7 +284,7 @@ function deckUpdate(upgradeRequest) {
   state.host.append(listHost);
   if (uiState.deckView === 'tree') {
     renderDeckTree(listHost, entries, hero, selectPreview);
-    appendDeckSpells(listHost, spells, selectPreview);
+    appendDeckSpells(listHost, spells, selectPreview, hero?.id || '');
     const selected = [...entries, ...spellCards.map(card => ({ card }))].find(e => state.selectedCard &&
       deckCardIdentity(e.card) === deckCardIdentity(state.selectedCard));
     selectPreview(selected?.card || null);
@@ -353,7 +351,7 @@ function deckUpdate(upgradeRequest) {
       group.append(b);
     }
   }
-  appendDeckSpells(listHost, spells, selectPreview);
+  appendDeckSpells(listHost, spells, selectPreview, hero?.id || '');
   if (preview) {
     const selected = [...entries, ...spellCards.map(card => ({ card }))].find(e => state.selectedCard && (
       e.card.id ? e.card.id === state.selectedCard.id : e.card.name === state.selectedCard.name

@@ -44,7 +44,7 @@ style.id = 'goa2-m2-style';
 // The ampersand is a placeholder replaced with html[data-m2-active] below.
 // Component definitions are grouped in styles.css. Edit the owning block instead
 // of appending overrides; shared card geometry must remain independent of its pane.
-const inactiveCss = 'html:not([data-m2-active]) :is(#goa2-m2-nav,#goa2-m2-close,#goa2-m2-summary,#goa2-m2-details,#goa2-m2-hero-display,#goa2-m2-settings,#goa2-m2-log,.m2-list-card,.m2-text-card,.m2-hero-dashboard,.m2-resolution-info,.m2-hud,.m2-hud-bottom,.m2-planning-actions,.m2-deck-browser,.m2-deck-zoom,.m2-upgrade-browser,.m2-own-colors,.m2-saved-events,.m2-hero-clock){display:none!important}';
+const inactiveCss = 'html:not([data-m2-active]) :is(#goa2-m2-nav,#goa2-m2-close,#goa2-m2-summary,#goa2-m2-details,#goa2-m2-hero-display,#goa2-m2-spells,#goa2-m2-settings,#goa2-m2-log,.m2-list-card,.m2-text-card,.m2-hero-dashboard,.m2-resolution-info,.m2-hud,.m2-hud-bottom,.m2-planning-actions,.m2-deck-browser,.m2-deck-zoom,.m2-upgrade-browser,.m2-own-colors,.m2-saved-events,.m2-hero-clock){display:none!important}';
 style.textContent = inactiveCss + css.replaceAll('&', 'html[data-m2-active]');
 document.head.append(style);
 

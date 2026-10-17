@@ -1,3 +1,4 @@
+import { spellPreferences, setSpellPreference } from './spells.js';
 import { boardRotation } from './camera.js';
 import { selectDeckOption } from './deck.js';
 import { isGeneratedNode, schedule } from './main.js';
@@ -211,6 +212,7 @@ function buildSettings() {
   }));
   for (const [key, label, options] of [
     ['deck-view', 'Deck view', [['tree', 'Tree'], ['compact', 'List'], ['grid', 'Grid']]],
+    ['spell-view', 'Spell cards', [['large', 'Large'], ['image', 'Image']]],
     ['deck-sort', 'Deck sort', [['tier', 'Tier'], ['color', 'Color']]],
   ]) {
     const row = document.createElement('label'), select = document.createElement('select');
@@ -225,7 +227,8 @@ function buildSettings() {
       select.append(option);
     }
     on(select, 'change', () => {
-      if (key === 'deck-view') selectDeckOption(select.value);
+      if (key === 'spell-view') { setSpellPreference('view', select.value); schedule(); }
+      else if (key === 'deck-view') selectDeckOption(select.value);
       else if (select.value !== uiState.deckSort) selectDeckOption('sort');
       updateSettings();
     });
@@ -276,6 +279,7 @@ function updateSettings() {
   q('[data-setting="hand-cards"]', settingsPanel).value = displayPreferences.handCards;
   q('[data-setting="deck-options"]', settingsPanel).setAttribute('aria-checked', String(displayPreferences.deckOptions));
   q('[data-setting="deck-view"]', settingsPanel).value = uiState.deckView;
+  q('[data-setting="spell-view"]', settingsPanel).value = spellPreferences.view;
   q('[data-setting="deck-sort"]', settingsPanel).value = uiState.deckSort;
   for (const [key, value] of [['art', displayPreferences.cardArt], ['texture', displayPreferences.boardTexture], ['cursors', cursorsVisible],
       ['sounds', soundsEnabled], ['fullscreen', !!document.fullscreenElement]])
