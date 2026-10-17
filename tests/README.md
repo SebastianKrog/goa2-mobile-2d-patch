@@ -88,10 +88,16 @@ horizontal scroll and keyboard focus, phase-clock/resolution-marker transitions,
 Position → Back → Done, native Done, desktop deactivation with browser Back, and
 rapid reactivation while history cleanup is pending. Emmitt and Gydion fixtures
 exercise inspection, timed navigation and layout changes while preserving their
-special-card data and hidden-opponent boundaries. These lifecycle checks do not
-replace the planned spell/marker presentation work in the roadmap.
+special-card data and hidden-opponent boundaries. Spell and marker presentation is covered separately below.
 
 [test-two-committed.cjs](test-two-committed.cjs) covers Emmitt's single/paired
 commitment transitions, either slot surviving retrieval, Micro/Nano sizing,
 independent inspection and active effects, own-card recovery without changing
 native visibility, and masked opponent slots through reveal.
+
+[test-hero-indicators.cjs](test-hero-indicators.cjs) covers hero/piece marker
+targets, Bounty/Poison styling and removal, three-indicator card compression,
+Gydion's colored dice pips and numeric fallback, compact combined counts,
+public cast-spell inspection and resets, Back and layout transitions, and
+owner-only prepared spells across Tree/List/Grid Deck layouts. It also checks
+missing artwork fallbacks and that native prepared cards remain facedown.

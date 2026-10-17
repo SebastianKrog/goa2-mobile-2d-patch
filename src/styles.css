@@ -2920,6 +2920,220 @@
   width: 64px;
   min-width: 64px;
 }
+/* Hero-specific information shares the fixed current-card row. */
+& .m2-hero-indicators {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: 0 0 auto;
+  height: 26px;
+}
+& .m2-hero-indicator {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  height: 24px;
+  padding: 0 5px;
+  border: 1px solid currentColor;
+  border-radius: 4px;
+  background: rgb(170 180 195 / 8%);
+  font: 10px/1 system-ui;
+  white-space: nowrap;
+}
+& .m2-indicator-bounty {
+  color: #e9c956;
+}
+& .m2-indicator-poison {
+  color: #6abd7d;
+}
+& .m2-indicator-spells {
+  position: relative;
+  width: 30px;
+  padding: 1px;
+  overflow: hidden;
+  color: #eee4ff;
+  border-color: #b799de;
+  cursor: pointer;
+}
+& .m2-indicator-spells > img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.4;
+}
+& .m2-indicator-spells > b {
+  position: relative;
+  z-index: 1;
+  font-size: 14px;
+  text-shadow: 0 1px 2px #000;
+}
+& .m2-spell-pips {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(3, 5px);
+  grid-template-rows: repeat(3, 5px);
+  gap: 1px;
+}
+& .m2-spell-pips i {
+  border-radius: 50%;
+  box-shadow: 0 0 0 0.5px #000b;
+}
+& .m2-hero-current-mini[data-indicators]:has(.m2-hero-indicator:nth-child(3)) .m2-list-name {
+  display: none;
+}
+& .m2-hero-current-mini[data-indicators]:has(.m2-hero-indicator:nth-child(3)) .m2-list-band {
+  justify-content: space-evenly;
+}
+& .m2-summary-indicators {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 24px;
+}
+& .m2-summary-indicators > :is(.m2-hero-indicator, .m2-indicator-total) {
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border-radius: 50%;
+  font: bold 10px/1 system-ui;
+}
+& .m2-summary-indicators .m2-indicator-spells > b {
+  font-size: 11px;
+}
+& .m2-indicator-total {
+  display: grid;
+  place-items: center;
+  color: #d4a9ff;
+  border: 1px solid currentColor;
+  background: rgb(183 153 222 / 12%);
+}
+& .m2-indicator-spells:focus-visible,
+& .m2-spell-row:focus-visible {
+  outline: 2px solid #ffe09c;
+  outline-offset: 1px;
+}
+/* Public cast spells reuse the existing inspected-card surface and Back handling. */
+& .m2-cast-spells {
+  min-height: 100%;
+  box-sizing: border-box;
+  padding: 8px;
+  color: #dbe2eb;
+  background: #141b25;
+  border: 1px solid #647083;
+  border-radius: 9px;
+}
+& .m2-cast-spells > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font: 12px/1.3 system-ui;
+}
+& .m2-spells-control {
+  color: #c4ceda;
+  border: 1px solid #657084;
+  background: rgb(170 180 195 / 8%);
+  border-radius: 5px;
+  padding: 4px 8px;
+  cursor: pointer;
+}
+& .m2-spells-close {
+  font-size: 18px;
+}
+& .m2-spell-group h3 {
+  color: #b9a4d4;
+  font: 11px/1.3 system-ui;
+  margin: 8px 0 5px;
+}
+& .m2-spell-list {
+  display: grid;
+  gap: 5px;
+}
+& .m2-spell-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+  min-height: 34px;
+  padding: 6px 8px;
+  color: #dbe2eb;
+  background: #202936;
+  border: 1px solid #566273;
+  border-left: 3px solid #c4c8ce;
+  border-radius: 5px;
+  text-align: left;
+  font: 11px/1.3 system-ui;
+  cursor: pointer;
+}
+& .m2-spell-row > span {
+  color: #b5bfcc;
+  white-space: nowrap;
+}
+& .m2-spell-row[data-color="RED"] {
+  border-left-color: #de6262;
+}
+& .m2-spell-row[data-color="BLUE"] {
+  border-left-color: #67b1ef;
+}
+& .m2-spell-row[data-color="GREEN"] {
+  border-left-color: #6abd7d;
+}
+& .m2-spell-row[data-color="GOLD"] {
+  border-left-color: #e9c956;
+}
+& .m2-spell-row[data-color="PURPLE"] {
+  border-left-color: #b799de;
+}
+& .m2-spells-empty {
+  color: #aab4c3;
+  font: 11px/1.4 system-ui;
+}
+& .m2-spell-grid {
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+}
+& .m2-spell-grid .m2-spell-row {
+  display: block;
+  padding: 2px;
+}
+& .m2-spell-card {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: auto;
+  min-height: 0;
+  overflow: hidden;
+  background: #1b2330;
+}
+& .m2-spell-face {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1192 / 831;
+}
+& .m2-spell-face > img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+& .m2-spell-fallback {
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font: 12px/1.4 system-ui;
+}
+& .m2-spell-loaded > .m2-spell-fallback {
+  visibility: hidden;
+}
+& .m2-spell-grid .m2-card-foot:empty {
+  display: none;
+}
 & .m2-hero-played-label {
   flex: 0 0 auto;
   color: #aeb9c8;
@@ -3504,14 +3718,14 @@
   overflow: hidden;
   grid-template-columns:
     23px minmax(var(--m2-name-min, 70px), 1fr) 45px minmax(var(--m2-piles-width, 48px), max-content)
-    70px 62px;
+    20px 70px 62px;
   column-gap: 3px;
   overflow-x: auto;
 }
 & #goa2-m2-summary > article.m2-timed-hero {
   grid-template-columns:
     34px minmax(var(--m2-name-min, 70px), 1fr) 45px minmax(var(--m2-piles-width, 48px), max-content)
-    70px 62px;
+    20px 70px 62px;
 }
 & #goa2-m2-summary .m2-summary-clock {
   width: 34px;

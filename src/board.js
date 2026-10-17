@@ -1,3 +1,4 @@
+import { renderHeroIndicators } from './hero-indicators.js';
 import { trackCardSource } from './card-highlight.js';
 import { centerBoardHero } from './camera.js';
 import {
@@ -9,7 +10,7 @@ import {
   nanoCard,
   ultimateIndicator,
 } from './cards.js';
-import { inspectHeroCard, updateHeroDashboard, updateTurnPortrait } from './heroes.js';
+import { openCastSpells, inspectHeroCard, updateHeroDashboard, updateTurnPortrait } from './heroes.js';
 import { refresh } from './main.js';
 import { navigationShortcut } from './navigation.js';
 import { componentProp } from './react.js';
@@ -271,6 +272,7 @@ function renderSummary(heroes, upgradeRequest = null) {
     }
     const upgrades = itemUpgradeSymbols(h.upgrades, 'm2-summary-upgrades');
     upgrades.prepend(ultimateIndicator(h, true));
+    row.append(renderHeroIndicators(h.indicators || [], true, () => openCastSpells(h.id)));
     row.append(currentSlot, h.isOwn ? navigationShortcut(upgrades, 'deck', 'Open your Deck') : upgrades);
     summary.append(row);
   }

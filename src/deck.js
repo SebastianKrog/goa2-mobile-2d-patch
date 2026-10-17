@@ -1,3 +1,4 @@
+import { appendSpellGroup, knownSpells, spellRankLabel } from './spells.js';
 import { highlightViewedCard, trackCardSource } from './card-highlight.js';
 import { updateCardRow } from './card-rows.js';
 import { cardGrantedItem, textCard } from './cards.js';
@@ -129,6 +130,23 @@ function clearDeckState() {
   uiState.deckState.modal.removeAttribute('data-m2-deck-ready');
   uiState.deckState = null;
 }
+function ownDeckSpells(hero) {
+  const own = q('[data-m2="sidebar"] [data-m2="hero"]:not([data-m2-other])');
+  if (!hero || componentProp(own, 'hero')?.id !== hero.id || !Array.isArray(hero.spellbook)) return null;
+  return { prepared: knownSpells(hero.spellbook, true), cast: knownSpells(hero.cast_spells) };
+}
+function appendDeckSpells(host, spells, inspect) {
+  if (!spells) return;
+  const groups = new Map();
+  for (const card of [...spells.prepared].sort((a, b) => (a.spell_rank || 0) - (b.spell_rank || 0))) {
+    const label = 'Spellbook · ' + (Number(card.spell_rank || 0) === 0 ? 'Cantrips' : spellRankLabel(card));
+    if (!groups.has(label)) groups.set(label, []);
+    groups.get(label).push(card);
+  }
+  for (const [label, cards] of groups)
+    appendSpellGroup(host, label, cards, inspect, uiState.deckView === 'grid');
+  appendSpellGroup(host, 'Cast spells (' + spells.cast.length + ')', spells.cast, inspect, uiState.deckView === 'grid');
+}
 function deckUpdate(upgradeRequest) {
   const modal = q('[data-m2="deck"]');
   if (!modal || !root.hasAttribute('data-m2-active')) {
@@ -168,6 +186,8 @@ function deckUpdate(upgradeRequest) {
   }
   const state = uiState.deckState;
   const hero = componentProp(modal, 'hero');
+  const spells = ownDeckSpells(hero);
+  const spellCards = spells ? [...spells.prepared, ...spells.cast] : [];
   const ownerKey = JSON.stringify([location.pathname, hero?.id || hero?.name ||
     entries.map(e => deckCardIdentity(e.card))]);
   if (state.ownerKey !== ownerKey) state.selectedCard = null;
@@ -178,7 +198,7 @@ function deckUpdate(upgradeRequest) {
   rememberDeckTreeChoices(hero, entries.map(e => e.card), upgradeRequest);
   const build = uiState.deckView === 'tree' ? deckTreeBuild(hero, entries.map(e => e.card)) : null;
   const key = JSON.stringify([uiState.deckView, uiState.deckSort, entries.map((e) => e.card),
-    ownerKey, uiState.deckView === 'tree' ? [hero?.level, hero?.items, [...build.chosen],
+    ownerKey, spells, uiState.deckView === 'tree' ? [hero?.level, hero?.items, [...build.chosen],
       deckTreePool(hero).map(deckCardIdentity)] : null]);
   if (state.key === key && state.sources?.every((v, i) => v === sources[i])) return;
   state.watchers?.forEach((stop) => stop());
@@ -266,7 +286,8 @@ function deckUpdate(upgradeRequest) {
   state.host.append(listHost);
   if (uiState.deckView === 'tree') {
     renderDeckTree(listHost, entries, hero, selectPreview);
-    const selected = entries.find(e => state.selectedCard &&
+    appendDeckSpells(listHost, spells, selectPreview);
+    const selected = [...entries, ...spellCards.map(card => ({ card }))].find(e => state.selectedCard &&
       deckCardIdentity(e.card) === deckCardIdentity(state.selectedCard));
     selectPreview(selected?.card || null);
     deckPaint();
@@ -332,8 +353,9 @@ function deckUpdate(upgradeRequest) {
       group.append(b);
     }
   }
+  appendDeckSpells(listHost, spells, selectPreview);
   if (preview) {
-    const selected = entries.find(e => state.selectedCard && (
+    const selected = [...entries, ...spellCards.map(card => ({ card }))].find(e => state.selectedCard && (
       e.card.id ? e.card.id === state.selectedCard.id : e.card.name === state.selectedCard.name
     ));
     selectPreview(selected?.card || null);

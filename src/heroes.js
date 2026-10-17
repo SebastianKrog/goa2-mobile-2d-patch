@@ -1,3 +1,6 @@
+import { heroIndicators, renderHeroIndicators } from './hero-indicators.js';
+import { appendSpellGroup, knownSpells } from './spells.js';
+import { schedule } from './main.js';
 import { remainingUpgrades } from './game-input.js';
 import { predictResolutionOrder } from './resolution-order.js';
 import { openCardActionOptions } from './controls.js';
@@ -80,6 +83,11 @@ function inspectHeroCard(heroId, card) {
   uiState.selectedHeroCard = { heroId, cardId: card.id };
   updateHeroCardDisplay();
 }
+function openCastSpells(heroId) {
+  uiState.selectedHeroCard = { heroId, spells: true };
+  updateHeroCardDisplay();
+  schedule();
+}
 // Build the shared portrait, metadata, current Mini card and fixed history slots.
 // The serialized render key prevents replacing buttons and animations on every refresh.
 function updateHeroDashboard(box, view, suppliedHero = null, upgradeRequest = null) {
@@ -89,6 +97,7 @@ function updateHeroDashboard(box, view, suppliedHero = null, upgradeRequest = nu
   // An absent location means off board only when a location map is actually available.
   // Missing board data alone must not be treated as a death/off-board signal.
   const offboard = heroOffboard(hero, view);
+  const indicators = heroIndicators(hero, view);
   const committedCards = heroCommittedCards(box, hero);
   const effects = view?.effects || [];
   const cards = [
@@ -130,7 +139,7 @@ function updateHeroDashboard(box, view, suppliedHero = null, upgradeRequest = nu
     hero.played_cards,
     hero.discard_pile,
     hero.items,
-    hero.cast_spells?.length,
+    indicators,
     active,
     offboard,
     view?.turn,
@@ -251,7 +260,10 @@ function updateHeroDashboard(box, view, suppliedHero = null, upgradeRequest = nu
   const label = document.createElement('span');
   label.className = 'm2-hero-played-label';
   label.textContent = 'Played:';
-  current.append(label);
+  if (indicators.length) {
+    current.append(renderHeroIndicators(indicators, false, () => openCastSpells(hero.id)));
+    current.dataset.indicators = String(indicators.length);
+  } else current.append(label);
   if (!upgrading && committedCards.length === 2) {
     const pair = document.createElement('span');
     pair.className = 'm2-current-card-pair';
@@ -379,6 +391,42 @@ function updateHeroCardDisplay() {
     clearHeroCard();
     return;
   }
+  if (uiState.selectedHeroCard.spells) {
+    const cards = knownSpells(hero.cast_spells);
+    const selected = cards.find(card => card.id === uiState.selectedHeroCard.cardId);
+    const key = JSON.stringify(['cast-spells', hero.id, cards, selected?.id]);
+    if (heroPanel.dataset.key === key) return;
+    highlightViewedCard('hero', selected || null, hero.id);
+    heroPanel.replaceChildren();
+    const list = document.createElement('section');
+    list.className = 'm2-cast-spells';
+    list.setAttribute('aria-label', (hero.name || 'Gydion') + ' cast spells');
+    const header = document.createElement('header');
+    const title = document.createElement('b');
+    title.textContent = (hero.name || 'Gydion') + ' · Spells cast';
+    const close = document.createElement('button');
+    close.type = 'button';
+    close.className = 'm2-spells-control m2-spells-close';
+    close.textContent = '×';
+    close.setAttribute('aria-label', 'Close cast spells');
+    close.onclick = () => { clearHeroCard(); schedule(); };
+    header.append(title, close);
+    list.append(header);
+    if (selected) {
+      const back = document.createElement('button');
+      back.type = 'button';
+      back.className = 'm2-spells-control m2-spells-back';
+      back.textContent = '‹ Cast spells';
+      back.onclick = () => openCastSpells(hero.id);
+      list.append(back, textCard(selected, 'hero', null, hero.id));
+    } else appendSpellGroup(list, 'Cast spells (' + cards.length + ')', cards, card => {
+      uiState.selectedHeroCard = { heroId: hero.id, spells: true, cardId: card.id };
+      updateHeroCardDisplay();
+    });
+    heroPanel.append(list);
+    heroPanel.dataset.key = key;
+    return;
+  }
   const cards = [
     ...heroCommittedCards(box, hero),
     hero.ultimate_card,
@@ -474,6 +522,7 @@ export {
   heroCommittedCards,
   heroTurnCard,
   inspectHeroCard,
+  openCastSpells,
   resolutionEntries,
   updateHeroCardDisplay,
   updateHeroDashboard,

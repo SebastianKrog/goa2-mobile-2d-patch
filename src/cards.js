@@ -1,3 +1,4 @@
+import { isSpellCard, spellFace } from './spells.js';
 import { printedPrimarySigns, printedModifierSigns } from './printed-signs.js';
 import { dismiss } from './navigation.js';
 import { componentProp } from './react.js';
@@ -286,7 +287,7 @@ function cardHero(card, source) {
       hero.current_turn_card,
       hero.extra_turn_card,
       hero.ultimate_card,
-      ...['hand', 'played_cards', 'discard_pile', 'deck', 'cast_spells'].flatMap((key) =>
+      ...['hand', 'played_cards', 'discard_pile', 'deck', 'cast_spells', 'spellbook'].flatMap((key) =>
         Array.isArray(hero[key]) ? hero[key] : [],
       ),
     ];
@@ -431,6 +432,7 @@ function syncHandActions(foot, card, tip, items) {
 // Shared readable card renderer. Deck shows printed values; Hand and Heroes apply known upgrades.
 // Hand actions proxy native controls so the website remains responsible for game rules.
 function textCard(card, context, tip, heroId, grantedItem) {
+  if (isSpellCard(card)) return spellFace(card);
   const items = context === 'deck' ? {} : cardUpgrades(card);
   const symbol = (key, value) => upgradedSymbol(items, key, value);
   const ultimate = card.tier === 'IV' || card.color === 'PURPLE';

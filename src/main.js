@@ -1,3 +1,4 @@
+import { heroIndicators } from './hero-indicators.js';
 import { heroClockSummary, updateHeroClocks } from './clocks.js';
 import { clearBoardTexture, updateBoardTexture } from './board-texture.js';
 import { clearCardHighlights, highlightViewedCard } from './card-highlight.js';
@@ -254,6 +255,7 @@ function refresh() {
       return {
         id: hero?.id,
         isOwn: !box.hasAttribute('data-m2-other'),
+        indicators: heroIndicators(hero, publicView),
         level: hero?.level,
         gold: hero?.gold,
         currentCard: hero ? heroTurnCard(box, hero, publicView) : null,
@@ -417,7 +419,7 @@ on(media, 'change', schedule);
 
 // Public teardown for console installs and upgrades: release observers, timers, and DOM changes.
 window.GOA2Mobile2D = {
-  version: '1.1.3',
+  version: '1.2.0',
   destroy() {
     flushEventHistory();
     uiState.dead = true;

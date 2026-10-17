@@ -2,6 +2,19 @@
 
 Published releases, newest first.
 
+## 1.2.0
+
+- Add shared hero-board indicators in place of **Played:** when present: yellow
+  Bounty and green Poison labels, alongside Gydion's spell counter. Three or more
+  indicators shorten the current card's name area while keeping the row height.
+- Show Gydion's portrait behind spell-colored dice pips through nine cast spells,
+  then a number. Every player can open and inspect his public cast-spell list.
+- Reserve one compact Board indicator slot: B/P circles for single markers,
+  Gydion's icon and spell count, or a purple combined indicator count.
+- Show the owning Gydion player's prepared spellbook by rank and public cast
+  spells in all Deck layouts, with complete landscape spell faces for inspection.
+  Preserve count-only opponent spellbooks and native card state.
+
 ## 1.1.3
 
 - Preserve compact-row scroll and keyboard focus while countdowns update. Reconcile clock text, urgency and running state in place, including transitions back to resolution order.

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GoA II — Mobile 2D
 // @namespace    goa2-mobile-local
-// @version      1.1.3
+// @version      1.2.0
 // @description  Compact 2D HUD, Board/Hand modes, contained setup and utility panels.
 // @match        https://goa2.frontend.pedroliv.dev/game/*
 // @grant        none
@@ -24,36 +24,203 @@ if (new URLSearchParams(location.search).get('3d') !== '0') return;
 window.GOA2Mobile?.destroy();
 
 (() => {
-  // src/react.js
-  var committedFiberCache = /* @__PURE__ */ new Map();
-  function currentFiber(element) {
-    const key = element && Object.keys(element).find((k) => k.startsWith("__reactFiber$"));
-    const original = key ? element[key] : null;
-    if (!original) return null;
-    let top = original;
-    while (top.return) top = top.return;
-    const rootState = top.stateNode, current = rootState?.current;
-    if (!current) return original;
-    let cache = committedFiberCache.get(rootState);
-    if (!cache || cache.current !== current) {
-      const hosts = /* @__PURE__ */ new WeakMap(), stack = [current];
-      while (stack.length) {
-        const node = stack.pop();
-        if (node.stateNode && typeof node.stateNode === "object") hosts.set(node.stateNode, node);
-        for (let child = node.child; child; child = child.sibling) stack.push(child);
-      }
-      cache = { current, hosts };
-      committedFiberCache.set(rootState, cache);
-    }
-    return cache.hosts.get(element) || null;
+  // src/spells.js
+  function isSpellCard(card) {
+    return card?.spell_rank != null || ["SPELLBOOK", "OUTSIDE_SPELLBOOK"].includes(card?.state);
   }
-  function componentProp(element, key) {
-    let fiber = currentFiber(element);
-    for (let i = 0; fiber && i < 32; i++, fiber = fiber.return) {
-      const value = fiber.memoizedProps?.[key];
-      if (value !== void 0 && value !== null) return value;
+  function spellColorName(card) {
+    if (/^Ultimate$/i.test(card?.image_id || "")) return "PURPLE";
+    return card?.color || String(card?.image_id || "").match(/^(Gold|Silver|Red|Blue|Green|Purple)/i)?.[1].toUpperCase() || "SILVER";
+  }
+  function spellRankLabel(card) {
+    const rank = Number(card.spell_rank ?? 0);
+    return rank === 0 ? "Cantrip" : "Rank " + (["", "I", "II", "III"][rank] || rank);
+  }
+  function knownSpells(cards, prepared = false) {
+    return (Array.isArray(cards) ? cards : []).filter((card) => card?.id && card.name && (!card.is_facedown || prepared && isSpellCard(card) && card.image_id)).map((card) => ({ ...card, is_facedown: false }));
+  }
+  function spellFace(card) {
+    const box = document.createElement("article");
+    box.className = "m2-text-card m2-spell-card";
+    const face = document.createElement("div");
+    face.className = "m2-spell-face";
+    const fallback = document.createElement("div");
+    fallback.className = "m2-spell-fallback";
+    const name = document.createElement("b"), rank = document.createElement("span");
+    name.textContent = card.name;
+    rank.textContent = spellRankLabel(card);
+    fallback.append(name, rank);
+    if (card.effect_text) {
+      const rules = document.createElement("p");
+      rules.textContent = card.effect_text;
+      fallback.append(rules);
     }
-    return null;
+    face.append(fallback);
+    if (!card.is_facedown && /^[a-zA-Z0-9_-]+$/.test(card.image_id || "")) {
+      const img = document.createElement("img");
+      img.alt = card.name + " — " + spellRankLabel(card);
+      img.src = "/cards/spells/" + card.image_id + ".webp";
+      img.decoding = "async";
+      img.onload = () => face.classList.add("m2-spell-loaded");
+      img.onerror = () => {
+        face.classList.remove("m2-spell-loaded");
+        img.remove();
+      };
+      face.append(img);
+    }
+    const foot = document.createElement("footer");
+    foot.className = "m2-card-foot";
+    box.append(face, foot);
+    return box;
+  }
+  function appendSpellGroup(host, title, cards, inspect, grid = false) {
+    const group = document.createElement("section");
+    group.className = "m2-spell-group";
+    const heading = document.createElement("h3");
+    heading.textContent = title;
+    const list = document.createElement("div");
+    list.className = "m2-spell-list" + (grid ? " m2-spell-grid" : "");
+    for (const card of cards) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "m2-spell-row";
+      button.dataset.color = spellColorName(card);
+      button.setAttribute("aria-label", "View " + card.name + " — " + spellRankLabel(card));
+      if (grid) button.append(spellFace(card));
+      else {
+        const name = document.createElement("b"), rank = document.createElement("span");
+        name.textContent = card.name;
+        rank.textContent = spellRankLabel(card);
+        button.append(name, rank);
+      }
+      button.onclick = () => inspect(card);
+      list.append(button);
+    }
+    group.append(heading, list);
+    if (!cards.length) {
+      const empty = document.createElement("p");
+      empty.className = "m2-spells-empty";
+      empty.textContent = "No spells cast.";
+      group.append(empty);
+    }
+    host.append(group);
+  }
+
+  // src/printed-signs.js
+  var printedPrimarySigns = {
+    "close_call": "EXCLAMATION",
+    "narrow_escape": "EXCLAMATION",
+    "vantage_point": "PLUS",
+    "perfect_getaway": "EXCLAMATION",
+    "high_ground": "PLUS",
+    "brynn_high_ground": "PLUS",
+    "elevated_ambush": "PLUS",
+    "peak_precision": "PLUS",
+    "daring_strike": "PLUS",
+    "bold_thrust": "PLUS",
+    "fearless_lunge": "PLUS",
+    "shield_of_decay": "PLUS",
+    "vampiric_shield": "PLUS",
+    "aegis_of_doom": "PLUS",
+    "angry_strike": "PLUS",
+    "poof": "EXCLAMATION",
+    "vanish": "EXCLAMATION",
+    "ruse": "EXCLAMATION",
+    "knife_of_the_living_dead": "PLUS",
+    "crowd_control": "PLUS",
+    "quickdraw": "PLUS",
+    "gunslinger": "PLUS",
+    "dead_shot": "PLUS",
+    "rune_sigils": "PLUS",
+    "oath_of_endurance": "EXCLAMATION",
+    "oath_of_fortitude": "EXCLAMATION",
+    "oath_of_perseverance": "EXCLAMATION",
+    "winter_dagger": "PLUS",
+    "winter_spear": "PLUS",
+    "winter_scepter": "PLUS",
+    "dodge": "EXCLAMATION",
+    "sidestep": "EXCLAMATION",
+    "parry": "EXCLAMATION",
+    "backstab": "PLUS",
+    "evade": "EXCLAMATION",
+    "riposte": "EXCLAMATION",
+    "backstab_with_a_ballista": "PLUS",
+    "makeshift_minigun": "PLUS",
+    "gatling_gun": "PLUS",
+    "supercharged_cannon": "PLUS",
+    "cold_ire": "PLUS",
+    "eyes_of_flame": "PLUS",
+    "stop_projectiles": "EXCLAMATION",
+    "deflect_projectiles": "EXCLAMATION",
+    "reflect_projectiles": "EXCLAMATION",
+    "threatening_slash": "PLUS",
+    "deadly_swipe": "PLUS",
+    "lethal_spin": "PLUS",
+    "sunburst": "PLUS"
+  };
+  var printedModifierSigns = {
+    "long_thrust": "PLUS",
+    "rapid_thrusts": "PLUS",
+    "sunburst": "PLUS",
+    "dimension_door": "PLUS"
+  };
+
+  // src/tree-model.js
+  function deckCardIdentity(card) {
+    return card?.id || JSON.stringify([card?.color, card?.tier, card?.name]);
+  }
+  function deckTreeTier(card) {
+    return { I: 1, II: 2, III: 3, 1: 1, 2: 2, 3: 3 }[String(card?.tier).toUpperCase()] || 0;
+  }
+  function deckTreeVariant(card) {
+    const artwork = String(card?.image_id || "").match(/(?:II|III)([AB])$/i), identity = String(card?.id || "").match(/(?:[-_]|\d)([ab])$/i);
+    return (artwork?.[1] || identity?.[1] || "A").toUpperCase() === "B" ? 1 : 0;
+  }
+  function compareDeckTreeCards(a, b) {
+    return deckTreeVariant(a) - deckTreeVariant(b);
+  }
+  function deckTreeGroup(card) {
+    return String(card.color).toUpperCase() + ":" + deckTreeTier(card);
+  }
+  function deckTreePool(hero) {
+    return [
+      ...hero?.hand || [],
+      ...hero?.discard_pile || [],
+      ...hero?.played_cards || [],
+      ...hero?.cast_spells || [],
+      hero?.current_turn_card,
+      hero?.extra_turn_card,
+      Number(hero?.level) >= 8 ? hero?.ultimate_card : null
+    ].filter((card) => card && (!card.is_facedown || card.primary_action));
+  }
+
+  // src/card-highlight.js
+  var sources = /* @__PURE__ */ new WeakMap();
+  var viewed = /* @__PURE__ */ new Map();
+  function applyHighlight(element, source) {
+    const selected = viewed.get(source.viewer);
+    element.toggleAttribute("data-m2-viewed", !!selected && selected.owner === source.owner && selected.cardId === source.cardId);
+  }
+  function trackCardSource(element, card, viewer2, owner = "") {
+    const source = { viewer: viewer2, owner, cardId: deckCardIdentity(card) };
+    sources.set(element, source);
+    if (!element.classList.contains("m2-card-source")) element.classList.add("m2-card-source");
+    applyHighlight(element, source);
+  }
+  function highlightViewedCard(viewer2, card = null, owner = "") {
+    if (card) viewed.set(viewer2, { owner, cardId: deckCardIdentity(card) });
+    else viewed.delete(viewer2);
+    for (const element of document.querySelectorAll(".m2-card-source")) {
+      const source = sources.get(element);
+      if (source?.viewer === viewer2) applyHighlight(element, source);
+    }
+  }
+  function clearCardHighlights() {
+    viewed.clear();
+    for (const element of document.querySelectorAll(".m2-card-source")) {
+      element.classList.remove("m2-card-source");
+      element.removeAttribute("data-m2-viewed");
+    }
   }
 
   // src/styles.css
@@ -2979,6 +3146,220 @@ window.GOA2Mobile?.destroy();
   width: 64px;
   min-width: 64px;
 }
+/* Hero-specific information shares the fixed current-card row. */
+& .m2-hero-indicators {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: 0 0 auto;
+  height: 26px;
+}
+& .m2-hero-indicator {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  height: 24px;
+  padding: 0 5px;
+  border: 1px solid currentColor;
+  border-radius: 4px;
+  background: rgb(170 180 195 / 8%);
+  font: 10px/1 system-ui;
+  white-space: nowrap;
+}
+& .m2-indicator-bounty {
+  color: #e9c956;
+}
+& .m2-indicator-poison {
+  color: #6abd7d;
+}
+& .m2-indicator-spells {
+  position: relative;
+  width: 30px;
+  padding: 1px;
+  overflow: hidden;
+  color: #eee4ff;
+  border-color: #b799de;
+  cursor: pointer;
+}
+& .m2-indicator-spells > img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.4;
+}
+& .m2-indicator-spells > b {
+  position: relative;
+  z-index: 1;
+  font-size: 14px;
+  text-shadow: 0 1px 2px #000;
+}
+& .m2-spell-pips {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(3, 5px);
+  grid-template-rows: repeat(3, 5px);
+  gap: 1px;
+}
+& .m2-spell-pips i {
+  border-radius: 50%;
+  box-shadow: 0 0 0 0.5px #000b;
+}
+& .m2-hero-current-mini[data-indicators]:has(.m2-hero-indicator:nth-child(3)) .m2-list-name {
+  display: none;
+}
+& .m2-hero-current-mini[data-indicators]:has(.m2-hero-indicator:nth-child(3)) .m2-list-band {
+  justify-content: space-evenly;
+}
+& .m2-summary-indicators {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 24px;
+}
+& .m2-summary-indicators > :is(.m2-hero-indicator, .m2-indicator-total) {
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border-radius: 50%;
+  font: bold 10px/1 system-ui;
+}
+& .m2-summary-indicators .m2-indicator-spells > b {
+  font-size: 11px;
+}
+& .m2-indicator-total {
+  display: grid;
+  place-items: center;
+  color: #d4a9ff;
+  border: 1px solid currentColor;
+  background: rgb(183 153 222 / 12%);
+}
+& .m2-indicator-spells:focus-visible,
+& .m2-spell-row:focus-visible {
+  outline: 2px solid #ffe09c;
+  outline-offset: 1px;
+}
+/* Public cast spells reuse the existing inspected-card surface and Back handling. */
+& .m2-cast-spells {
+  min-height: 100%;
+  box-sizing: border-box;
+  padding: 8px;
+  color: #dbe2eb;
+  background: #141b25;
+  border: 1px solid #647083;
+  border-radius: 9px;
+}
+& .m2-cast-spells > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font: 12px/1.3 system-ui;
+}
+& .m2-spells-control {
+  color: #c4ceda;
+  border: 1px solid #657084;
+  background: rgb(170 180 195 / 8%);
+  border-radius: 5px;
+  padding: 4px 8px;
+  cursor: pointer;
+}
+& .m2-spells-close {
+  font-size: 18px;
+}
+& .m2-spell-group h3 {
+  color: #b9a4d4;
+  font: 11px/1.3 system-ui;
+  margin: 8px 0 5px;
+}
+& .m2-spell-list {
+  display: grid;
+  gap: 5px;
+}
+& .m2-spell-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+  min-height: 34px;
+  padding: 6px 8px;
+  color: #dbe2eb;
+  background: #202936;
+  border: 1px solid #566273;
+  border-left: 3px solid #c4c8ce;
+  border-radius: 5px;
+  text-align: left;
+  font: 11px/1.3 system-ui;
+  cursor: pointer;
+}
+& .m2-spell-row > span {
+  color: #b5bfcc;
+  white-space: nowrap;
+}
+& .m2-spell-row[data-color="RED"] {
+  border-left-color: #de6262;
+}
+& .m2-spell-row[data-color="BLUE"] {
+  border-left-color: #67b1ef;
+}
+& .m2-spell-row[data-color="GREEN"] {
+  border-left-color: #6abd7d;
+}
+& .m2-spell-row[data-color="GOLD"] {
+  border-left-color: #e9c956;
+}
+& .m2-spell-row[data-color="PURPLE"] {
+  border-left-color: #b799de;
+}
+& .m2-spells-empty {
+  color: #aab4c3;
+  font: 11px/1.4 system-ui;
+}
+& .m2-spell-grid {
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+}
+& .m2-spell-grid .m2-spell-row {
+  display: block;
+  padding: 2px;
+}
+& .m2-spell-card {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: auto;
+  min-height: 0;
+  overflow: hidden;
+  background: #1b2330;
+}
+& .m2-spell-face {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1192 / 831;
+}
+& .m2-spell-face > img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+& .m2-spell-fallback {
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font: 12px/1.4 system-ui;
+}
+& .m2-spell-loaded > .m2-spell-fallback {
+  visibility: hidden;
+}
+& .m2-spell-grid .m2-card-foot:empty {
+  display: none;
+}
 & .m2-hero-played-label {
   flex: 0 0 auto;
   color: #aeb9c8;
@@ -3563,14 +3944,14 @@ window.GOA2Mobile?.destroy();
   overflow: hidden;
   grid-template-columns:
     23px minmax(var(--m2-name-min, 70px), 1fr) 45px minmax(var(--m2-piles-width, 48px), max-content)
-    70px 62px;
+    20px 70px 62px;
   column-gap: 3px;
   overflow-x: auto;
 }
 & #goa2-m2-summary > article.m2-timed-hero {
   grid-template-columns:
     34px minmax(var(--m2-name-min, 70px), 1fr) 45px minmax(var(--m2-piles-width, 48px), max-content)
-    70px 62px;
+    20px 70px 62px;
 }
 & #goa2-m2-summary .m2-summary-clock {
   width: 34px;
@@ -4538,62 +4919,36 @@ html:not([data-m2-active]) .m2-choice-launchers {
   style.textContent = inactiveCss + styles_default.replaceAll("&", "html[data-m2-active]");
   document.head.append(style);
 
-  // src/tree-model.js
-  function deckCardIdentity(card) {
-    return card?.id || JSON.stringify([card?.color, card?.tier, card?.name]);
-  }
-  function deckTreeTier(card) {
-    return { I: 1, II: 2, III: 3, 1: 1, 2: 2, 3: 3 }[String(card?.tier).toUpperCase()] || 0;
-  }
-  function deckTreeVariant(card) {
-    const artwork = String(card?.image_id || "").match(/(?:II|III)([AB])$/i), identity = String(card?.id || "").match(/(?:[-_]|\d)([ab])$/i);
-    return (artwork?.[1] || identity?.[1] || "A").toUpperCase() === "B" ? 1 : 0;
-  }
-  function compareDeckTreeCards(a, b) {
-    return deckTreeVariant(a) - deckTreeVariant(b);
-  }
-  function deckTreeGroup(card) {
-    return String(card.color).toUpperCase() + ":" + deckTreeTier(card);
-  }
-  function deckTreePool(hero) {
-    return [
-      ...hero?.hand || [],
-      ...hero?.discard_pile || [],
-      ...hero?.played_cards || [],
-      ...hero?.cast_spells || [],
-      hero?.current_turn_card,
-      hero?.extra_turn_card,
-      Number(hero?.level) >= 8 ? hero?.ultimate_card : null
-    ].filter((card) => card && (!card.is_facedown || card.primary_action));
-  }
-
-  // src/card-highlight.js
-  var sources = /* @__PURE__ */ new WeakMap();
-  var viewed = /* @__PURE__ */ new Map();
-  function applyHighlight(element, source) {
-    const selected = viewed.get(source.viewer);
-    element.toggleAttribute("data-m2-viewed", !!selected && selected.owner === source.owner && selected.cardId === source.cardId);
-  }
-  function trackCardSource(element, card, viewer2, owner = "") {
-    const source = { viewer: viewer2, owner, cardId: deckCardIdentity(card) };
-    sources.set(element, source);
-    if (!element.classList.contains("m2-card-source")) element.classList.add("m2-card-source");
-    applyHighlight(element, source);
-  }
-  function highlightViewedCard(viewer2, card = null, owner = "") {
-    if (card) viewed.set(viewer2, { owner, cardId: deckCardIdentity(card) });
-    else viewed.delete(viewer2);
-    for (const element of document.querySelectorAll(".m2-card-source")) {
-      const source = sources.get(element);
-      if (source?.viewer === viewer2) applyHighlight(element, source);
+  // src/react.js
+  var committedFiberCache = /* @__PURE__ */ new Map();
+  function currentFiber(element) {
+    const key = element && Object.keys(element).find((k) => k.startsWith("__reactFiber$"));
+    const original = key ? element[key] : null;
+    if (!original) return null;
+    let top = original;
+    while (top.return) top = top.return;
+    const rootState = top.stateNode, current = rootState?.current;
+    if (!current) return original;
+    let cache = committedFiberCache.get(rootState);
+    if (!cache || cache.current !== current) {
+      const hosts = /* @__PURE__ */ new WeakMap(), stack = [current];
+      while (stack.length) {
+        const node = stack.pop();
+        if (node.stateNode && typeof node.stateNode === "object") hosts.set(node.stateNode, node);
+        for (let child = node.child; child; child = child.sibling) stack.push(child);
+      }
+      cache = { current, hosts };
+      committedFiberCache.set(rootState, cache);
     }
+    return cache.hosts.get(element) || null;
   }
-  function clearCardHighlights() {
-    viewed.clear();
-    for (const element of document.querySelectorAll(".m2-card-source")) {
-      element.classList.remove("m2-card-source");
-      element.removeAttribute("data-m2-viewed");
+  function componentProp(element, key) {
+    let fiber = currentFiber(element);
+    for (let i = 0; fiber && i < 32; i++, fiber = fiber.return) {
+      const value = fiber.memoizedProps?.[key];
+      if (value !== void 0 && value !== null) return value;
     }
+    return null;
   }
 
   // src/ui.js
@@ -4652,106 +5007,6 @@ html:not([data-m2-active]) .m2-choice-launchers {
     highlightViewedCard("hero");
     heroPanel.replaceChildren();
     delete heroPanel.dataset.key;
-  }
-
-  // src/clocks.js
-  var heroClocks = /* @__PURE__ */ new Map();
-  var clockFields = {
-    PLANNING: ["planning_allowance_ms", "time_bank_ms"],
-    RESOLUTION: ["initiative_bonus_ms", "resolution_allowance_ms", "time_bank_ms"],
-    RESPONSE: ["response_time_ms", "resolution_allowance_ms", "time_bank_ms"],
-    LEVEL_UP: ["upgrade_allowance_ms", "time_bank_ms"]
-  };
-  function clockText(ms) {
-    const value = Math.abs(ms), sign = ms < 0 ? "-" : "";
-    if (value < 1e4) return sign + (value / 1e3).toFixed(1) + "s";
-    const seconds = Math.ceil(value / 1e3);
-    return sign + Math.floor(seconds / 60) + ":" + String(seconds % 60).padStart(2, "0");
-  }
-  function heroClockSummary(id) {
-    return heroClocks.get(id) || null;
-  }
-  function updateHeroClocks(sidebar, header) {
-    heroClocks.clear();
-    const sources2 = Array.from(header?.querySelectorAll(c("clock")) || []);
-    for (const box of sidebar.querySelectorAll('[data-m2="hero"]')) {
-      const hero = componentProp(box, "hero");
-      const name = q(":scope>" + c("name"), box);
-      if (!name || !hero) continue;
-      const source = sources2.find((node) => {
-        const heroes = componentProp(node, "heroes");
-        if (Array.isArray(heroes)) {
-          const siblings = Array.from(node.parentElement.querySelectorAll(":scope>" + c("clock")));
-          const clock2 = componentProp(node, "clock");
-          const shown = clock2?.players ? heroes.filter((h) => clock2.players[h.id]) : heroes;
-          return shown[siblings.indexOf(node)]?.id === hero.id;
-        }
-        return q(":scope>" + c("hero"), node)?.textContent.trim() === hero.name;
-      });
-      const pools = source && q(c("pools"), source);
-      let display = q(".m2-hero-clock", name);
-      if (!pools) {
-        if (display) {
-          extras.delete(display);
-          display.remove();
-        }
-        continue;
-      }
-      const clock = componentProp(source, "clock");
-      const running = clock?.status === "RUNNING" && !!clock.players?.[hero.id]?.running;
-      const tone = ["critical", "warning", "over"].find((t) => source.matches(c(t))) || "";
-      const values = Array.from(pools.children).map((pool) => ({
-        label: q("small", pool)?.textContent || "",
-        value: q("strong", pool)?.textContent || ""
-      }));
-      const player = clock?.players?.[hero.id];
-      const locked = values.some((v) => /^locked$/i.test(v.value));
-      const phase = componentProp(source, "phase") || componentProp(header, "view")?.phase || q(c("phase"), header)?.textContent.trim();
-      const kind = player?.running && clock?.active?.hero_ids?.includes(hero.id) ? clock.active.kind : phase;
-      const fields = clockFields[kind] || ["time_bank_ms"];
-      const field = fields.find((key2) => Number(player?.[key2]) > 0) || "time_bank_ms";
-      const milliseconds = field === "time_bank_ms" ? Number(player?.time_bank_ms || 0) - Number(player?.overrun_ms || 0) : Number(player?.[field]);
-      const fallback = values.find((v) => !/^bank$/i.test(v.label)) || values[0];
-      const text = locked ? "✓" : player && Number.isFinite(Number(player[field])) ? clockText(milliseconds) : fallback?.value || "—";
-      heroClocks.set(hero.id, {
-        text,
-        locked,
-        running,
-        tone,
-        paused: clock?.status === "PAUSED",
-        label: locked ? "Card locked" : (field === "time_bank_ms" ? "Bank " : "Clock ") + text
-      });
-      const key = JSON.stringify([values, source.title, running, tone, clock?.status]);
-      if (display?.dataset.key === key) continue;
-      if (!display) {
-        display = document.createElement("span");
-        display.className = "m2-hero-clock";
-        name.append(display);
-        addExtra(display);
-      }
-      display.dataset.key = key;
-      display.dataset.running = String(running);
-      display.dataset.tone = tone;
-      display.title = source.title + (clock?.status === "PAUSED" ? " · Paused" : "");
-      display.setAttribute("aria-label", values.map((v) => v.label + " " + v.value).join(" · ") + (clock?.status === "PAUSED" ? " · Paused" : ""));
-      display.replaceChildren();
-      const phaseValues = values.filter((v) => !/^bank$/i.test(v.label));
-      const bank = values.find((v) => /^bank$/i.test(v.label));
-      const primary = document.createElement("strong");
-      primary.className = "m2-clock-pool";
-      const phaseFields = fields.filter((key2) => key2 !== "time_bank_ms");
-      const phaseTotal = phaseFields.reduce((sum, key2) => sum + Number(player?.[key2] || 0), 0);
-      primary.textContent = locked ? "-" : phaseFields.length && phaseFields.every((key2) => Number.isFinite(Number(player?.[key2]))) ? clockText(phaseTotal) : phaseValues.map((v) => v.value).join(" + ") || "-";
-      display.append(primary);
-      if (bank) {
-        const separator = document.createElement("span");
-        separator.textContent = "/";
-        const amount = document.createElement("strong");
-        amount.className = "m2-clock-bank";
-        amount.textContent = bank.value;
-        display.append(separator, amount);
-      }
-    }
   }
 
   // src/camera.js
@@ -4983,712 +5238,324 @@ html:not([data-m2-active]) .m2-choice-launchers {
     state2.sync();
   }
 
-  // src/printed-signs.js
-  var printedPrimarySigns = {
-    "close_call": "EXCLAMATION",
-    "narrow_escape": "EXCLAMATION",
-    "vantage_point": "PLUS",
-    "perfect_getaway": "EXCLAMATION",
-    "high_ground": "PLUS",
-    "brynn_high_ground": "PLUS",
-    "elevated_ambush": "PLUS",
-    "peak_precision": "PLUS",
-    "daring_strike": "PLUS",
-    "bold_thrust": "PLUS",
-    "fearless_lunge": "PLUS",
-    "shield_of_decay": "PLUS",
-    "vampiric_shield": "PLUS",
-    "aegis_of_doom": "PLUS",
-    "angry_strike": "PLUS",
-    "poof": "EXCLAMATION",
-    "vanish": "EXCLAMATION",
-    "ruse": "EXCLAMATION",
-    "knife_of_the_living_dead": "PLUS",
-    "crowd_control": "PLUS",
-    "quickdraw": "PLUS",
-    "gunslinger": "PLUS",
-    "dead_shot": "PLUS",
-    "rune_sigils": "PLUS",
-    "oath_of_endurance": "EXCLAMATION",
-    "oath_of_fortitude": "EXCLAMATION",
-    "oath_of_perseverance": "EXCLAMATION",
-    "winter_dagger": "PLUS",
-    "winter_spear": "PLUS",
-    "winter_scepter": "PLUS",
-    "dodge": "EXCLAMATION",
-    "sidestep": "EXCLAMATION",
-    "parry": "EXCLAMATION",
-    "backstab": "PLUS",
-    "evade": "EXCLAMATION",
-    "riposte": "EXCLAMATION",
-    "backstab_with_a_ballista": "PLUS",
-    "makeshift_minigun": "PLUS",
-    "gatling_gun": "PLUS",
-    "supercharged_cannon": "PLUS",
-    "cold_ire": "PLUS",
-    "eyes_of_flame": "PLUS",
-    "stop_projectiles": "EXCLAMATION",
-    "deflect_projectiles": "EXCLAMATION",
-    "reflect_projectiles": "EXCLAMATION",
-    "threatening_slash": "PLUS",
-    "deadly_swipe": "PLUS",
-    "lethal_spin": "PLUS",
-    "sunburst": "PLUS"
-  };
-  var printedModifierSigns = {
-    "long_thrust": "PLUS",
-    "rapid_thrusts": "PLUS",
-    "sunburst": "PLUS",
-    "dimension_door": "PLUS"
-  };
-
-  // src/navigation.js
-  function dismiss() {
-    const tip = q('[data-m2="tip"]');
-    if (tip) {
-      uiState.dismissedTip = tip;
-      tip.setAttribute("data-m2-dismissed", "");
+  // src/settings.js
+  var displayPreferencesKey = "goa2-mobile-display";
+  var displayPreferences = { cardArt: true, boardTexture: true, fontStep: 0, handCards: "small", deckOptions: true }, cursorsVisible = true, soundsEnabled = true, soundVolume = 100, gameSettingsDirty = false, appliedFontStep = 0;
+  try {
+    const saved = JSON.parse(localStorage.getItem(displayPreferencesKey) || "{}");
+    if (typeof saved?.cardArt === "boolean") displayPreferences.cardArt = saved.cardArt;
+    if (typeof saved?.boardTexture === "boolean") displayPreferences.boardTexture = saved.boardTexture;
+    if (["small", "tiny"].includes(saved?.handCards)) displayPreferences.handCards = saved.handCards;
+    if (typeof saved?.deckOptions === "boolean") displayPreferences.deckOptions = saved.deckOptions;
+    if (Number.isInteger(saved?.fontStep) && saved.fontStep >= -4 && saved.fontStep <= 4)
+      displayPreferences.fontStep = saved.fontStep;
+  } catch {
+  }
+  try {
+    cursorsVisible = localStorage.getItem("goa2:remote-pointers-visible") !== "hidden";
+    soundsEnabled = localStorage.getItem("goa2.sound.muted") !== "1";
+    const saved = localStorage.getItem("goa2.sound.volume"), value = Number(saved);
+    if (saved !== null && Number.isFinite(value)) soundVolume = Math.round(Math.max(0, Math.min(150, value * 100)));
+  } catch {
+  }
+  function boardTextureEnabled() {
+    return displayPreferences.boardTexture;
+  }
+  function handCardSize() {
+    return displayPreferences.handCards;
+  }
+  function fontScale(step) {
+    return step < 0 ? 0.95 ** -step : 1.1 ** step;
+  }
+  function applyDisplayPreferences() {
+    root.toggleAttribute("data-m2-hide-deck-options", !displayPreferences.deckOptions);
+    root.dataset.m2HandCards = displayPreferences.handCards;
+    root.toggleAttribute("data-m2-no-card-art", !displayPreferences.cardArt);
+    if (appliedFontStep === displayPreferences.fontStep) return;
+    appliedFontStep = displayPreferences.fontStep;
+    const factor = fontScale(appliedFontStep);
+    const typography = appliedFontStep === 0 ? styles_default : styles_default.replace(
+      /\b(font(?:-size)?|line-height)\s*:\s*([^;{}]+)/g,
+      (declaration) => declaration.replace(
+        /(\d+(?:\.\d+)?)px/g,
+        (_, value) => Number((Number(value) * factor).toFixed(4)) + "px"
+      )
+    );
+    style.textContent = inactiveCss + typography.replaceAll("&", "html[data-m2-active]");
+  }
+  function saveDisplayPreferences() {
+    try {
+      localStorage.setItem(displayPreferencesKey, JSON.stringify(displayPreferences));
+    } catch {
     }
-    refresh();
+    applyDisplayPreferences();
+    updateSettings();
   }
-  on(close, "click", dismiss);
-  var deckMounted = false;
-  var menuHistoryToken = Date.now() + "-" + Math.random();
-  var menuHistoryActive = false;
-  var menuHistoryClosing = false;
-  var navigating = false;
-  var menuSelection = () => uiState.deckOpen ? "deck" : uiState.panel || uiState.mode;
-  function openDecisionDialog() {
-    return q(c("picker") + "," + c("pickerUpgrade") + ',[data-m2="report-dialog"],[data-m2="fix-dialog"]');
+  var settingHelpText = {
+    "deck-options": "Show the Deck view controls above the bottom menu. You can also choose the Deck view and sort order here. Saved on this device.",
+    texture: "Show smaller shaded hexes and light borders at spawn points. On by default. Changes apply immediately and are saved on this device.",
+    art: "Use card illustrations behind card text. On by default. Changes apply immediately and are saved on this device.",
+    font: "Center is the original size (100%). Each step below center multiplies it by 0.95; each step above multiplies it by 1.10. Default resets the size. Changes apply immediately and are saved on this device.",
+    cursors: "Show other players’ pointers on the board. Changes here take effect after Apply & reload.",
+    sounds: "Enable the game’s sound effects. Changes take effect after Apply & reload.",
+    volume: "Adjust game sound from 0% to 150%; 100% is the default. Choosing a volume above zero also enables Sounds. Changes take effect after Apply & reload.",
+    fullscreen: "Expand the game to fill the screen. Available only when your browser supports fullscreen. Changes apply immediately."
+  };
+  var fullscreenPending = false;
+  function fullscreenAvailable() {
+    return !!document.fullscreenElement || !!document.fullscreenEnabled && typeof root.requestFullscreen === "function";
   }
-  function openCardView() {
-    const tip = q('[data-m2="tip"]');
-    return !!uiState.selectedHeroCard || !!heroPanel.firstChild || uiState.mode === "hand" && !!detailsPanel.firstChild || !!tip && tip !== uiState.dismissedTip;
-  }
-  function dismissViews() {
-    const selected = q('[data-m2="hand-list"] ' + c("row") + c("selected"));
-    const tip = q('[data-m2="tip"]');
-    const card = selected && renderedCard(selected) || tip && componentProp(tip, "card");
-    if (card) uiState.hiddenCardKey = JSON.stringify(card);
-    clearHeroCard();
-    detailsPanel.replaceChildren();
-    delete detailsPanel.dataset.key;
-    const dialog = openDecisionDialog();
-    const closeDialog = dialog && (q(c("peekBtn") + "," + c("closeBtn") + ',button[aria-label="Close"]', dialog) || Array.from(dialog.querySelectorAll("button")).find((button) => /^(Board|Close|Cancel|×|✕|X)$/i.test(button.textContent.trim())));
-    if (closeDialog && !closeDialog.disabled) closeDialog.click();
-    if (tip) {
-      uiState.dismissedTip = tip;
-      tip.setAttribute("data-m2-dismissed", "");
-    }
-  }
-  function syncMenuHistory() {
-    if (navigating || menuHistoryClosing || uiState.dead) return;
-    const open = root.hasAttribute("data-m2-active") && (menuSelection() !== "board" || openCardView() || !!openDecisionDialog());
-    if (open && !menuHistoryActive) {
-      try {
-        window.history.pushState({ ...window.history.state, goa2Mobile2DMenu: menuHistoryToken }, "", window.location.href);
-        menuHistoryActive = true;
-      } catch {
-      }
-    } else if (!open && menuHistoryActive) {
-      menuHistoryActive = false;
-      if (window.history.state?.goa2Mobile2DMenu === menuHistoryToken) {
-        menuHistoryClosing = true;
-        window.history.back();
+  async function toggleFullscreen() {
+    if (uiState.dead || !root.hasAttribute("data-m2-active") || fullscreenPending || !fullscreenAvailable()) return;
+    fullscreenPending = true;
+    updateSettings();
+    boardRotation?.sync();
+    try {
+      if (document.fullscreenElement) await document.exitFullscreen();
+      else await root.requestFullscreen();
+    } catch {
+    } finally {
+      fullscreenPending = false;
+      if (!uiState.dead) {
+        updateSettings();
+        boardRotation?.sync();
+        schedule();
       }
     }
   }
-  on(window, "popstate", () => {
-    if (menuHistoryClosing) {
-      menuHistoryClosing = false;
-      syncMenuHistory();
-      return;
+  function closeSettingHelp() {
+    for (const button of settingsPanel.querySelectorAll("[data-setting-info]")) {
+      button.setAttribute("aria-expanded", "false");
+      document.getElementById(button.getAttribute("aria-controls")).hidden = true;
     }
-    if (!menuHistoryActive) return;
-    menuHistoryActive = false;
-    navigating = true;
-    dismissViews();
-    navigating = false;
-    const selected = menuSelection();
-    if (selected !== "board") navigate(selected);
-    else refresh();
-  });
-  function clearMenuHistory() {
-    if (menuHistoryActive && window.history.state?.goa2Mobile2DMenu === menuHistoryToken)
-      window.history.back();
-    menuHistoryActive = false;
   }
-  function setDeckOpen(open) {
-    uiState.deckOpen = open;
-    deckMounted = false;
-    if (open) retryBasicArtwork();
-    root.toggleAttribute("data-m2-deck-open", open);
+  function settingLabel(label, key, textLabel) {
+    const heading = document.createElement("div"), info = document.createElement("button"), description = document.createElement("p");
+    heading.className = "m2-setting-label";
+    textLabel.textContent = label;
+    textLabel.title = settingHelpText[key];
+    info.type = "button";
+    info.className = "m2-setting-info";
+    info.dataset.settingInfo = key;
+    info.innerHTML = '<span aria-hidden="true">i</span>';
+    info.title = settingHelpText[key];
+    info.setAttribute("aria-label", "About " + label);
+    info.setAttribute("aria-expanded", "false");
+    info.setAttribute("aria-controls", description.id = "m2-setting-help-" + key);
+    description.className = "m2-setting-help";
+    description.textContent = settingHelpText[key];
+    description.hidden = true;
+    on(info, "click", () => {
+      const opening = description.hidden;
+      closeSettingHelp();
+      description.hidden = !opening;
+      info.setAttribute("aria-expanded", String(opening));
+    });
+    heading.append(textLabel, info);
+    return { heading, description };
   }
-  function syncDeckMount(nativeDeck) {
-    if (uiState.deckOpen && nativeDeck) deckMounted = true;
-    else if (uiState.deckOpen && deckMounted) setDeckOpen(false);
-  }
-  function navigate(key) {
-    if (!key) return;
-    navigating = true;
-    const selected = uiState.deckOpen ? "deck" : uiState.panel || uiState.mode;
-    const closing = selected === key;
-    if (uiState.deckOpen) q('[data-m2="deck"] ' + c("closeBtn"))?.click();
-    setDeckOpen(false);
-    uiState.panel = "";
-    uiState.focusedHeroId = null;
-    uiState.mode = "board";
-    clearHeroCard();
-    dismiss();
-    if (!closing) {
-      if (key === "deck") {
-        setDeckOpen(true);
-        if (!q('[data-m2="deck"]'))
-          q('[data-m2="hero"]:not([data-m2-other]) ' + c("viewDeckBtn"))?.click();
-      } else if (key === "setup" || key === "tools" || key === "log") uiState.panel = key;
-      else if (key === "hand" || key === "heroes") uiState.mode = key;
-    }
-    navigating = false;
-    refresh();
-  }
-  function navigationShortcut(content, key, label) {
+  function settingSwitch(label, key, action) {
+    const box = document.createElement("div");
+    box.className = "m2-setting-with-help";
+    const { heading, description } = settingLabel(label, key, document.createElement("span"));
     const button = document.createElement("button");
     button.type = "button";
-    content.classList.add("m2-navigation-shortcut");
-    button.className = "m2-shortcut-border";
-    button.title = label;
+    button.className = "m2-setting-switch";
+    button.dataset.setting = key;
+    button.setAttribute("role", "switch");
     button.setAttribute("aria-label", label);
-    content.append(button);
-    content.onclick = (event) => {
-      event.stopPropagation();
-      navigate(key);
-    };
-    return content;
+    button.setAttribute("aria-describedby", description.id);
+    button.innerHTML = '<i aria-hidden="true"></i>';
+    on(button, "click", action);
+    box.append(heading, button, description);
+    return box;
   }
-  var setupWasChoosing = false;
-  function syncNavigation() {
-    const setup = q('[aria-label="Starting position"]');
-    const setupAvailable = !!setup;
-    const suppliedChoosing = componentProp(setup, "choosing");
-    const choosing = typeof suppliedChoosing === "boolean" ? suppliedChoosing : !!setup && /^Done/i.test(q(":scope > button", setup)?.textContent.trim() || "");
-    if (uiState.panel === "setup" && setupWasChoosing && !choosing) {
-      uiState.panel = "";
-      root.dataset.m2Panel = "";
-    }
-    setupWasChoosing = choosing;
-    nav.style.gridTemplateColumns = "repeat(5,minmax(0,1fr))";
-    if (!setupAvailable && uiState.panel === "setup") {
-      uiState.panel = "";
-      root.dataset.m2Panel = "";
-    }
-    const selected = uiState.deckOpen ? "deck" : uiState.panel || uiState.mode;
-    for (const button of nav.children) {
-      const pressed = String(button.dataset.mode === selected);
-      if (button.getAttribute("aria-pressed") !== pressed)
-        button.setAttribute("aria-pressed", pressed);
-    }
-    syncMenuHistory();
+  function settingSlider(label, key, min, max, value, action) {
+    const box = document.createElement("div");
+    box.className = "m2-setting-range";
+    const heading = document.createElement("label"), output = document.createElement("output"), input = document.createElement("input");
+    heading.htmlFor = input.id = "m2-setting-" + key;
+    const help = settingLabel(label, key, heading);
+    input.setAttribute("aria-describedby", help.description.id);
+    output.setAttribute("for", input.id);
+    input.type = "range";
+    input.min = min;
+    input.max = max;
+    input.step = key === "volume" ? 5 : 1;
+    input.value = value;
+    input.dataset.setting = key;
+    on(input, "input", () => action(Number(input.value)));
+    box.append(help.heading, output, input, help.description);
+    return box;
   }
-  on(nav, "click", (e) => navigate(e.target.closest("button")?.dataset.mode));
-  on(document, "pointerdown", (e) => {
-    if (e.target.closest?.('[data-m2="sidebar"] ' + c("row"))) {
-      clearHeroCard();
-      uiState.dismissedTip?.removeAttribute("data-m2-dismissed");
-      uiState.dismissedTip = null;
-      uiState.hiddenCardKey = "";
-      uiState.panel = "";
+  function markGameSettingsDirty() {
+    gameSettingsDirty = true;
+    updateSettings();
+  }
+  function saveGameSettings() {
+    try {
+      localStorage.setItem("goa2:remote-pointers-visible", cursorsVisible ? "shown" : "hidden");
+      localStorage.setItem("goa2.sound.muted", soundsEnabled ? "0" : "1");
+      localStorage.setItem("goa2.sound.volume", String(soundVolume / 100));
+      return true;
+    } catch {
+      q(".m2-settings-note", settingsPanel).textContent = "These game settings could not be saved on this device.";
+      return false;
+    }
+  }
+  function buildSettings() {
+    settingsPanel.innerHTML = '<h2>Settings</h2><section class="m2-settings-appearance"><h3>Appearance</h3></section><section class="m2-settings-game"><h3>Game</h3></section><section class="m2-settings-tools"><h3>Tools</h3><div class="m2-settings-actions"></div></section>';
+    const appearance = q(".m2-settings-appearance", settingsPanel), game = q(".m2-settings-game", settingsPanel);
+    appearance.append(settingSwitch("Card artwork", "art", () => {
+      displayPreferences.cardArt = !displayPreferences.cardArt;
+      saveDisplayPreferences();
+    }), settingSwitch("Board texture", "texture", () => {
+      displayPreferences.boardTexture = !displayPreferences.boardTexture;
+      saveDisplayPreferences();
+      schedule();
+    }), settingSlider("Font size", "font", -4, 4, displayPreferences.fontStep, (value) => {
+      displayPreferences.fontStep = value;
+      saveDisplayPreferences();
+    }));
+    const handSize = document.createElement("label");
+    handSize.className = "m2-hand-size-setting";
+    handSize.textContent = "Hand cards";
+    const sizeSelect = document.createElement("select");
+    sizeSelect.dataset.setting = "hand-cards";
+    sizeSelect.setAttribute("aria-label", "Hand card size");
+    sizeSelect.innerHTML = '<option value="small">Small</option><option value="tiny">Tiny</option>';
+    on(sizeSelect, "change", () => {
+      displayPreferences.handCards = sizeSelect.value === "tiny" ? "tiny" : "small";
+      saveDisplayPreferences();
+      schedule();
+    });
+    handSize.append(sizeSelect);
+    appearance.append(handSize);
+    appearance.append(settingSwitch("Deck options bar", "deck-options", () => {
+      displayPreferences.deckOptions = !displayPreferences.deckOptions;
+      saveDisplayPreferences();
+      schedule();
+    }));
+    for (const [key, label, options] of [
+      ["deck-view", "Deck view", [["tree", "Tree"], ["compact", "List"], ["grid", "Grid"]]],
+      ["deck-sort", "Deck sort", [["tier", "Tier"], ["color", "Color"]]]
+    ]) {
+      const row = document.createElement("label"), select = document.createElement("select");
+      row.className = "m2-hand-size-setting";
+      row.textContent = label;
+      select.dataset.setting = key;
+      select.setAttribute("aria-label", label);
+      for (const [value, text] of options) {
+        const option = document.createElement("option");
+        option.value = value;
+        option.textContent = text;
+        select.append(option);
+      }
+      on(select, "change", () => {
+        if (key === "deck-view") selectDeckOption(select.value);
+        else if (select.value !== uiState.deckSort) selectDeckOption("sort");
+        updateSettings();
+      });
+      row.append(select);
+      appearance.append(row);
+    }
+    const scale = q(".m2-setting-range", appearance), labels = document.createElement("div");
+    labels.className = "m2-font-range-labels";
+    labels.innerHTML = '<span>Smaller</span><button type="button">Default</button><span>Larger</span>';
+    on(q("button", labels), "click", () => {
+      displayPreferences.fontStep = 0;
+      saveDisplayPreferences();
+    });
+    scale.append(labels);
+    game.append(settingSwitch("Player cursors", "cursors", () => {
+      cursorsVisible = !cursorsVisible;
+      markGameSettingsDirty();
+    }), settingSwitch("Sounds", "sounds", () => {
+      soundsEnabled = !soundsEnabled;
+      markGameSettingsDirty();
+    }), settingSlider("Sound volume", "volume", 0, 150, soundVolume, (value) => {
+      soundVolume = value;
+      if (value > 0) soundsEnabled = true;
+      markGameSettingsDirty();
+    }));
+    const apply = document.createElement("button");
+    apply.type = "button";
+    apply.className = "m2-settings-apply";
+    apply.textContent = "Apply & reload";
+    on(apply, "click", () => {
+      if (saveGameSettings()) location.reload();
+    });
+    const note = document.createElement("small");
+    note.className = "m2-settings-note";
+    note.textContent = "Sound and cursor changes apply after reload.";
+    game.append(note, apply);
+    const fullscreen = settingSwitch("Fullscreen", "fullscreen", toggleFullscreen);
+    game.append(fullscreen);
+    on(settingsPanel, "keydown", (event) => {
+      if (event.key === "Escape") closeSettingHelp();
+    });
+  }
+  var toolSources = [];
+  function updateSettings() {
+    applyDisplayPreferences();
+    root.toggleAttribute("data-m2-hide-cursors", !cursorsVisible);
+    if (!settingsPanel.firstChild) buildSettings();
+    q('[data-setting="hand-cards"]', settingsPanel).value = displayPreferences.handCards;
+    q('[data-setting="deck-options"]', settingsPanel).setAttribute("aria-checked", String(displayPreferences.deckOptions));
+    q('[data-setting="deck-view"]', settingsPanel).value = uiState.deckView;
+    q('[data-setting="deck-sort"]', settingsPanel).value = uiState.deckSort;
+    for (const [key, value] of [
+      ["art", displayPreferences.cardArt],
+      ["texture", displayPreferences.boardTexture],
+      ["cursors", cursorsVisible],
+      ["sounds", soundsEnabled],
+      ["fullscreen", !!document.fullscreenElement]
+    ])
+      q('[data-setting="' + key + '"]', settingsPanel).setAttribute("aria-checked", String(value));
+    for (const [key, value, percent] of [
+      ["font", displayPreferences.fontStep, Math.round(fontScale(displayPreferences.fontStep) * 100)],
+      ["volume", soundVolume, soundVolume]
+    ]) {
+      const input = q('[data-setting="' + key + '"]', settingsPanel);
+      if (Number(input.value) !== value) input.value = value;
+      input.setAttribute("aria-valuetext", percent + "%");
+      q("output", input.parentElement).textContent = percent + "%";
+    }
+    q(".m2-settings-apply", settingsPanel).hidden = !gameSettingsDirty;
+    const fullscreen = q('[data-setting="fullscreen"]', settingsPanel);
+    fullscreen.parentElement.hidden = fullscreen.hidden = !fullscreenAvailable();
+    fullscreen.disabled = fullscreenPending;
+    const sources2 = Array.from(q('[data-m2="tools"]')?.querySelectorAll("button") || []).filter((button) => !isGeneratedNode(button));
+    const actions = q(".m2-settings-actions", settingsPanel);
+    if (sources2.length !== toolSources.length || sources2.some((source, i) => source !== toolSources[i])) {
+      toolSources = sources2;
+      actions.replaceChildren();
+      for (const source of sources2) {
+        const proxy = document.createElement("button");
+        proxy.type = "button";
+        on(proxy, "click", () => {
+          if (!source.isConnected || source.disabled) return;
+          navigate("tools");
+          source.click();
+        });
+        actions.append(proxy);
+      }
+    }
+    sources2.forEach((source, i) => {
+      const proxy = actions.children[i];
+      if (proxy.textContent !== source.textContent) proxy.textContent = source.textContent;
+      proxy.disabled = source.disabled;
+      proxy.title = source.title;
+    });
+    q(".m2-settings-tools", settingsPanel).hidden = sources2.length === 0;
+  }
+  on(document, "fullscreenchange", () => {
+    if (!uiState.dead) {
+      updateSettings();
+      boardRotation?.sync();
       schedule();
     }
   });
-  on(
-    document,
-    "click",
-    (e) => {
-      if (!root.hasAttribute("data-m2-active")) return;
-      if (uiState.deckOpen && e.target.closest?.('[data-m2="deck"] ' + c("closeBtn"))) {
-        setDeckOpen(false);
-        uiState.mode = "board";
-        schedule();
-      }
-      if (e.target.closest?.('[data-m2="hand-list"] ' + c("row"))) clearHeroCard();
-    },
-    { capture: true }
-  );
-  on(document, "keydown", (e) => {
-    if (e.key === "Escape") {
-      uiState.focusedHeroId = null;
-      uiState.panel = "";
-      clearHeroCard();
-      dismiss();
-      return;
-    }
-  });
-
-  // src/cards.js
-  var cardColors = {
-    RED: "#de6262",
-    BLUE: "#67b1ef",
-    GREEN: "#6abd7d",
-    GOLD: "#e9c956",
-    SILVER: "#c4c8ce",
-    PURPLE: "#b799de"
-  };
-  var actionNames = {
-    SKILL: "Skill",
-    DEFENSE_SKILL: "Skill / Defense",
-    ATTACK: "Attack",
-    DEFENSE: "Defense",
-    MOVEMENT: "Movement",
-    HOLD: "Hold",
-    FAST_TRAVEL: "Fast travel",
-    CLEAR: "Clear"
-  };
-  function cardSymbol(key, value) {
-    const el = document.createElement("span");
-    el.className = "m2-symbol" + (key === "DEFENSE_SKILL" ? " m2-defense-skill" : "");
-    el.title = actionNames[key] || key.toLowerCase();
-    const img = document.createElement("img");
-    img.src = "/icons/" + key.toLowerCase().replaceAll("_", "-") + ".png";
-    img.alt = el.title;
-    el.append(img);
-    if (value !== void 0 && value !== null) {
-      const number = document.createElement("span");
-      number.className = "m2-symbol-value";
-      number.textContent = String(value);
-      el.append(number);
-    }
-    return el;
-  }
-  function cardSymbolPlaceholder() {
-    const slot = document.createElement("span");
-    slot.className = "m2-symbol m2-symbol-placeholder";
-    slot.setAttribute("aria-hidden", "true");
-    return slot;
-  }
-  function goldSymbol(value) {
-    const el = document.createElement("span");
-    el.className = "m2-gold";
-    el.title = "Gold";
-    el.setAttribute("aria-label", "Gold " + value);
-    el.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="9" r="6"/><path d="M14.5 8.5a6 6 0 1 1-6 6M9 6v6"/></svg>';
-    const number = document.createElement("span");
-    number.className = "m2-gold-value";
-    number.textContent = String(value);
-    el.append(number);
-    return el;
-  }
-  function itemUpgradeSymbols(items = {}, className = "") {
-    const group = document.createElement("span");
-    group.className = "m2-item-upgrades " + className;
-    group.setAttribute("aria-label", "Item upgrades");
-    for (const stat of ["ATTACK", "DEFENSE", "INITIATIVE"]) {
-      const value = Number(items?.[stat]) || 0;
-      const icon = cardSymbol(stat, value > 0 ? "+" + value : void 0);
-      icon.dataset.stat = stat;
-      icon.classList.toggle("m2-upgrade-empty", value <= 0);
-      icon.title = stat.toLowerCase() + (value > 0 ? " +" + value : ": no upgrade");
-      group.append(icon);
-    }
-    const rest = document.createElement("span");
-    rest.className = "m2-upgrade-rest";
-    for (const stat of ["MOVEMENT", "RANGE", "RADIUS"]) {
-      const value = Number(items?.[stat] ?? (stat === "RADIUS" ? items?.AREA : 0)) || 0;
-      const icon = cardSymbol(stat);
-      icon.dataset.stat = stat;
-      icon.classList.toggle("m2-upgrade-empty", value <= 0);
-      icon.title = stat.toLowerCase() + (value > 0 ? " +1" : ": no upgrade");
-      rest.append(icon);
-    }
-    group.append(rest);
-    return group;
-  }
-  function ultimateIndicator(hero, dot = false) {
-    const unlocked = Number(hero?.level) >= 8;
-    const marker = document.createElement("span");
-    marker.className = "m2-ultimate-indicator " + (dot ? "m2-ultimate-dot" : "m2-nano-card");
-    marker.classList.toggle("m2-ultimate-unlocked", unlocked);
-    marker.title = unlocked ? "Ultimate unlocked" : "Ultimate unlocks at level 8";
-    marker.setAttribute("aria-label", marker.title);
-    marker.style.setProperty("--effect-color", cardColors.PURPLE);
-    if (!dot) marker.textContent = "U";
-    return marker;
-  }
-  function cardTierLines(card) {
-    if (card?.is_facedown) return 1;
-    return { II: 2, III: 3, 2: 2, 3: 3 }[String(card?.tier ?? "").toUpperCase()] || 1;
-  }
-  function setMicroColor(element, card) {
-    const color = cardColors[String(card?.color || "").toUpperCase()] || "#858c98";
-    element.style.setProperty("--card-color", color);
-    element.style.setProperty("--m2-card-fill", color + "55");
-    element.style.setProperty("--m2-card-muted", color + "22");
-    element.dataset.tierLines = String(cardTierLines(card));
-  }
-  function signedCardValue(value, sign) {
-    if (sign === "EXCLAMATION") return "!";
-    if (sign === "PLUS" && value != null && !String(value).endsWith("+")) return String(value) + "+";
-    return value;
-  }
-  function primaryCardValue(card) {
-    const value = signedCardValue(card.primary_action_value, printedPrimarySigns[card.id]);
-    if (["DEFENSE", "DEFENSE_SKILL"].includes(card.primary_action) && (value == null || String(value) === "0" || String(value) === "!")) return "!";
-    return value != null && String(value) !== "0" ? value : void 0;
-  }
-  function modifierCardValue(card, key) {
-    const value = key === "RADIUS" ? card.radius_value : card.range_value;
-    const modifier = card.radius_value != null ? "RADIUS" : "RANGE";
-    return signedCardValue(value, key === modifier ? printedModifierSigns[card.id] : void 0);
-  }
-  function miniatureCard(card, items = {}, includeDefense = false) {
-    const mini = document.createElement("span");
-    mini.className = "m2-mini-current " + (includeDefense ? "m2-micro-hero" : "m2-micro-board");
-    mini.title = !card ? "No current card" : card.is_facedown ? "Current card (hidden)" : card.name;
-    mini.setAttribute("aria-label", mini.title);
-    setMicroColor(mini, card);
-    if (!card || card.is_facedown) {
-      mini.classList.add("m2-micro-hidden");
-      mini.textContent = card ? "?" : "—";
-      return mini;
-    }
-    const primary = card.primary_action ? upgradedSymbol(items, card.primary_action, primaryCardValue(card)) : document.createElement("span");
-    const range = relevantStat(card, "RANGE", modifierCardValue(card, "RANGE")) ? upgradedSymbol(items, "RANGE", modifierCardValue(card, "RANGE")) : relevantStat(card, "RADIUS", modifierCardValue(card, "RADIUS")) ? upgradedSymbol(items, "RADIUS", modifierCardValue(card, "RADIUS")) : document.createElement("span");
-    mini.append(primary, range);
-    for (const stat of includeDefense ? ["MOVEMENT", "DEFENSE"] : ["MOVEMENT"]) {
-      const value = card.secondary_actions?.[stat];
-      mini.append(stat !== card.primary_action && relevantStat(card, stat, value) ? upgradedSymbol(items, stat, value) : document.createElement("span"));
-    }
-    return mini;
-  }
-  function cardGrantedItem(card, cards = []) {
-    if (!Array.isArray(cards)) return null;
-    const tier = String(card?.tier).toUpperCase();
-    if (card?.is_facedown || !["II", "III", "2", "3"].includes(tier)) return null;
-    const pair = cards.filter((candidate) => String(candidate.color).toUpperCase() === String(card.color).toUpperCase() && String(candidate.tier).toUpperCase() === tier);
-    const same = (candidate) => candidate === card || card.id != null && candidate.id === card.id;
-    if (pair.length !== 2 || !pair.some(same)) return null;
-    const alternative = pair.find((candidate) => !same(candidate));
-    return alternative && !alternative.is_facedown ? alternative.item || null : null;
-  }
-  function extendedMicroCard(card, grantedItem, items = {}, includeGrant = null) {
-    if (card && (card.color === "PURPLE" || card.tier === "IV")) {
-      const mini = miniatureCard(card);
-      mini.classList.add("m2-micro-ultimate");
-      if (!card.is_facedown) {
-        const marker = document.createElement("b");
-        marker.className = "m2-micro-ultimate-label";
-        marker.textContent = "U";
-        mini.replaceChildren(document.createElement("span"), marker, document.createElement("span"));
-      }
-      return mini;
-    }
-    const extended = document.createElement("span");
-    extended.className = "m2-micro-extended";
-    const grantSlot = includeGrant ?? (!card?.is_facedown && /^(II|III|2|3)$/.test(String(card?.tier || "").toUpperCase()) && !["GOLD", "SILVER"].includes(card?.color));
-    extended.classList.toggle("m2-micro-no-grant", !grantSlot);
-    const visible = card && !card.is_facedown;
-    extended.title = visible ? card.name : "Hidden card";
-    const initiative = document.createElement("span");
-    initiative.className = "m2-micro-cap";
-    if (visible && card.initiative != null)
-      initiative.append(upgradedSymbol(items, "INITIATIVE", card.initiative));
-    const upgrade = document.createElement("span");
-    upgrade.className = "m2-micro-cap m2-micro-grant";
-    if (visible && grantedItem) {
-      const stat = grantedItem === "AREA" ? "RADIUS" : grantedItem;
-      upgrade.append(cardSymbol(stat, "+"));
-      upgrade.title = "Gives " + stat.toLowerCase() + " +1";
-      upgrade.setAttribute("aria-label", upgrade.title);
-    }
-    const micro = miniatureCard(card, items, true);
-    micro.classList.add("m2-micro-tree");
-    extended.append(initiative, micro);
-    if (grantSlot) extended.append(upgrade);
-    return extended;
-  }
-  function nanoCard(card, items = {}) {
-    const nano = document.createElement("span");
-    nano.className = "m2-nano-card";
-    setMicroColor(nano, card);
-    nano.title = card?.is_facedown ? "Hidden card" : card?.name || "Discard";
-    if (card?.is_facedown) nano.textContent = "?";
-    else {
-      const primary = ["DEFENSE", "DEFENSE_SKILL"].includes(card?.primary_action);
-      const value = primary ? primaryCardValue(card) : card?.secondary_actions?.DEFENSE;
-      if (primary || relevantStat(card || {}, "DEFENSE", value))
-        nano.append(upgradedSymbol(items, primary ? card.primary_action : "DEFENSE", value));
-    }
-    return nano;
-  }
-  var inlineRuleIcons = {
-    life_counter: "/icons/life_counters.png",
-    ...Object.fromEntries([
-      "smoke_bomb",
-      "grenade",
-      "blast",
-      "dud",
-      "zombie",
-      "ice",
-      "totem",
-      "barrier",
-      "tree",
-      "glitch",
-      "illusion",
-      "magma",
-      "rock",
-      "familiar"
-    ].map((name) => [name + "_token", "/icons/token_" + name + ".png"])),
-    ...Object.fromEntries(["poison", "bounty"].map((name) => [name + "_marker", "/icons/marker_" + name + ".png"])),
-    ...Object.fromEntries(["axe", "bird", "anvil", "horn"].flatMap((name) => [
-      ["rune_" + name, "/icons/rune_" + name + ".png"],
-      ["rune_" + name + "_marker", "/cards/sheets/rune_" + name + "_marker.png"]
-    ]))
-  };
-  function appendRulesText(effect, text, symbol) {
-    for (const part of String(text || "").split(/(:[a-z_]+:)/g)) {
-      const key = /^:([a-z_]+):$/.exec(part)?.[1];
-      if (key && /^(attack|defense|movement|range|radius|initiative)$/.test(key))
-        effect.append(symbol(key.toUpperCase()));
-      else if (inlineRuleIcons[key]) {
-        const img = document.createElement("img");
-        img.className = "m2-rule-icon";
-        img.src = inlineRuleIcons[key];
-        img.alt = key.replaceAll("_", " ");
-        img.title = img.alt;
-        effect.append(img);
-      } else effect.append(document.createTextNode(part));
-    }
-  }
-  function relevantStat(card, key, value) {
-    if (value == null) return false;
-    if (String(value).endsWith("+")) return true;
-    if (Number(value) > 0) return true;
-    if (Number(value) !== 0) return false;
-    const word = key.toLowerCase();
-    return new RegExp("(?:" + word + "[^.\\n]{0,16}\\b0\\b|\\b0\\s+" + word + ")", "i").test(
-      card.effect_text || ""
-    );
-  }
-  function cardHero(card, source) {
-    const direct = source && componentProp(source, "hero");
-    if (direct?.id || direct?.items) return direct;
-    for (const box of document.querySelectorAll('[data-m2="hero"]')) {
-      const hero = componentProp(box, "hero");
-      if (!hero) continue;
-      const cards = [
-        hero.current_turn_card,
-        hero.extra_turn_card,
-        hero.ultimate_card,
-        ...["hand", "played_cards", "discard_pile", "deck", "cast_spells"].flatMap(
-          (key) => Array.isArray(hero[key]) ? hero[key] : []
-        )
-      ];
-      if (cards.some(
-        (candidate) => candidate && (candidate === card || card.id && candidate.id === card.id)
-      ))
-        return hero;
-    }
-    return null;
-  }
-  function cardUpgrades(card, source) {
-    return cardHero(card, source)?.items || {};
-  }
-  function appendCardArtwork(box, card, source, heroId) {
-    if (card.is_facedown || !card.image_id) return;
-    const id = heroId || cardHero(card, source)?.id;
-    if (typeof id !== "string") return;
-    const slug = id.toLowerCase().replace(/^hero_/, "");
-    const imageId = String(card.image_id);
-    if (!/^[a-z0-9_-]+$/.test(slug) || !/^[a-zA-Z0-9_-]+$/.test(imageId)) return;
-    const art = document.createElement("div");
-    art.className = "m2-card-art";
-    art.setAttribute("aria-hidden", "true");
-    const image = document.createElement("img");
-    image.alt = "";
-    image.decoding = "async";
-    image.loading = "lazy";
-    image.onload = () => {
-      if (!uiState.dead) box.classList.add("m2-has-art");
-    };
-    image.onerror = () => {
-      box.classList.remove("m2-has-art");
-      art.remove();
-    };
-    const url = "/cards/backgrounds/" + slug + "/" + imageId + ".webp";
-    image.src = url;
-    art.append(image);
-    box.append(art);
-  }
-  function upgradeValue(key, value, items) {
-    const stat = key === "DEFENSE_SKILL" ? "DEFENSE" : key;
-    const bonus = items[stat] ?? (stat === "RADIUS" ? items.AREA : 0);
-    if (typeof bonus !== "number" || !Number.isFinite(bonus) || !bonus || value == null)
-      return null;
-    const match = String(value).match(/^(\d+)(\+?)$/);
-    if (!match) return null;
-    return String(Number(match[1]) + bonus) + match[2];
-  }
-  function upgradedSymbol(items, key, value) {
-    const modified = upgradeValue(key, value, items);
-    const symbol = cardSymbol(key, modified === null ? value : void 0);
-    if (modified !== null) {
-      const number = document.createElement("span");
-      number.className = "m2-symbol-value m2-upgraded-value";
-      number.textContent = modified;
-      number.title = "Base " + value + "; upgrade " + (Number.parseFloat(modified) - Number.parseFloat(value));
-      symbol.append(number);
-    }
-    return symbol;
-  }
-  function syncHandActions(foot, card, tip, items) {
-    const sec = card.secondary_actions || {};
-    const original = tip ? Array.from(tip.querySelectorAll("button")).filter((b) => !b.closest(".m2-text-card")) : [];
-    const key = JSON.stringify([
-      items,
-      sec,
-      card.effect_text,
-      original.map((source) => [source.textContent, source.disabled])
-    ]);
-    if (foot._actionKey === key && foot._actionSources?.length === original.length && foot._actionSources.every((source, i) => source === original[i])) return;
-    foot._actionKey = key;
-    foot._actionSources = original;
-    const dismissButton = q(".m2-card-dismiss", foot);
-    foot.replaceChildren();
-    if (original.length) {
-      for (const src of original) {
-        const b = document.createElement("button");
-        b.type = "button";
-        b.textContent = src.textContent;
-        b.disabled = src.disabled;
-        const key2 = Object.keys(actionNames).find(
-          (k) => b.textContent.toLowerCase().includes(actionNames[k].toLowerCase())
-        );
-        b.dataset.action = key2 || "";
-        if (key2) {
-          const raw = b.textContent.match(/\d+\+?/);
-          const value = raw && upgradeValue(key2, raw[0], items);
-          if (value !== null && value !== false) {
-            if (raw) {
-              const parts = b.textContent.split(raw[0]);
-              b.textContent = parts[0];
-              const num = document.createElement("span");
-              num.className = "m2-upgraded-value";
-              num.textContent = value;
-              b.append(num, document.createTextNode(parts.slice(1).join(raw[0])));
-            }
-          }
-        }
-        on(b, "click", (e) => {
-          e.stopPropagation();
-          if (src.isConnected && !src.disabled) src.click();
-        });
-        foot.append(b);
-      }
-    } else
-      for (const [key2, value] of Object.entries(sec)) {
-        if (["MOVEMENT", "DEFENSE", "ATTACK"].includes(key2) && !relevantStat(card, key2, value))
-          continue;
-        const badge = document.createElement("span");
-        badge.className = "m2-action";
-        badge.dataset.action = key2;
-        badge.textContent = (actionNames[key2] || key2) + (!["HOLD", "CLEAR", "FAST_TRAVEL"].includes(key2) ? " " + value : "");
-        const changed = upgradeValue(key2, value, items);
-        if (changed !== null && ["MOVEMENT", "DEFENSE", "ATTACK"].includes(key2)) {
-          badge.textContent = (actionNames[key2] || key2) + " ";
-          const num = document.createElement("span");
-          num.className = "m2-upgraded-value";
-          num.textContent = changed;
-          badge.append(num);
-        }
-        foot.append(badge);
-      }
-    if (dismissButton) foot.append(dismissButton);
-  }
-  function textCard(card, context, tip, heroId, grantedItem) {
-    const items = context === "deck" ? {} : cardUpgrades(card);
-    const symbol = (key, value) => upgradedSymbol(items, key, value);
-    const ultimate = card.tier === "IV" || card.color === "PURPLE";
-    const box = document.createElement("article");
-    box.className = "m2-text-card";
-    appendCardArtwork(box, card, tip, heroId);
-    box.style.setProperty("--card-color", cardColors[card.color] || "#bfc7d2");
-    const top = document.createElement("header");
-    top.className = "m2-card-top";
-    const name = document.createElement("b");
-    name.textContent = card.name;
-    const tier = document.createElement("span");
-    tier.textContent = ["I", "II", "III", "IV"].includes(card.tier) ? card.tier : "";
-    top.append(
-      ultimate ? cardSymbolPlaceholder() : symbol("INITIATIVE", card.initiative),
-      name,
-      tier
-    );
-    const body = document.createElement("div");
-    body.className = "m2-card-body";
-    const side = document.createElement("aside");
-    const sec = card.secondary_actions || {};
-    for (const key of ["MOVEMENT", "DEFENSE", "ATTACK"])
-      if (key !== card.primary_action && relevantStat(card, key, sec[key]))
-        side.append(symbol(key, sec[key]));
-    const main = document.createElement("div"), head = document.createElement("div");
-    head.className = "m2-card-type";
-    const basic = ["GOLD", "SILVER"].includes(card.color) && ["ATTACK", "SKILL"].includes(card.primary_action);
-    let label = (basic ? "Basic " : "") + (actionNames[card.primary_action] || card.primary_action || "");
-    if (["SKILL", "DEFENSE_SKILL", "ATTACK"].includes(card.primary_action) && (card.is_ranged || relevantStat(card, "RANGE", modifierCardValue(card, "RANGE"))))
-      label += " • Ranged";
-    if (ultimate) label = "Ultimate";
-    const primary = symbol(
-      card.primary_action || "SKILL",
-      primaryCardValue(card)
-    );
-    const title = document.createElement("b");
-    title.textContent = label;
-    head.append(ultimate ? document.createElement("span") : primary, title);
-    if (relevantStat(card, "RANGE", modifierCardValue(card, "RANGE")))
-      head.append(symbol("RANGE", modifierCardValue(card, "RANGE")));
-    else if (relevantStat(card, "RADIUS", modifierCardValue(card, "RADIUS")))
-      head.append(symbol("RADIUS", modifierCardValue(card, "RADIUS")));
-    const effect = document.createElement("div");
-    effect.className = "m2-card-effect";
-    appendRulesText(effect, card.effect_text, symbol);
-    main.append(head, effect);
-    body.append(side, main);
-    const foot = document.createElement("footer");
-    foot.className = "m2-card-foot";
-    if (context === "deck" || context === "hero") {
-      foot.append(card.item ? symbol(card.item === "AREA" ? "RADIUS" : card.item) : cardSymbolPlaceholder());
-      if (grantedItem === void 0)
-        grantedItem = cardGrantedItem(card, cardHero(card, tip)?.deck || []);
-      if (grantedItem && !card.is_facedown) {
-        foot.classList.add("m2-upgrade-footer");
-        const gain = document.createElement("span");
-        gain.className = "m2-upgrade-gain";
-        gain.append(
-          document.createTextNode("Gives "),
-          cardSymbol(grantedItem === "AREA" ? "RADIUS" : grantedItem, "+")
-        );
-        foot.append(gain);
-        foot.title = "Choosing this gains " + grantedItem.toLowerCase() + " +1";
-        foot.setAttribute("aria-label", foot.title);
-      }
-    } else syncHandActions(foot, card, tip, items);
-    box.append(top, body, foot);
-    if (context === "hand") {
-      const x = document.createElement("button");
-      x.type = "button";
-      x.className = "m2-card-dismiss";
-      x.textContent = "×";
-      x.setAttribute("aria-label", "Hide card details");
-      on(x, "click", (e) => {
-        e.stopPropagation();
-        uiState.hiddenCardKey = JSON.stringify(card);
-        dismiss();
-        detailsPanel.replaceChildren();
-      });
-      foot.append(x);
-      foot.classList.add("m2-has-dismiss");
-    }
-    return box;
-  }
 
   // src/card-rows.js
   function updateCardRow(row, card, knownItems) {
@@ -7665,6 +7532,23 @@ html:not([data-m2-active]) .m2-choice-launchers {
     uiState.deckState.modal.removeAttribute("data-m2-deck-ready");
     uiState.deckState = null;
   }
+  function ownDeckSpells(hero) {
+    const own = q('[data-m2="sidebar"] [data-m2="hero"]:not([data-m2-other])');
+    if (!hero || componentProp(own, "hero")?.id !== hero.id || !Array.isArray(hero.spellbook)) return null;
+    return { prepared: knownSpells(hero.spellbook, true), cast: knownSpells(hero.cast_spells) };
+  }
+  function appendDeckSpells(host, spells, inspect) {
+    if (!spells) return;
+    const groups = /* @__PURE__ */ new Map();
+    for (const card of [...spells.prepared].sort((a, b) => (a.spell_rank || 0) - (b.spell_rank || 0))) {
+      const label = "Spellbook · " + (Number(card.spell_rank || 0) === 0 ? "Cantrips" : spellRankLabel(card));
+      if (!groups.has(label)) groups.set(label, []);
+      groups.get(label).push(card);
+    }
+    for (const [label, cards] of groups)
+      appendSpellGroup(host, label, cards, inspect, uiState.deckView === "grid");
+    appendSpellGroup(host, "Cast spells (" + spells.cast.length + ")", spells.cast, inspect, uiState.deckView === "grid");
+  }
   function deckUpdate(upgradeRequest) {
     const modal = q('[data-m2="deck"]');
     if (!modal || !root.hasAttribute("data-m2-active")) {
@@ -7705,6 +7589,8 @@ html:not([data-m2-active]) .m2-choice-launchers {
     }
     const state2 = uiState.deckState;
     const hero = componentProp(modal, "hero");
+    const spells = ownDeckSpells(hero);
+    const spellCards = spells ? [...spells.prepared, ...spells.cast] : [];
     const ownerKey = JSON.stringify([location.pathname, hero?.id || hero?.name || entries.map((e) => deckCardIdentity(e.card))]);
     if (state2.ownerKey !== ownerKey) state2.selectedCard = null;
     state2.ownerKey = ownerKey;
@@ -7716,6 +7602,7 @@ html:not([data-m2-active]) .m2-choice-launchers {
       uiState.deckSort,
       entries.map((e) => e.card),
       ownerKey,
+      spells,
       uiState.deckView === "tree" ? [
         hero?.level,
         hero?.items,
@@ -7811,7 +7698,8 @@ html:not([data-m2-active]) .m2-choice-launchers {
     state2.host.append(listHost);
     if (uiState.deckView === "tree") {
       renderDeckTree(listHost, entries, hero, selectPreview);
-      const selected = entries.find((e) => state2.selectedCard && deckCardIdentity(e.card) === deckCardIdentity(state2.selectedCard));
+      appendDeckSpells(listHost, spells, selectPreview);
+      const selected = [...entries, ...spellCards.map((card) => ({ card }))].find((e) => state2.selectedCard && deckCardIdentity(e.card) === deckCardIdentity(state2.selectedCard));
       selectPreview(selected?.card || null);
       deckPaint();
       return;
@@ -7862,8 +7750,9 @@ html:not([data-m2-active]) .m2-choice-launchers {
         group.append(b);
       }
     }
+    appendDeckSpells(listHost, spells, selectPreview);
     if (preview) {
-      const selected = entries.find((e) => state2.selectedCard && (e.card.id ? e.card.id === state2.selectedCard.id : e.card.name === state2.selectedCard.name));
+      const selected = [...entries, ...spellCards.map((card) => ({ card }))].find((e) => state2.selectedCard && (e.card.id ? e.card.id === state2.selectedCard.id : e.card.name === state2.selectedCard.name));
       selectPreview(selected?.card || null);
     }
     deckPaint();
@@ -7921,324 +7810,839 @@ html:not([data-m2-active]) .m2-choice-launchers {
     }
   }
 
-  // src/settings.js
-  var displayPreferencesKey = "goa2-mobile-display";
-  var displayPreferences = { cardArt: true, boardTexture: true, fontStep: 0, handCards: "small", deckOptions: true }, cursorsVisible = true, soundsEnabled = true, soundVolume = 100, gameSettingsDirty = false, appliedFontStep = 0;
-  try {
-    const saved = JSON.parse(localStorage.getItem(displayPreferencesKey) || "{}");
-    if (typeof saved?.cardArt === "boolean") displayPreferences.cardArt = saved.cardArt;
-    if (typeof saved?.boardTexture === "boolean") displayPreferences.boardTexture = saved.boardTexture;
-    if (["small", "tiny"].includes(saved?.handCards)) displayPreferences.handCards = saved.handCards;
-    if (typeof saved?.deckOptions === "boolean") displayPreferences.deckOptions = saved.deckOptions;
-    if (Number.isInteger(saved?.fontStep) && saved.fontStep >= -4 && saved.fontStep <= 4)
-      displayPreferences.fontStep = saved.fontStep;
-  } catch {
-  }
-  try {
-    cursorsVisible = localStorage.getItem("goa2:remote-pointers-visible") !== "hidden";
-    soundsEnabled = localStorage.getItem("goa2.sound.muted") !== "1";
-    const saved = localStorage.getItem("goa2.sound.volume"), value = Number(saved);
-    if (saved !== null && Number.isFinite(value)) soundVolume = Math.round(Math.max(0, Math.min(150, value * 100)));
-  } catch {
-  }
-  function boardTextureEnabled() {
-    return displayPreferences.boardTexture;
-  }
-  function handCardSize() {
-    return displayPreferences.handCards;
-  }
-  function fontScale(step) {
-    return step < 0 ? 0.95 ** -step : 1.1 ** step;
-  }
-  function applyDisplayPreferences() {
-    root.toggleAttribute("data-m2-hide-deck-options", !displayPreferences.deckOptions);
-    root.dataset.m2HandCards = displayPreferences.handCards;
-    root.toggleAttribute("data-m2-no-card-art", !displayPreferences.cardArt);
-    if (appliedFontStep === displayPreferences.fontStep) return;
-    appliedFontStep = displayPreferences.fontStep;
-    const factor = fontScale(appliedFontStep);
-    const typography = appliedFontStep === 0 ? styles_default : styles_default.replace(
-      /\b(font(?:-size)?|line-height)\s*:\s*([^;{}]+)/g,
-      (declaration) => declaration.replace(
-        /(\d+(?:\.\d+)?)px/g,
-        (_, value) => Number((Number(value) * factor).toFixed(4)) + "px"
-      )
-    );
-    style.textContent = inactiveCss + typography.replaceAll("&", "html[data-m2-active]");
-  }
-  function saveDisplayPreferences() {
-    try {
-      localStorage.setItem(displayPreferencesKey, JSON.stringify(displayPreferences));
-    } catch {
+  // src/navigation.js
+  function dismiss() {
+    const tip = q('[data-m2="tip"]');
+    if (tip) {
+      uiState.dismissedTip = tip;
+      tip.setAttribute("data-m2-dismissed", "");
     }
-    applyDisplayPreferences();
-    updateSettings();
+    refresh();
   }
-  var settingHelpText = {
-    "deck-options": "Show the Deck view controls above the bottom menu. You can also choose the Deck view and sort order here. Saved on this device.",
-    texture: "Show smaller shaded hexes and light borders at spawn points. On by default. Changes apply immediately and are saved on this device.",
-    art: "Use card illustrations behind card text. On by default. Changes apply immediately and are saved on this device.",
-    font: "Center is the original size (100%). Each step below center multiplies it by 0.95; each step above multiplies it by 1.10. Default resets the size. Changes apply immediately and are saved on this device.",
-    cursors: "Show other players’ pointers on the board. Changes here take effect after Apply & reload.",
-    sounds: "Enable the game’s sound effects. Changes take effect after Apply & reload.",
-    volume: "Adjust game sound from 0% to 150%; 100% is the default. Choosing a volume above zero also enables Sounds. Changes take effect after Apply & reload.",
-    fullscreen: "Expand the game to fill the screen. Available only when your browser supports fullscreen. Changes apply immediately."
-  };
-  var fullscreenPending = false;
-  function fullscreenAvailable() {
-    return !!document.fullscreenElement || !!document.fullscreenEnabled && typeof root.requestFullscreen === "function";
+  on(close, "click", dismiss);
+  var deckMounted = false;
+  var menuHistoryToken = Date.now() + "-" + Math.random();
+  var menuHistoryActive = false;
+  var menuHistoryClosing = false;
+  var navigating = false;
+  var menuSelection = () => uiState.deckOpen ? "deck" : uiState.panel || uiState.mode;
+  function openDecisionDialog() {
+    return q(c("picker") + "," + c("pickerUpgrade") + ',[data-m2="report-dialog"],[data-m2="fix-dialog"]');
   }
-  async function toggleFullscreen() {
-    if (uiState.dead || !root.hasAttribute("data-m2-active") || fullscreenPending || !fullscreenAvailable()) return;
-    fullscreenPending = true;
-    updateSettings();
-    boardRotation?.sync();
-    try {
-      if (document.fullscreenElement) await document.exitFullscreen();
-      else await root.requestFullscreen();
-    } catch {
-    } finally {
-      fullscreenPending = false;
-      if (!uiState.dead) {
-        updateSettings();
-        boardRotation?.sync();
-        schedule();
+  function openCardView() {
+    const tip = q('[data-m2="tip"]');
+    return !!uiState.selectedHeroCard || !!heroPanel.firstChild || uiState.mode === "hand" && !!detailsPanel.firstChild || !!tip && tip !== uiState.dismissedTip;
+  }
+  function dismissViews() {
+    const selected = q('[data-m2="hand-list"] ' + c("row") + c("selected"));
+    const tip = q('[data-m2="tip"]');
+    const card = selected && renderedCard(selected) || tip && componentProp(tip, "card");
+    if (card) uiState.hiddenCardKey = JSON.stringify(card);
+    clearHeroCard();
+    detailsPanel.replaceChildren();
+    delete detailsPanel.dataset.key;
+    const dialog = openDecisionDialog();
+    const closeDialog = dialog && (q(c("peekBtn") + "," + c("closeBtn") + ',button[aria-label="Close"]', dialog) || Array.from(dialog.querySelectorAll("button")).find((button) => /^(Board|Close|Cancel|×|✕|X)$/i.test(button.textContent.trim())));
+    if (closeDialog && !closeDialog.disabled) closeDialog.click();
+    if (tip) {
+      uiState.dismissedTip = tip;
+      tip.setAttribute("data-m2-dismissed", "");
+    }
+  }
+  function syncMenuHistory() {
+    if (navigating || menuHistoryClosing || uiState.dead) return;
+    const open = root.hasAttribute("data-m2-active") && (menuSelection() !== "board" || openCardView() || !!openDecisionDialog());
+    if (open && !menuHistoryActive) {
+      try {
+        window.history.pushState({ ...window.history.state, goa2Mobile2DMenu: menuHistoryToken }, "", window.location.href);
+        menuHistoryActive = true;
+      } catch {
+      }
+    } else if (!open && menuHistoryActive) {
+      menuHistoryActive = false;
+      if (window.history.state?.goa2Mobile2DMenu === menuHistoryToken) {
+        menuHistoryClosing = true;
+        window.history.back();
       }
     }
   }
-  function closeSettingHelp() {
-    for (const button of settingsPanel.querySelectorAll("[data-setting-info]")) {
-      button.setAttribute("aria-expanded", "false");
-      document.getElementById(button.getAttribute("aria-controls")).hidden = true;
+  on(window, "popstate", () => {
+    if (menuHistoryClosing) {
+      menuHistoryClosing = false;
+      syncMenuHistory();
+      return;
     }
+    if (!menuHistoryActive) return;
+    menuHistoryActive = false;
+    navigating = true;
+    dismissViews();
+    navigating = false;
+    const selected = menuSelection();
+    if (selected !== "board") navigate(selected);
+    else refresh();
+  });
+  function clearMenuHistory() {
+    if (menuHistoryActive && window.history.state?.goa2Mobile2DMenu === menuHistoryToken)
+      window.history.back();
+    menuHistoryActive = false;
   }
-  function settingLabel(label, key, textLabel) {
-    const heading = document.createElement("div"), info = document.createElement("button"), description = document.createElement("p");
-    heading.className = "m2-setting-label";
-    textLabel.textContent = label;
-    textLabel.title = settingHelpText[key];
-    info.type = "button";
-    info.className = "m2-setting-info";
-    info.dataset.settingInfo = key;
-    info.innerHTML = '<span aria-hidden="true">i</span>';
-    info.title = settingHelpText[key];
-    info.setAttribute("aria-label", "About " + label);
-    info.setAttribute("aria-expanded", "false");
-    info.setAttribute("aria-controls", description.id = "m2-setting-help-" + key);
-    description.className = "m2-setting-help";
-    description.textContent = settingHelpText[key];
-    description.hidden = true;
-    on(info, "click", () => {
-      const opening = description.hidden;
-      closeSettingHelp();
-      description.hidden = !opening;
-      info.setAttribute("aria-expanded", String(opening));
-    });
-    heading.append(textLabel, info);
-    return { heading, description };
+  function setDeckOpen(open) {
+    uiState.deckOpen = open;
+    deckMounted = false;
+    if (open) retryBasicArtwork();
+    root.toggleAttribute("data-m2-deck-open", open);
   }
-  function settingSwitch(label, key, action) {
-    const box = document.createElement("div");
-    box.className = "m2-setting-with-help";
-    const { heading, description } = settingLabel(label, key, document.createElement("span"));
+  function syncDeckMount(nativeDeck) {
+    if (uiState.deckOpen && nativeDeck) deckMounted = true;
+    else if (uiState.deckOpen && deckMounted) setDeckOpen(false);
+  }
+  function navigate(key) {
+    if (!key) return;
+    navigating = true;
+    const selected = uiState.deckOpen ? "deck" : uiState.panel || uiState.mode;
+    const closing = selected === key;
+    if (uiState.deckOpen) q('[data-m2="deck"] ' + c("closeBtn"))?.click();
+    setDeckOpen(false);
+    uiState.panel = "";
+    uiState.focusedHeroId = null;
+    uiState.mode = "board";
+    clearHeroCard();
+    dismiss();
+    if (!closing) {
+      if (key === "deck") {
+        setDeckOpen(true);
+        if (!q('[data-m2="deck"]'))
+          q('[data-m2="hero"]:not([data-m2-other]) ' + c("viewDeckBtn"))?.click();
+      } else if (key === "setup" || key === "tools" || key === "log") uiState.panel = key;
+      else if (key === "hand" || key === "heroes") uiState.mode = key;
+    }
+    navigating = false;
+    refresh();
+  }
+  function navigationShortcut(content, key, label) {
     const button = document.createElement("button");
     button.type = "button";
-    button.className = "m2-setting-switch";
-    button.dataset.setting = key;
-    button.setAttribute("role", "switch");
+    content.classList.add("m2-navigation-shortcut");
+    button.className = "m2-shortcut-border";
+    button.title = label;
     button.setAttribute("aria-label", label);
-    button.setAttribute("aria-describedby", description.id);
-    button.innerHTML = '<i aria-hidden="true"></i>';
-    on(button, "click", action);
-    box.append(heading, button, description);
-    return box;
+    content.append(button);
+    content.onclick = (event) => {
+      event.stopPropagation();
+      navigate(key);
+    };
+    return content;
   }
-  function settingSlider(label, key, min, max, value, action) {
-    const box = document.createElement("div");
-    box.className = "m2-setting-range";
-    const heading = document.createElement("label"), output = document.createElement("output"), input = document.createElement("input");
-    heading.htmlFor = input.id = "m2-setting-" + key;
-    const help = settingLabel(label, key, heading);
-    input.setAttribute("aria-describedby", help.description.id);
-    output.setAttribute("for", input.id);
-    input.type = "range";
-    input.min = min;
-    input.max = max;
-    input.step = key === "volume" ? 5 : 1;
-    input.value = value;
-    input.dataset.setting = key;
-    on(input, "input", () => action(Number(input.value)));
-    box.append(help.heading, output, input, help.description);
-    return box;
-  }
-  function markGameSettingsDirty() {
-    gameSettingsDirty = true;
-    updateSettings();
-  }
-  function saveGameSettings() {
-    try {
-      localStorage.setItem("goa2:remote-pointers-visible", cursorsVisible ? "shown" : "hidden");
-      localStorage.setItem("goa2.sound.muted", soundsEnabled ? "0" : "1");
-      localStorage.setItem("goa2.sound.volume", String(soundVolume / 100));
-      return true;
-    } catch {
-      q(".m2-settings-note", settingsPanel).textContent = "These game settings could not be saved on this device.";
-      return false;
+  var setupWasChoosing = false;
+  function syncNavigation() {
+    const setup = q('[aria-label="Starting position"]');
+    const setupAvailable = !!setup;
+    const suppliedChoosing = componentProp(setup, "choosing");
+    const choosing = typeof suppliedChoosing === "boolean" ? suppliedChoosing : !!setup && /^Done/i.test(q(":scope > button", setup)?.textContent.trim() || "");
+    if (uiState.panel === "setup" && setupWasChoosing && !choosing) {
+      uiState.panel = "";
+      root.dataset.m2Panel = "";
     }
-  }
-  function buildSettings() {
-    settingsPanel.innerHTML = '<h2>Settings</h2><section class="m2-settings-appearance"><h3>Appearance</h3></section><section class="m2-settings-game"><h3>Game</h3></section><section class="m2-settings-tools"><h3>Tools</h3><div class="m2-settings-actions"></div></section>';
-    const appearance = q(".m2-settings-appearance", settingsPanel), game = q(".m2-settings-game", settingsPanel);
-    appearance.append(settingSwitch("Card artwork", "art", () => {
-      displayPreferences.cardArt = !displayPreferences.cardArt;
-      saveDisplayPreferences();
-    }), settingSwitch("Board texture", "texture", () => {
-      displayPreferences.boardTexture = !displayPreferences.boardTexture;
-      saveDisplayPreferences();
-      schedule();
-    }), settingSlider("Font size", "font", -4, 4, displayPreferences.fontStep, (value) => {
-      displayPreferences.fontStep = value;
-      saveDisplayPreferences();
-    }));
-    const handSize = document.createElement("label");
-    handSize.className = "m2-hand-size-setting";
-    handSize.textContent = "Hand cards";
-    const sizeSelect = document.createElement("select");
-    sizeSelect.dataset.setting = "hand-cards";
-    sizeSelect.setAttribute("aria-label", "Hand card size");
-    sizeSelect.innerHTML = '<option value="small">Small</option><option value="tiny">Tiny</option>';
-    on(sizeSelect, "change", () => {
-      displayPreferences.handCards = sizeSelect.value === "tiny" ? "tiny" : "small";
-      saveDisplayPreferences();
-      schedule();
-    });
-    handSize.append(sizeSelect);
-    appearance.append(handSize);
-    appearance.append(settingSwitch("Deck options bar", "deck-options", () => {
-      displayPreferences.deckOptions = !displayPreferences.deckOptions;
-      saveDisplayPreferences();
-      schedule();
-    }));
-    for (const [key, label, options] of [
-      ["deck-view", "Deck view", [["tree", "Tree"], ["compact", "List"], ["grid", "Grid"]]],
-      ["deck-sort", "Deck sort", [["tier", "Tier"], ["color", "Color"]]]
-    ]) {
-      const row = document.createElement("label"), select = document.createElement("select");
-      row.className = "m2-hand-size-setting";
-      row.textContent = label;
-      select.dataset.setting = key;
-      select.setAttribute("aria-label", label);
-      for (const [value, text] of options) {
-        const option = document.createElement("option");
-        option.value = value;
-        option.textContent = text;
-        select.append(option);
-      }
-      on(select, "change", () => {
-        if (key === "deck-view") selectDeckOption(select.value);
-        else if (select.value !== uiState.deckSort) selectDeckOption("sort");
-        updateSettings();
-      });
-      row.append(select);
-      appearance.append(row);
+    setupWasChoosing = choosing;
+    nav.style.gridTemplateColumns = "repeat(5,minmax(0,1fr))";
+    if (!setupAvailable && uiState.panel === "setup") {
+      uiState.panel = "";
+      root.dataset.m2Panel = "";
     }
-    const scale = q(".m2-setting-range", appearance), labels = document.createElement("div");
-    labels.className = "m2-font-range-labels";
-    labels.innerHTML = '<span>Smaller</span><button type="button">Default</button><span>Larger</span>';
-    on(q("button", labels), "click", () => {
-      displayPreferences.fontStep = 0;
-      saveDisplayPreferences();
-    });
-    scale.append(labels);
-    game.append(settingSwitch("Player cursors", "cursors", () => {
-      cursorsVisible = !cursorsVisible;
-      markGameSettingsDirty();
-    }), settingSwitch("Sounds", "sounds", () => {
-      soundsEnabled = !soundsEnabled;
-      markGameSettingsDirty();
-    }), settingSlider("Sound volume", "volume", 0, 150, soundVolume, (value) => {
-      soundVolume = value;
-      if (value > 0) soundsEnabled = true;
-      markGameSettingsDirty();
-    }));
-    const apply = document.createElement("button");
-    apply.type = "button";
-    apply.className = "m2-settings-apply";
-    apply.textContent = "Apply & reload";
-    on(apply, "click", () => {
-      if (saveGameSettings()) location.reload();
-    });
-    const note = document.createElement("small");
-    note.className = "m2-settings-note";
-    note.textContent = "Sound and cursor changes apply after reload.";
-    game.append(note, apply);
-    const fullscreen = settingSwitch("Fullscreen", "fullscreen", toggleFullscreen);
-    game.append(fullscreen);
-    on(settingsPanel, "keydown", (event) => {
-      if (event.key === "Escape") closeSettingHelp();
-    });
-  }
-  var toolSources = [];
-  function updateSettings() {
-    applyDisplayPreferences();
-    root.toggleAttribute("data-m2-hide-cursors", !cursorsVisible);
-    if (!settingsPanel.firstChild) buildSettings();
-    q('[data-setting="hand-cards"]', settingsPanel).value = displayPreferences.handCards;
-    q('[data-setting="deck-options"]', settingsPanel).setAttribute("aria-checked", String(displayPreferences.deckOptions));
-    q('[data-setting="deck-view"]', settingsPanel).value = uiState.deckView;
-    q('[data-setting="deck-sort"]', settingsPanel).value = uiState.deckSort;
-    for (const [key, value] of [
-      ["art", displayPreferences.cardArt],
-      ["texture", displayPreferences.boardTexture],
-      ["cursors", cursorsVisible],
-      ["sounds", soundsEnabled],
-      ["fullscreen", !!document.fullscreenElement]
-    ])
-      q('[data-setting="' + key + '"]', settingsPanel).setAttribute("aria-checked", String(value));
-    for (const [key, value, percent] of [
-      ["font", displayPreferences.fontStep, Math.round(fontScale(displayPreferences.fontStep) * 100)],
-      ["volume", soundVolume, soundVolume]
-    ]) {
-      const input = q('[data-setting="' + key + '"]', settingsPanel);
-      if (Number(input.value) !== value) input.value = value;
-      input.setAttribute("aria-valuetext", percent + "%");
-      q("output", input.parentElement).textContent = percent + "%";
+    const selected = uiState.deckOpen ? "deck" : uiState.panel || uiState.mode;
+    for (const button of nav.children) {
+      const pressed = String(button.dataset.mode === selected);
+      if (button.getAttribute("aria-pressed") !== pressed)
+        button.setAttribute("aria-pressed", pressed);
     }
-    q(".m2-settings-apply", settingsPanel).hidden = !gameSettingsDirty;
-    const fullscreen = q('[data-setting="fullscreen"]', settingsPanel);
-    fullscreen.parentElement.hidden = fullscreen.hidden = !fullscreenAvailable();
-    fullscreen.disabled = fullscreenPending;
-    const sources2 = Array.from(q('[data-m2="tools"]')?.querySelectorAll("button") || []).filter((button) => !isGeneratedNode(button));
-    const actions = q(".m2-settings-actions", settingsPanel);
-    if (sources2.length !== toolSources.length || sources2.some((source, i) => source !== toolSources[i])) {
-      toolSources = sources2;
-      actions.replaceChildren();
-      for (const source of sources2) {
-        const proxy = document.createElement("button");
-        proxy.type = "button";
-        on(proxy, "click", () => {
-          if (!source.isConnected || source.disabled) return;
-          navigate("tools");
-          source.click();
-        });
-        actions.append(proxy);
-      }
-    }
-    sources2.forEach((source, i) => {
-      const proxy = actions.children[i];
-      if (proxy.textContent !== source.textContent) proxy.textContent = source.textContent;
-      proxy.disabled = source.disabled;
-      proxy.title = source.title;
-    });
-    q(".m2-settings-tools", settingsPanel).hidden = sources2.length === 0;
+    syncMenuHistory();
   }
-  on(document, "fullscreenchange", () => {
-    if (!uiState.dead) {
-      updateSettings();
-      boardRotation?.sync();
+  on(nav, "click", (e) => navigate(e.target.closest("button")?.dataset.mode));
+  on(document, "pointerdown", (e) => {
+    if (e.target.closest?.('[data-m2="sidebar"] ' + c("row"))) {
+      clearHeroCard();
+      uiState.dismissedTip?.removeAttribute("data-m2-dismissed");
+      uiState.dismissedTip = null;
+      uiState.hiddenCardKey = "";
+      uiState.panel = "";
       schedule();
     }
   });
+  on(
+    document,
+    "click",
+    (e) => {
+      if (!root.hasAttribute("data-m2-active")) return;
+      if (uiState.deckOpen && e.target.closest?.('[data-m2="deck"] ' + c("closeBtn"))) {
+        setDeckOpen(false);
+        uiState.mode = "board";
+        schedule();
+      }
+      if (e.target.closest?.('[data-m2="hand-list"] ' + c("row"))) clearHeroCard();
+    },
+    { capture: true }
+  );
+  on(document, "keydown", (e) => {
+    if (e.key === "Escape") {
+      uiState.focusedHeroId = null;
+      uiState.panel = "";
+      clearHeroCard();
+      dismiss();
+      return;
+    }
+  });
+
+  // src/cards.js
+  var cardColors = {
+    RED: "#de6262",
+    BLUE: "#67b1ef",
+    GREEN: "#6abd7d",
+    GOLD: "#e9c956",
+    SILVER: "#c4c8ce",
+    PURPLE: "#b799de"
+  };
+  var actionNames = {
+    SKILL: "Skill",
+    DEFENSE_SKILL: "Skill / Defense",
+    ATTACK: "Attack",
+    DEFENSE: "Defense",
+    MOVEMENT: "Movement",
+    HOLD: "Hold",
+    FAST_TRAVEL: "Fast travel",
+    CLEAR: "Clear"
+  };
+  function cardSymbol(key, value) {
+    const el = document.createElement("span");
+    el.className = "m2-symbol" + (key === "DEFENSE_SKILL" ? " m2-defense-skill" : "");
+    el.title = actionNames[key] || key.toLowerCase();
+    const img = document.createElement("img");
+    img.src = "/icons/" + key.toLowerCase().replaceAll("_", "-") + ".png";
+    img.alt = el.title;
+    el.append(img);
+    if (value !== void 0 && value !== null) {
+      const number = document.createElement("span");
+      number.className = "m2-symbol-value";
+      number.textContent = String(value);
+      el.append(number);
+    }
+    return el;
+  }
+  function cardSymbolPlaceholder() {
+    const slot = document.createElement("span");
+    slot.className = "m2-symbol m2-symbol-placeholder";
+    slot.setAttribute("aria-hidden", "true");
+    return slot;
+  }
+  function goldSymbol(value) {
+    const el = document.createElement("span");
+    el.className = "m2-gold";
+    el.title = "Gold";
+    el.setAttribute("aria-label", "Gold " + value);
+    el.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="9" r="6"/><path d="M14.5 8.5a6 6 0 1 1-6 6M9 6v6"/></svg>';
+    const number = document.createElement("span");
+    number.className = "m2-gold-value";
+    number.textContent = String(value);
+    el.append(number);
+    return el;
+  }
+  function itemUpgradeSymbols(items = {}, className = "") {
+    const group = document.createElement("span");
+    group.className = "m2-item-upgrades " + className;
+    group.setAttribute("aria-label", "Item upgrades");
+    for (const stat of ["ATTACK", "DEFENSE", "INITIATIVE"]) {
+      const value = Number(items?.[stat]) || 0;
+      const icon = cardSymbol(stat, value > 0 ? "+" + value : void 0);
+      icon.dataset.stat = stat;
+      icon.classList.toggle("m2-upgrade-empty", value <= 0);
+      icon.title = stat.toLowerCase() + (value > 0 ? " +" + value : ": no upgrade");
+      group.append(icon);
+    }
+    const rest = document.createElement("span");
+    rest.className = "m2-upgrade-rest";
+    for (const stat of ["MOVEMENT", "RANGE", "RADIUS"]) {
+      const value = Number(items?.[stat] ?? (stat === "RADIUS" ? items?.AREA : 0)) || 0;
+      const icon = cardSymbol(stat);
+      icon.dataset.stat = stat;
+      icon.classList.toggle("m2-upgrade-empty", value <= 0);
+      icon.title = stat.toLowerCase() + (value > 0 ? " +1" : ": no upgrade");
+      rest.append(icon);
+    }
+    group.append(rest);
+    return group;
+  }
+  function ultimateIndicator(hero, dot = false) {
+    const unlocked = Number(hero?.level) >= 8;
+    const marker = document.createElement("span");
+    marker.className = "m2-ultimate-indicator " + (dot ? "m2-ultimate-dot" : "m2-nano-card");
+    marker.classList.toggle("m2-ultimate-unlocked", unlocked);
+    marker.title = unlocked ? "Ultimate unlocked" : "Ultimate unlocks at level 8";
+    marker.setAttribute("aria-label", marker.title);
+    marker.style.setProperty("--effect-color", cardColors.PURPLE);
+    if (!dot) marker.textContent = "U";
+    return marker;
+  }
+  function cardTierLines(card) {
+    if (card?.is_facedown) return 1;
+    return { II: 2, III: 3, 2: 2, 3: 3 }[String(card?.tier ?? "").toUpperCase()] || 1;
+  }
+  function setMicroColor(element, card) {
+    const color = cardColors[String(card?.color || "").toUpperCase()] || "#858c98";
+    element.style.setProperty("--card-color", color);
+    element.style.setProperty("--m2-card-fill", color + "55");
+    element.style.setProperty("--m2-card-muted", color + "22");
+    element.dataset.tierLines = String(cardTierLines(card));
+  }
+  function signedCardValue(value, sign) {
+    if (sign === "EXCLAMATION") return "!";
+    if (sign === "PLUS" && value != null && !String(value).endsWith("+")) return String(value) + "+";
+    return value;
+  }
+  function primaryCardValue(card) {
+    const value = signedCardValue(card.primary_action_value, printedPrimarySigns[card.id]);
+    if (["DEFENSE", "DEFENSE_SKILL"].includes(card.primary_action) && (value == null || String(value) === "0" || String(value) === "!")) return "!";
+    return value != null && String(value) !== "0" ? value : void 0;
+  }
+  function modifierCardValue(card, key) {
+    const value = key === "RADIUS" ? card.radius_value : card.range_value;
+    const modifier = card.radius_value != null ? "RADIUS" : "RANGE";
+    return signedCardValue(value, key === modifier ? printedModifierSigns[card.id] : void 0);
+  }
+  function miniatureCard(card, items = {}, includeDefense = false) {
+    const mini = document.createElement("span");
+    mini.className = "m2-mini-current " + (includeDefense ? "m2-micro-hero" : "m2-micro-board");
+    mini.title = !card ? "No current card" : card.is_facedown ? "Current card (hidden)" : card.name;
+    mini.setAttribute("aria-label", mini.title);
+    setMicroColor(mini, card);
+    if (!card || card.is_facedown) {
+      mini.classList.add("m2-micro-hidden");
+      mini.textContent = card ? "?" : "—";
+      return mini;
+    }
+    const primary = card.primary_action ? upgradedSymbol(items, card.primary_action, primaryCardValue(card)) : document.createElement("span");
+    const range = relevantStat(card, "RANGE", modifierCardValue(card, "RANGE")) ? upgradedSymbol(items, "RANGE", modifierCardValue(card, "RANGE")) : relevantStat(card, "RADIUS", modifierCardValue(card, "RADIUS")) ? upgradedSymbol(items, "RADIUS", modifierCardValue(card, "RADIUS")) : document.createElement("span");
+    mini.append(primary, range);
+    for (const stat of includeDefense ? ["MOVEMENT", "DEFENSE"] : ["MOVEMENT"]) {
+      const value = card.secondary_actions?.[stat];
+      mini.append(stat !== card.primary_action && relevantStat(card, stat, value) ? upgradedSymbol(items, stat, value) : document.createElement("span"));
+    }
+    return mini;
+  }
+  function cardGrantedItem(card, cards = []) {
+    if (!Array.isArray(cards)) return null;
+    const tier = String(card?.tier).toUpperCase();
+    if (card?.is_facedown || !["II", "III", "2", "3"].includes(tier)) return null;
+    const pair = cards.filter((candidate) => String(candidate.color).toUpperCase() === String(card.color).toUpperCase() && String(candidate.tier).toUpperCase() === tier);
+    const same = (candidate) => candidate === card || card.id != null && candidate.id === card.id;
+    if (pair.length !== 2 || !pair.some(same)) return null;
+    const alternative = pair.find((candidate) => !same(candidate));
+    return alternative && !alternative.is_facedown ? alternative.item || null : null;
+  }
+  function extendedMicroCard(card, grantedItem, items = {}, includeGrant = null) {
+    if (card && (card.color === "PURPLE" || card.tier === "IV")) {
+      const mini = miniatureCard(card);
+      mini.classList.add("m2-micro-ultimate");
+      if (!card.is_facedown) {
+        const marker = document.createElement("b");
+        marker.className = "m2-micro-ultimate-label";
+        marker.textContent = "U";
+        mini.replaceChildren(document.createElement("span"), marker, document.createElement("span"));
+      }
+      return mini;
+    }
+    const extended = document.createElement("span");
+    extended.className = "m2-micro-extended";
+    const grantSlot = includeGrant ?? (!card?.is_facedown && /^(II|III|2|3)$/.test(String(card?.tier || "").toUpperCase()) && !["GOLD", "SILVER"].includes(card?.color));
+    extended.classList.toggle("m2-micro-no-grant", !grantSlot);
+    const visible = card && !card.is_facedown;
+    extended.title = visible ? card.name : "Hidden card";
+    const initiative = document.createElement("span");
+    initiative.className = "m2-micro-cap";
+    if (visible && card.initiative != null)
+      initiative.append(upgradedSymbol(items, "INITIATIVE", card.initiative));
+    const upgrade = document.createElement("span");
+    upgrade.className = "m2-micro-cap m2-micro-grant";
+    if (visible && grantedItem) {
+      const stat = grantedItem === "AREA" ? "RADIUS" : grantedItem;
+      upgrade.append(cardSymbol(stat, "+"));
+      upgrade.title = "Gives " + stat.toLowerCase() + " +1";
+      upgrade.setAttribute("aria-label", upgrade.title);
+    }
+    const micro = miniatureCard(card, items, true);
+    micro.classList.add("m2-micro-tree");
+    extended.append(initiative, micro);
+    if (grantSlot) extended.append(upgrade);
+    return extended;
+  }
+  function nanoCard(card, items = {}) {
+    const nano = document.createElement("span");
+    nano.className = "m2-nano-card";
+    setMicroColor(nano, card);
+    nano.title = card?.is_facedown ? "Hidden card" : card?.name || "Discard";
+    if (card?.is_facedown) nano.textContent = "?";
+    else {
+      const primary = ["DEFENSE", "DEFENSE_SKILL"].includes(card?.primary_action);
+      const value = primary ? primaryCardValue(card) : card?.secondary_actions?.DEFENSE;
+      if (primary || relevantStat(card || {}, "DEFENSE", value))
+        nano.append(upgradedSymbol(items, primary ? card.primary_action : "DEFENSE", value));
+    }
+    return nano;
+  }
+  var inlineRuleIcons = {
+    life_counter: "/icons/life_counters.png",
+    ...Object.fromEntries([
+      "smoke_bomb",
+      "grenade",
+      "blast",
+      "dud",
+      "zombie",
+      "ice",
+      "totem",
+      "barrier",
+      "tree",
+      "glitch",
+      "illusion",
+      "magma",
+      "rock",
+      "familiar"
+    ].map((name) => [name + "_token", "/icons/token_" + name + ".png"])),
+    ...Object.fromEntries(["poison", "bounty"].map((name) => [name + "_marker", "/icons/marker_" + name + ".png"])),
+    ...Object.fromEntries(["axe", "bird", "anvil", "horn"].flatMap((name) => [
+      ["rune_" + name, "/icons/rune_" + name + ".png"],
+      ["rune_" + name + "_marker", "/cards/sheets/rune_" + name + "_marker.png"]
+    ]))
+  };
+  function appendRulesText(effect, text, symbol) {
+    for (const part of String(text || "").split(/(:[a-z_]+:)/g)) {
+      const key = /^:([a-z_]+):$/.exec(part)?.[1];
+      if (key && /^(attack|defense|movement|range|radius|initiative)$/.test(key))
+        effect.append(symbol(key.toUpperCase()));
+      else if (inlineRuleIcons[key]) {
+        const img = document.createElement("img");
+        img.className = "m2-rule-icon";
+        img.src = inlineRuleIcons[key];
+        img.alt = key.replaceAll("_", " ");
+        img.title = img.alt;
+        effect.append(img);
+      } else effect.append(document.createTextNode(part));
+    }
+  }
+  function relevantStat(card, key, value) {
+    if (value == null) return false;
+    if (String(value).endsWith("+")) return true;
+    if (Number(value) > 0) return true;
+    if (Number(value) !== 0) return false;
+    const word = key.toLowerCase();
+    return new RegExp("(?:" + word + "[^.\\n]{0,16}\\b0\\b|\\b0\\s+" + word + ")", "i").test(
+      card.effect_text || ""
+    );
+  }
+  function cardHero(card, source) {
+    const direct = source && componentProp(source, "hero");
+    if (direct?.id || direct?.items) return direct;
+    for (const box of document.querySelectorAll('[data-m2="hero"]')) {
+      const hero = componentProp(box, "hero");
+      if (!hero) continue;
+      const cards = [
+        hero.current_turn_card,
+        hero.extra_turn_card,
+        hero.ultimate_card,
+        ...["hand", "played_cards", "discard_pile", "deck", "cast_spells", "spellbook"].flatMap(
+          (key) => Array.isArray(hero[key]) ? hero[key] : []
+        )
+      ];
+      if (cards.some(
+        (candidate) => candidate && (candidate === card || card.id && candidate.id === card.id)
+      ))
+        return hero;
+    }
+    return null;
+  }
+  function cardUpgrades(card, source) {
+    return cardHero(card, source)?.items || {};
+  }
+  function appendCardArtwork(box, card, source, heroId) {
+    if (card.is_facedown || !card.image_id) return;
+    const id = heroId || cardHero(card, source)?.id;
+    if (typeof id !== "string") return;
+    const slug = id.toLowerCase().replace(/^hero_/, "");
+    const imageId = String(card.image_id);
+    if (!/^[a-z0-9_-]+$/.test(slug) || !/^[a-zA-Z0-9_-]+$/.test(imageId)) return;
+    const art = document.createElement("div");
+    art.className = "m2-card-art";
+    art.setAttribute("aria-hidden", "true");
+    const image = document.createElement("img");
+    image.alt = "";
+    image.decoding = "async";
+    image.loading = "lazy";
+    image.onload = () => {
+      if (!uiState.dead) box.classList.add("m2-has-art");
+    };
+    image.onerror = () => {
+      box.classList.remove("m2-has-art");
+      art.remove();
+    };
+    const url = "/cards/backgrounds/" + slug + "/" + imageId + ".webp";
+    image.src = url;
+    art.append(image);
+    box.append(art);
+  }
+  function upgradeValue(key, value, items) {
+    const stat = key === "DEFENSE_SKILL" ? "DEFENSE" : key;
+    const bonus = items[stat] ?? (stat === "RADIUS" ? items.AREA : 0);
+    if (typeof bonus !== "number" || !Number.isFinite(bonus) || !bonus || value == null)
+      return null;
+    const match = String(value).match(/^(\d+)(\+?)$/);
+    if (!match) return null;
+    return String(Number(match[1]) + bonus) + match[2];
+  }
+  function upgradedSymbol(items, key, value) {
+    const modified = upgradeValue(key, value, items);
+    const symbol = cardSymbol(key, modified === null ? value : void 0);
+    if (modified !== null) {
+      const number = document.createElement("span");
+      number.className = "m2-symbol-value m2-upgraded-value";
+      number.textContent = modified;
+      number.title = "Base " + value + "; upgrade " + (Number.parseFloat(modified) - Number.parseFloat(value));
+      symbol.append(number);
+    }
+    return symbol;
+  }
+  function syncHandActions(foot, card, tip, items) {
+    const sec = card.secondary_actions || {};
+    const original = tip ? Array.from(tip.querySelectorAll("button")).filter((b) => !b.closest(".m2-text-card")) : [];
+    const key = JSON.stringify([
+      items,
+      sec,
+      card.effect_text,
+      original.map((source) => [source.textContent, source.disabled])
+    ]);
+    if (foot._actionKey === key && foot._actionSources?.length === original.length && foot._actionSources.every((source, i) => source === original[i])) return;
+    foot._actionKey = key;
+    foot._actionSources = original;
+    const dismissButton = q(".m2-card-dismiss", foot);
+    foot.replaceChildren();
+    if (original.length) {
+      for (const src of original) {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.textContent = src.textContent;
+        b.disabled = src.disabled;
+        const key2 = Object.keys(actionNames).find(
+          (k) => b.textContent.toLowerCase().includes(actionNames[k].toLowerCase())
+        );
+        b.dataset.action = key2 || "";
+        if (key2) {
+          const raw = b.textContent.match(/\d+\+?/);
+          const value = raw && upgradeValue(key2, raw[0], items);
+          if (value !== null && value !== false) {
+            if (raw) {
+              const parts = b.textContent.split(raw[0]);
+              b.textContent = parts[0];
+              const num = document.createElement("span");
+              num.className = "m2-upgraded-value";
+              num.textContent = value;
+              b.append(num, document.createTextNode(parts.slice(1).join(raw[0])));
+            }
+          }
+        }
+        on(b, "click", (e) => {
+          e.stopPropagation();
+          if (src.isConnected && !src.disabled) src.click();
+        });
+        foot.append(b);
+      }
+    } else
+      for (const [key2, value] of Object.entries(sec)) {
+        if (["MOVEMENT", "DEFENSE", "ATTACK"].includes(key2) && !relevantStat(card, key2, value))
+          continue;
+        const badge = document.createElement("span");
+        badge.className = "m2-action";
+        badge.dataset.action = key2;
+        badge.textContent = (actionNames[key2] || key2) + (!["HOLD", "CLEAR", "FAST_TRAVEL"].includes(key2) ? " " + value : "");
+        const changed = upgradeValue(key2, value, items);
+        if (changed !== null && ["MOVEMENT", "DEFENSE", "ATTACK"].includes(key2)) {
+          badge.textContent = (actionNames[key2] || key2) + " ";
+          const num = document.createElement("span");
+          num.className = "m2-upgraded-value";
+          num.textContent = changed;
+          badge.append(num);
+        }
+        foot.append(badge);
+      }
+    if (dismissButton) foot.append(dismissButton);
+  }
+  function textCard(card, context, tip, heroId, grantedItem) {
+    if (isSpellCard(card)) return spellFace(card);
+    const items = context === "deck" ? {} : cardUpgrades(card);
+    const symbol = (key, value) => upgradedSymbol(items, key, value);
+    const ultimate = card.tier === "IV" || card.color === "PURPLE";
+    const box = document.createElement("article");
+    box.className = "m2-text-card";
+    appendCardArtwork(box, card, tip, heroId);
+    box.style.setProperty("--card-color", cardColors[card.color] || "#bfc7d2");
+    const top = document.createElement("header");
+    top.className = "m2-card-top";
+    const name = document.createElement("b");
+    name.textContent = card.name;
+    const tier = document.createElement("span");
+    tier.textContent = ["I", "II", "III", "IV"].includes(card.tier) ? card.tier : "";
+    top.append(
+      ultimate ? cardSymbolPlaceholder() : symbol("INITIATIVE", card.initiative),
+      name,
+      tier
+    );
+    const body = document.createElement("div");
+    body.className = "m2-card-body";
+    const side = document.createElement("aside");
+    const sec = card.secondary_actions || {};
+    for (const key of ["MOVEMENT", "DEFENSE", "ATTACK"])
+      if (key !== card.primary_action && relevantStat(card, key, sec[key]))
+        side.append(symbol(key, sec[key]));
+    const main = document.createElement("div"), head = document.createElement("div");
+    head.className = "m2-card-type";
+    const basic = ["GOLD", "SILVER"].includes(card.color) && ["ATTACK", "SKILL"].includes(card.primary_action);
+    let label = (basic ? "Basic " : "") + (actionNames[card.primary_action] || card.primary_action || "");
+    if (["SKILL", "DEFENSE_SKILL", "ATTACK"].includes(card.primary_action) && (card.is_ranged || relevantStat(card, "RANGE", modifierCardValue(card, "RANGE"))))
+      label += " • Ranged";
+    if (ultimate) label = "Ultimate";
+    const primary = symbol(
+      card.primary_action || "SKILL",
+      primaryCardValue(card)
+    );
+    const title = document.createElement("b");
+    title.textContent = label;
+    head.append(ultimate ? document.createElement("span") : primary, title);
+    if (relevantStat(card, "RANGE", modifierCardValue(card, "RANGE")))
+      head.append(symbol("RANGE", modifierCardValue(card, "RANGE")));
+    else if (relevantStat(card, "RADIUS", modifierCardValue(card, "RADIUS")))
+      head.append(symbol("RADIUS", modifierCardValue(card, "RADIUS")));
+    const effect = document.createElement("div");
+    effect.className = "m2-card-effect";
+    appendRulesText(effect, card.effect_text, symbol);
+    main.append(head, effect);
+    body.append(side, main);
+    const foot = document.createElement("footer");
+    foot.className = "m2-card-foot";
+    if (context === "deck" || context === "hero") {
+      foot.append(card.item ? symbol(card.item === "AREA" ? "RADIUS" : card.item) : cardSymbolPlaceholder());
+      if (grantedItem === void 0)
+        grantedItem = cardGrantedItem(card, cardHero(card, tip)?.deck || []);
+      if (grantedItem && !card.is_facedown) {
+        foot.classList.add("m2-upgrade-footer");
+        const gain = document.createElement("span");
+        gain.className = "m2-upgrade-gain";
+        gain.append(
+          document.createTextNode("Gives "),
+          cardSymbol(grantedItem === "AREA" ? "RADIUS" : grantedItem, "+")
+        );
+        foot.append(gain);
+        foot.title = "Choosing this gains " + grantedItem.toLowerCase() + " +1";
+        foot.setAttribute("aria-label", foot.title);
+      }
+    } else syncHandActions(foot, card, tip, items);
+    box.append(top, body, foot);
+    if (context === "hand") {
+      const x = document.createElement("button");
+      x.type = "button";
+      x.className = "m2-card-dismiss";
+      x.textContent = "×";
+      x.setAttribute("aria-label", "Hide card details");
+      on(x, "click", (e) => {
+        e.stopPropagation();
+        uiState.hiddenCardKey = JSON.stringify(card);
+        dismiss();
+        detailsPanel.replaceChildren();
+      });
+      foot.append(x);
+      foot.classList.add("m2-has-dismiss");
+    }
+    return box;
+  }
+
+  // src/hero-indicators.js
+  function heroIndicators(hero, view) {
+    if (!hero) return [];
+    const indicators = [];
+    if (hero.spellbook != null || /^(?:hero_)?gydion$/i.test(hero.id || hero.name || ""))
+      indicators.push({
+        type: "spells",
+        count: hero.cast_spells?.length || 0,
+        colors: (hero.cast_spells || []).map((spell) => cardColors[spellColorName(spell)] || "#c4c8ce")
+      });
+    for (const [type, marker] of Object.entries(view?.markers || {})) {
+      if (!["bounty", "poison"].includes(type.toLowerCase()) || !marker) continue;
+      const piece = view?.hero_pieces?.[marker.target_id] || Object.values(view?.hero_pieces || {}).find((piece2) => piece2.id === marker.target_id);
+      if (marker.target_id !== hero.id && piece?.owner_hero_id !== hero.id) continue;
+      indicators.push({ type: type.toLowerCase() });
+    }
+    return indicators;
+  }
+  var dicePips = [
+    [],
+    [4],
+    [0, 8],
+    [0, 4, 8],
+    [0, 2, 6, 8],
+    [0, 2, 4, 6, 8],
+    [0, 2, 3, 5, 6, 8],
+    [0, 2, 3, 4, 5, 6, 8],
+    [0, 1, 2, 3, 5, 6, 7, 8],
+    [0, 1, 2, 3, 4, 5, 6, 7, 8]
+  ];
+  function indicatorLabel(indicator) {
+    return indicator.type === "spells" ? "Spells cast: " + indicator.count : indicator.type === "bounty" ? "Bounty" : "Poison";
+  }
+  function renderHeroIndicators(indicators, compact, openSpells) {
+    const host = document.createElement("span");
+    host.className = compact ? "m2-summary-indicators" : "m2-hero-indicators";
+    if (compact && indicators.length > 1) {
+      const count = document.createElement("span");
+      count.className = "m2-indicator-total";
+      count.textContent = String(indicators.length);
+      count.title = indicators.map(indicatorLabel).join(" · ");
+      count.setAttribute("aria-label", count.title);
+      host.append(count);
+      return host;
+    }
+    for (const indicator of indicators) {
+      const spells = indicator.type === "spells";
+      const node = document.createElement(spells ? "button" : "span");
+      node.className = "m2-hero-indicator m2-indicator-" + indicator.type;
+      node.title = indicatorLabel(indicator);
+      node.setAttribute("aria-label", node.title);
+      if (spells) {
+        node.type = "button";
+        node.onclick = (event) => {
+          event.stopPropagation();
+          openSpells();
+        };
+        const img = document.createElement("img");
+        img.src = "/hero-images/gydion.webp";
+        img.alt = "";
+        node.append(img);
+        if (compact || indicator.count === 0 || indicator.count > 9) {
+          const number = document.createElement("b");
+          number.textContent = String(indicator.count);
+          node.append(number);
+        } else {
+          const pips = document.createElement("span");
+          pips.className = "m2-spell-pips";
+          pips.setAttribute("aria-hidden", "true");
+          indicator.colors.forEach((color, index) => {
+            const dot = document.createElement("i");
+            const cell = dicePips[indicator.count][index];
+            dot.style.gridColumn = String(cell % 3 + 1);
+            dot.style.gridRow = String(Math.floor(cell / 3) + 1);
+            dot.style.backgroundColor = color;
+            pips.append(dot);
+          });
+          node.append(pips);
+        }
+      } else node.textContent = compact ? indicator.type[0].toUpperCase() : indicatorLabel(indicator);
+      host.append(node);
+    }
+    return host;
+  }
+
+  // src/clocks.js
+  var heroClocks = /* @__PURE__ */ new Map();
+  var clockFields = {
+    PLANNING: ["planning_allowance_ms", "time_bank_ms"],
+    RESOLUTION: ["initiative_bonus_ms", "resolution_allowance_ms", "time_bank_ms"],
+    RESPONSE: ["response_time_ms", "resolution_allowance_ms", "time_bank_ms"],
+    LEVEL_UP: ["upgrade_allowance_ms", "time_bank_ms"]
+  };
+  function clockText(ms) {
+    const value = Math.abs(ms), sign = ms < 0 ? "-" : "";
+    if (value < 1e4) return sign + (value / 1e3).toFixed(1) + "s";
+    const seconds = Math.ceil(value / 1e3);
+    return sign + Math.floor(seconds / 60) + ":" + String(seconds % 60).padStart(2, "0");
+  }
+  function heroClockSummary(id) {
+    return heroClocks.get(id) || null;
+  }
+  function updateHeroClocks(sidebar, header) {
+    heroClocks.clear();
+    const sources2 = Array.from(header?.querySelectorAll(c("clock")) || []);
+    for (const box of sidebar.querySelectorAll('[data-m2="hero"]')) {
+      const hero = componentProp(box, "hero");
+      const name = q(":scope>" + c("name"), box);
+      if (!name || !hero) continue;
+      const source = sources2.find((node) => {
+        const heroes = componentProp(node, "heroes");
+        if (Array.isArray(heroes)) {
+          const siblings = Array.from(node.parentElement.querySelectorAll(":scope>" + c("clock")));
+          const clock2 = componentProp(node, "clock");
+          const shown = clock2?.players ? heroes.filter((h) => clock2.players[h.id]) : heroes;
+          return shown[siblings.indexOf(node)]?.id === hero.id;
+        }
+        return q(":scope>" + c("hero"), node)?.textContent.trim() === hero.name;
+      });
+      const pools = source && q(c("pools"), source);
+      let display = q(".m2-hero-clock", name);
+      if (!pools) {
+        if (display) {
+          extras.delete(display);
+          display.remove();
+        }
+        continue;
+      }
+      const clock = componentProp(source, "clock");
+      const running = clock?.status === "RUNNING" && !!clock.players?.[hero.id]?.running;
+      const tone = ["critical", "warning", "over"].find((t) => source.matches(c(t))) || "";
+      const values = Array.from(pools.children).map((pool) => ({
+        label: q("small", pool)?.textContent || "",
+        value: q("strong", pool)?.textContent || ""
+      }));
+      const player = clock?.players?.[hero.id];
+      const locked = values.some((v) => /^locked$/i.test(v.value));
+      const phase = componentProp(source, "phase") || componentProp(header, "view")?.phase || q(c("phase"), header)?.textContent.trim();
+      const kind = player?.running && clock?.active?.hero_ids?.includes(hero.id) ? clock.active.kind : phase;
+      const fields = clockFields[kind] || ["time_bank_ms"];
+      const field = fields.find((key2) => Number(player?.[key2]) > 0) || "time_bank_ms";
+      const milliseconds = field === "time_bank_ms" ? Number(player?.time_bank_ms || 0) - Number(player?.overrun_ms || 0) : Number(player?.[field]);
+      const fallback = values.find((v) => !/^bank$/i.test(v.label)) || values[0];
+      const text = locked ? "✓" : player && Number.isFinite(Number(player[field])) ? clockText(milliseconds) : fallback?.value || "—";
+      heroClocks.set(hero.id, {
+        text,
+        locked,
+        running,
+        tone,
+        paused: clock?.status === "PAUSED",
+        label: locked ? "Card locked" : (field === "time_bank_ms" ? "Bank " : "Clock ") + text
+      });
+      const key = JSON.stringify([values, source.title, running, tone, clock?.status]);
+      if (display?.dataset.key === key) continue;
+      if (!display) {
+        display = document.createElement("span");
+        display.className = "m2-hero-clock";
+        name.append(display);
+        addExtra(display);
+      }
+      display.dataset.key = key;
+      display.dataset.running = String(running);
+      display.dataset.tone = tone;
+      display.title = source.title + (clock?.status === "PAUSED" ? " · Paused" : "");
+      display.setAttribute("aria-label", values.map((v) => v.label + " " + v.value).join(" · ") + (clock?.status === "PAUSED" ? " · Paused" : ""));
+      display.replaceChildren();
+      const phaseValues = values.filter((v) => !/^bank$/i.test(v.label));
+      const bank = values.find((v) => /^bank$/i.test(v.label));
+      const primary = document.createElement("strong");
+      primary.className = "m2-clock-pool";
+      const phaseFields = fields.filter((key2) => key2 !== "time_bank_ms");
+      const phaseTotal = phaseFields.reduce((sum, key2) => sum + Number(player?.[key2] || 0), 0);
+      primary.textContent = locked ? "-" : phaseFields.length && phaseFields.every((key2) => Number.isFinite(Number(player?.[key2]))) ? clockText(phaseTotal) : phaseValues.map((v) => v.value).join(" + ") || "-";
+      display.append(primary);
+      if (bank) {
+        const separator = document.createElement("span");
+        separator.textContent = "/";
+        const amount = document.createElement("strong");
+        amount.className = "m2-clock-bank";
+        amount.textContent = bank.value;
+        display.append(separator, amount);
+      }
+    }
+  }
 
   // src/board-texture.js
   var svgNamespace = "http://www.w3.org/2000/svg";
@@ -8667,11 +9071,17 @@ html:not([data-m2-active]) .m2-choice-launchers {
     uiState.selectedHeroCard = { heroId, cardId: card.id };
     updateHeroCardDisplay();
   }
+  function openCastSpells(heroId) {
+    uiState.selectedHeroCard = { heroId, spells: true };
+    updateHeroCardDisplay();
+    schedule();
+  }
   function updateHeroDashboard(box, view, suppliedHero = null, upgradeRequest = null) {
     const hero = suppliedHero || componentProp(box, "hero");
     if (!hero || !Array.isArray(hero.played_cards)) return;
     if (Array.isArray(hero.deck)) rememberDeckTreeChoices(hero, hero.deck, upgradeRequest);
     const offboard = heroOffboard(hero, view);
+    const indicators = heroIndicators(hero, view);
     const committedCards = heroCommittedCards(box, hero);
     const effects = view?.effects || [];
     const cards = [
@@ -8706,7 +9116,7 @@ html:not([data-m2-active]) .m2-choice-launchers {
       hero.played_cards,
       hero.discard_pile,
       hero.items,
-      hero.cast_spells?.length,
+      indicators,
       active,
       offboard,
       view?.turn,
@@ -8819,7 +9229,10 @@ html:not([data-m2-active]) .m2-choice-launchers {
     const label = document.createElement("span");
     label.className = "m2-hero-played-label";
     label.textContent = "Played:";
-    current.append(label);
+    if (indicators.length) {
+      current.append(renderHeroIndicators(indicators, false, () => openCastSpells(hero.id)));
+      current.dataset.indicators = String(indicators.length);
+    } else current.append(label);
     if (!upgrading && committedCards.length === 2) {
       const pair = document.createElement("span");
       pair.className = "m2-current-card-pair";
@@ -8938,6 +9351,45 @@ html:not([data-m2-active]) .m2-choice-launchers {
     const hero = box && componentProp(box, "hero");
     if (!hero) {
       clearHeroCard();
+      return;
+    }
+    if (uiState.selectedHeroCard.spells) {
+      const cards2 = knownSpells(hero.cast_spells);
+      const selected = cards2.find((card2) => card2.id === uiState.selectedHeroCard.cardId);
+      const key2 = JSON.stringify(["cast-spells", hero.id, cards2, selected?.id]);
+      if (heroPanel.dataset.key === key2) return;
+      highlightViewedCard("hero", selected || null, hero.id);
+      heroPanel.replaceChildren();
+      const list = document.createElement("section");
+      list.className = "m2-cast-spells";
+      list.setAttribute("aria-label", (hero.name || "Gydion") + " cast spells");
+      const header = document.createElement("header");
+      const title = document.createElement("b");
+      title.textContent = (hero.name || "Gydion") + " · Spells cast";
+      const close3 = document.createElement("button");
+      close3.type = "button";
+      close3.className = "m2-spells-control m2-spells-close";
+      close3.textContent = "×";
+      close3.setAttribute("aria-label", "Close cast spells");
+      close3.onclick = () => {
+        clearHeroCard();
+        schedule();
+      };
+      header.append(title, close3);
+      list.append(header);
+      if (selected) {
+        const back = document.createElement("button");
+        back.type = "button";
+        back.className = "m2-spells-control m2-spells-back";
+        back.textContent = "‹ Cast spells";
+        back.onclick = () => openCastSpells(hero.id);
+        list.append(back, textCard(selected, "hero", null, hero.id));
+      } else appendSpellGroup(list, "Cast spells (" + cards2.length + ")", cards2, (card2) => {
+        uiState.selectedHeroCard = { heroId: hero.id, spells: true, cardId: card2.id };
+        updateHeroCardDisplay();
+      });
+      heroPanel.append(list);
+      heroPanel.dataset.key = key2;
       return;
     }
     const cards = [
@@ -9446,6 +9898,7 @@ html:not([data-m2-active]) .m2-choice-launchers {
       }
       const upgrades = itemUpgradeSymbols(h.upgrades, "m2-summary-upgrades");
       upgrades.prepend(ultimateIndicator(h, true));
+      row.append(renderHeroIndicators(h.indicators || [], true, () => openCastSpells(h.id)));
       row.append(currentSlot, h.isOwn ? navigationShortcut(upgrades, "deck", "Open your Deck") : upgrades);
       summary.append(row);
     }
@@ -10459,6 +10912,7 @@ html:not([data-m2-active]) .m2-choice-launchers {
         return {
           id: hero?.id,
           isOwn: !box.hasAttribute("data-m2-other"),
+          indicators: heroIndicators(hero, publicView),
           level: hero?.level,
           gold: hero?.gold,
           currentCard: hero ? heroTurnCard(box, hero, publicView) : null,
@@ -10601,7 +11055,7 @@ html:not([data-m2-active]) .m2-choice-launchers {
   }
   on(media, "change", schedule);
   window.GOA2Mobile2D = {
-    version: "1.1.3",
+    version: "1.2.0",
     destroy() {
       flushEventHistory();
       uiState.dead = true;

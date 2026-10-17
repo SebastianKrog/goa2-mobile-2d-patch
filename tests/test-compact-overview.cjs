@@ -78,7 +78,7 @@ try {
   renderSummary([hero]);
   const row = d.querySelector('#goa2-m2-summary article');
   assert.equal(row.firstElementChild.className, 'm2-summary-turn');
-  assert.equal(row.children.length, 6, 'six table columns without separator columns');
+  assert.equal(row.children.length, 7, 'seven table columns including the reserved indicator slot');
   assert.equal(row.querySelector('.m2-summary-identity').textContent, 'Hanu·(You)');
   assert.equal(row.querySelector('.m2-summary-resources').textContent, 'Lv.2·3');
   assert.equal(
